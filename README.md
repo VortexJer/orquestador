@@ -1,5 +1,31 @@
 # Orquestador de Modelos Especializados — prototipo fase 1
 
+## Instalación rápida
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/VortexJer/orquestador/main/install.ps1 | iex
+```
+
+**Linux / macOS:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/VortexJer/orquestador/main/install.sh | bash
+```
+
+El instalador clona el repo, crea el entorno virtual, instala las dependencias,
+prepara el `.env` y deja el comando `orquestador` disponible. Después:
+
+```
+orquestador --config      # añade tus API keys (gratis, sin tarjeta), una a una
+orquestador               # abre la terminal agéntica
+```
+
+¿Ya usas **NovaChat**? Importa tus keys de la cuenta de golpe (suma, sin duplicar):
+```
+python scripts/sync_novachat_keys.py
+```
+
+
 Implementacion del especialista Python end-to-end (router -> skill ->
 ciclo de herramientas -> RAG de casos dificiles -> validacion final ->
 trazabilidad), mas el especialista `generalist-tiny` para tareas
