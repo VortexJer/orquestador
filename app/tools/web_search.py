@@ -26,7 +26,7 @@ import random
 import re
 import time
 from datetime import datetime
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 
 import httpx
 from bs4 import BeautifulSoup
@@ -205,9 +205,78 @@ def _search_brave(query: str, count: int) -> dict:
     return {"engine": "brave", "results": _dedup(results, count), "error": None}
 
 
+def _search_tavily(query: str, count: int) -> dict:
+    """Tavily: API de busqueda pensada para IA. GRATIS (1000/mes) y SIN tarjeta."""
+    api_key = os.environ.get("TAVILY_API_KEY")
+    if not api_key:
+        return {"engine": "tavily", "results": [], "error": (
+            "Falta TAVILY_API_KEY (gratis, 1000/mes, sin tarjeta, en https://app.tavily.com/)."
+        )}
+    response = httpx.post(
+        "https://api.tavily.com/search",
+        json={"api_key": api_key, "query": query, "max_results": count, "search_depth": "basic"},
+        timeout=_TIMEOUT_S,
+    )
+    response.raise_for_status()
+    data = response.json()
+    results = [
+        {"title": r.get("title", ""), "url": r.get("url", ""), "snippet": r.get("content", "")}
+        for r in data.get("results", [])[:count]
+    ]
+    return {"engine": "tavily", "results": _dedup(results, count), "error": None}
+
+
+def _search_ollama(query: str, count: int) -> dict:
+    """Ollama web search: API gratis de Ollama, key de cuenta sin tarjeta."""
+    api_key = os.environ.get("OLLAMA_API_KEY")
+    if not api_key:
+        return {"engine": "ollama", "results": [], "error": (
+            "Falta OLLAMA_API_KEY (gratis, key de cuenta sin tarjeta, en https://ollama.com/settings/keys)."
+        )}
+    response = httpx.post(
+        "https://ollama.com/api/web_search",
+        headers={"Authorization": f"Bearer {api_key}"},
+        json={"query": query, "max_results": count},
+        timeout=_TIMEOUT_S,
+    )
+    response.raise_for_status()
+    data = response.json()
+    results = [
+        {"title": r.get("title", ""), "url": r.get("url", ""), "snippet": (r.get("content") or "")[:240]}
+        for r in data.get("results", [])[:count]
+    ]
+    return {"engine": "ollama", "results": _dedup(results, count), "error": None}
+
+
+def _search_jina(query: str, count: int) -> dict:
+    """Jina s.jina.ai: buscador para IA. Key gratis sin tarjeta."""
+    api_key = os.environ.get("JINA_API_KEY")
+    if not api_key:
+        return {"engine": "jina", "results": [], "error": (
+            "Falta JINA_API_KEY (gratis sin tarjeta, en https://jina.ai/reader/)."
+        )}
+    response = httpx.get(
+        "https://s.jina.ai/" + quote(query),
+        headers={"Accept": "application/json", "Authorization": f"Bearer {api_key}"},
+        timeout=_TIMEOUT_S,
+    )
+    response.raise_for_status()
+    data = response.json()
+    items = data.get("data") or (data if isinstance(data, list) else [])
+    results = [
+        {"title": r.get("title", ""), "url": r.get("url", ""), "snippet": (r.get("description") or r.get("content") or "")[:240]}
+        for r in items[:count]
+    ]
+    return {"engine": "jina", "results": _dedup(results, count), "error": None}
+
+
 # Orden de la cascada: DDG (rapido, va bien en IP residencial) -> SearXNG
-# (cuando DDG bloquea) -> Brave (si hay key). El primero con resultados gana.
-_CASCADA = [_search_duckduckgo_lite, _search_duckduckgo_html, _search_searxng, _search_brave]
+# (cuando DDG bloquea) -> buscadores para IA gratis con key (Ollama, Tavily,
+# Jina) -> Brave (de pago, ultimo). El primero con resultados gana.
+_CASCADA = [
+    _search_duckduckgo_lite, _search_duckduckgo_html, _search_searxng,
+    _search_ollama, _search_tavily, _search_jina, _search_brave,
+]
 
 
 def _buscar_en_cascada(query: str, count: int, pasadas: int = 2) -> dict:
