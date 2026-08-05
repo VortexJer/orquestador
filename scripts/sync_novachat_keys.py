@@ -92,7 +92,8 @@ def main() -> None:
     password = getpass.getpass("Contraseña (no se muestra): ")
 
     try:
-        r = httpx.post(f"{url}/api/export-keys", json={"email": email, "password": password}, timeout=30.0)
+        print("Conectando (si Render estaba dormido, la 1ª vez tarda ~50s)…")
+        r = httpx.post(f"{url}/api/export-keys", json={"email": email, "password": password}, timeout=90.0)
     except Exception as exc:  # noqa: BLE001
         print(f"No se pudo contactar con NovaChat: {exc}")
         sys.exit(1)
