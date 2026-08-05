@@ -1,0 +1,755 @@
+[
+  {
+    "id": "web-missing-viewport-meta",
+    "language_or_domain": "web",
+    "tags": [
+      "responsive",
+      "html",
+      "web"
+    ],
+    "problem_description": "Sin <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">, los navegadores moviles renderizan la pagina asumiendo un ancho de escritorio (usualmente 980px) y despues la escalan para que entre en la pantalla - el resultado es un sitio 'responsive' en el CSS que en movil real se ve microscopico y alejado, sin que las media queries lleguen a activarse nunca.",
+    "why_small_models_fail": "El modelo escribe media queries correctas en el CSS (que es la parte 'visible' e interesante del trabajo) y da por sentado el meta viewport, que es una sola linea invisible en el <head> facil de omitir sin que rompa nada a nivel de codigo.",
+    "correct_approach": "Incluir siempre <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> en el <head> de cualquier pagina que tenga CSS responsive.",
+    "bad_example": "<head>\n  <title>Mi sitio</title>\n  <link rel=\"stylesheet\" href=\"styles.css\">\n</head>",
+    "good_example": "<head>\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Mi sitio</title>\n  <link rel=\"stylesheet\" href=\"styles.css\">\n</head>",
+    "source": "MDN - 'Using the viewport meta tag to control layout on mobile browsers'"
+  },
+  {
+    "id": "web-flexbox-min-width-auto-overflow",
+    "language_or_domain": "web",
+    "tags": [
+      "css",
+      "flexbox",
+      "web"
+    ],
+    "problem_description": "Los items de un flex container tienen min-width:auto por defecto (no 0), lo que impide que se encojan por debajo del tamaño de su contenido (ej. un texto largo sin espacios, o una imagen). El resultado es que un item 'deberia' encoger para caber pero en cambio desborda el contenedor o empuja el layout, y no es obvio por que mirando solo las reglas de flex-shrink.",
+    "why_small_models_fail": "El modelo aplica flex-shrink:1 (o el default) esperando que alcance para que el item se achique, sin saber que min-width:auto compite con eso y gana salvo que se sobreescriba explicitamente.",
+    "correct_approach": "Agregar min-width: 0 (o min-height: 0 en flex-direction: column) a los items flex que necesitan poder encoger por debajo del tamaño de su contenido.",
+    "bad_example": ".flex-item {\n  flex: 1;\n  /* min-width: auto implicito - no encoge por debajo del contenido */\n}",
+    "good_example": ".flex-item {\n  flex: 1;\n  min-width: 0; /* ahora si puede encoger y truncar/wrap el contenido */\n}",
+    "source": "CSS Flexbox spec - 'Automatic Minimum Size of Flex Items'; caniuse/MDN notas de flexbox"
+  },
+  {
+    "id": "web-z-index-stacking-context-trap",
+    "language_or_domain": "web",
+    "tags": [
+      "css",
+      "stacking-context",
+      "web"
+    ],
+    "problem_description": "z-index solo compite dentro del MISMO contexto de apilamiento (stacking context). Un elemento con z-index altisimo dentro de un padre que crea su propio stacking context (ej. el padre tiene opacity < 1, transform, o filter) nunca va a poder superar a un hermano de ESE padre, sin importar que tan alto sea su z-index - el problema esta en la jerarquia de contextos, no en el numero.",
+    "why_small_models_fail": "El modelo trata z-index como un numero global comparable entre cualquier par de elementos de la pagina, sin modelar que ciertas propiedades CSS (aparentemente no relacionadas, como opacity o transform) crean un nuevo contexto de apilamiento que aisla a z-index dentro de el.",
+    "correct_approach": "Cuando un z-index alto 'no funciona', revisar toda la cadena de ancestros por propiedades que creen un stacking context nuevo (opacity<1, transform, filter, position+z-index, etc.) antes de simplemente subir el numero.",
+    "bad_example": ".modal { z-index: 9999; } /* dentro de un padre con transform: translateZ(0) que crea su propio stacking context */\n/* el modal puede seguir quedando DEBAJO de un elemento con z-index:1 fuera de ese padre */",
+    "good_example": "/* Mover el modal fuera del padre con transform (ej. renderizarlo en un portal al final del <body>) para que compita en el stacking context raiz */",
+    "source": "MDN - 'Stacking context'; W3C CSS Positioned Layout spec"
+  },
+  {
+    "id": "web-cors-fetch-blocked-generic-error",
+    "language_or_domain": "web",
+    "tags": [
+      "cors",
+      "javascript",
+      "web"
+    ],
+    "problem_description": "Un fetch() desde el navegador a una API de otro origen sin cabeceras CORS correctas del lado del servidor falla con un error generico en consola ('Failed to fetch' / 'NetworkError'), sin detalle del motivo real - facil de diagnosticar erroneamente como un bug de codigo (URL mal escrita, servidor caido) cuando en realidad el request SI llego al servidor pero el navegador bloqueo la respuesta por politica CORS.",
+    "why_small_models_fail": "El modelo debug-ea el error de fetch como si fuera un problema de logica JS (revisa la URL, el metodo, el body) porque el mensaje de error del navegador no menciona CORS explicitamente en todos los casos, y no considera que el problema puede estar del lado del SERVIDOR (falta Access-Control-Allow-Origin), no del cliente.",
+    "correct_approach": "Ante un fetch que falla sin detalle claro, revisar la pestaña Network del navegador (no solo la consola) para ver si la request llego al servidor y que respondio; si el request aparece pero la respuesta esta bloqueada, el fix es del lado del servidor (agregar las cabeceras CORS correctas), no del cliente.",
+    "bad_example": "fetch(\"https://api.otroservicio.com/datos\")\n  .then(r => r.json())\n  .catch(e => console.log(\"algo fallo con la URL o el metodo\", e)); // diagnostico incorrecto si es CORS",
+    "good_example": "// Confirmar en Network que la request efectivamente salio; si la respuesta esta bloqueada por CORS,\n// el fix es en el servidor: Access-Control-Allow-Origin: https://mi-sitio.com (o un proxy backend propio)",
+    "source": "MDN - 'Cross-Origin Resource Sharing (CORS)', errores comunes de diagnostico"
+  },
+  {
+    "id": "web-images-no-lazy-loading-cls",
+    "language_or_domain": "web",
+    "tags": [
+      "performance",
+      "images",
+      "web"
+    ],
+    "problem_description": "Imagenes sin atributos width/height explicitos hacen que el navegador no pueda reservar el espacio antes de que la imagen cargue, causando Cumulative Layout Shift (el contenido 'salta' cuando la imagen aparece) - una metrica real de Core Web Vitals que afecta ranking de SEO y experiencia de usuario. Ademas, cargar todas las imagenes sin loading=\"lazy\" descarga contenido fuera de pantalla innecesariamente en la carga inicial.",
+    "why_small_models_fail": "El modelo genera el <img> minimo que 'funciona' (src + alt), sin agregar width/height/loading porque no rompen nada visualmente en una prueba rapida con pocas imagenes y buena conexion - el problema solo es medible con metricas reales o conexiones lentas.",
+    "correct_approach": "Especificar siempre width/height (o aspect-ratio en CSS) en cada <img>, y loading=\"lazy\" en imagenes fuera del viewport inicial (todo excepto la primera pantalla).",
+    "bad_example": "<img src=\"plato-especial.jpg\" alt=\"Plato especial de la casa\">",
+    "good_example": "<img src=\"plato-especial.jpg\" alt=\"Plato especial de la casa\" width=\"800\" height=\"600\" loading=\"lazy\">",
+    "source": "web.dev - 'Optimize Cumulative Layout Shift'; MDN - loading attribute"
+  },
+  {
+    "id": "web-missing-seo-meta-tags",
+    "language_or_domain": "web",
+    "tags": [
+      "seo",
+      "html",
+      "web"
+    ],
+    "problem_description": "Sin <title> especifico, <meta name=\"description\">, y las Open Graph tags basicas (og:title, og:description, og:image), la pagina aparece con un titulo generico en resultados de busqueda, sin descripcion util, y sin preview al compartirse en redes sociales/WhatsApp - un problema real para un sitio de negocio, donde el 'preview' al compartir el link suele ser el primer contacto de un cliente potencial.",
+    "why_small_models_fail": "El modelo se enfoca en el contenido visible de la pagina (lo que pidio el usuario explicitamente) y trata los metadatos de <head> como un detalle secundario, sin modelar que buena parte del valor de esos metadatos es invisible en la pagina misma - solo se nota en Google o al compartir el link.",
+    "correct_approach": "Generar siempre title/meta description especificos del contenido real de la pagina (no genericos tipo 'Bienvenido'), y las tags og: basicas con una imagen representativa.",
+    "bad_example": "<head>\n  <title>Inicio</title>\n</head>",
+    "good_example": "<head>\n  <title>Pizzeria Don Mario - Pizza artesanal en el centro de la ciudad</title>\n  <meta name=\"description\" content=\"Pizzeria familiar con mas de 20 años de trayectoria. Envios y retiro en el local.\">\n  <meta property=\"og:title\" content=\"Pizzeria Don Mario\">\n  <meta property=\"og:image\" content=\"/img/fachada.jpg\">\n</head>",
+    "source": "Google Search Central - 'Title link' y 'Meta description' best practices; Open Graph protocol docs"
+  },
+  {
+    "id": "web-client-only-form-validation-security",
+    "language_or_domain": "web",
+    "tags": [
+      "security",
+      "forms",
+      "web"
+    ],
+    "problem_description": "Validar un formulario solo con atributos HTML5 (required, pattern, type=\"email\") o JavaScript en el cliente es puramente cosmetico desde el punto de vista de seguridad: cualquiera puede desactivar JS, editar el HTML en las devtools, o mandar el request directamente (curl/Postman) sin pasar por el formulario en absoluto - el servidor DEBE validar y sanitizar todo de nuevo, sin confiar en que el request vino de ese formulario.",
+    "why_small_models_fail": "El modelo implementa la validacion del lado del cliente (que mejora la UX, mostrando el error antes de enviar) y la trata como si fuera TAMBIEN la medida de seguridad, sin distinguir que la validacion de cliente es solo conveniencia de UX y nunca reemplaza la validacion del servidor.",
+    "correct_approach": "Mantener la validacion de cliente para UX (feedback inmediato), pero validar y sanitizar de nuevo TODO en el servidor, tratando cualquier request entrante como potencialmente hostil sin importar de donde 'deberia' venir.",
+    "bad_example": "<form onsubmit=\"return validar()\">\n  <input type=\"email\" required>\n</form>\n<!-- el backend confia en que si llego el request, el email ya es valido -->",
+    "good_example": "<!-- mismo HTML del lado del cliente, MAS en el backend: -->\n<!-- validar formato de email, longitud, sanitizar antes de guardar/usar el valor, sin asumir nada del cliente -->",
+    "source": "OWASP - Input Validation Cheat Sheet, 'never trust client-side validation alone'"
+  },
+  {
+    "id": "web-font-loading-fout-fouc",
+    "language_or_domain": "web",
+    "tags": [
+      "performance",
+      "fonts",
+      "web"
+    ],
+    "problem_description": "Cargar web fonts con @font-face sin font-display causa, segun el navegador, texto invisible mientras la fuente carga (FOIT - Flash of Invisible Text) o un salto de layout cuando la fuente de respaldo es reemplazada por la definitiva (FOUT) - en conexiones lentas el usuario puede quedarse varios segundos sin ver texto legible en absoluto.",
+    "why_small_models_fail": "El modelo agrega @font-face con los atributos minimos (font-family, src) porque asi 'la fuente se aplica', sin considerar el comportamiento de carga en conexiones lentas, que no se nota en desarrollo local con la fuente cacheada.",
+    "correct_approach": "Agregar font-display: swap (muestra la fuente de respaldo inmediatamente y la reemplaza cuando carga la real, evitando texto invisible) y considerar preload de la fuente critica.",
+    "bad_example": "@font-face {\n  font-family: \"MiFuente\";\n  src: url(\"mifuente.woff2\") format(\"woff2\");\n}",
+    "good_example": "@font-face {\n  font-family: \"MiFuente\";\n  src: url(\"mifuente.woff2\") format(\"woff2\");\n  font-display: swap;\n}",
+    "source": "web.dev - 'Avoid invisible text during font loading'"
+  },
+  {
+    "id": "web-localstorage-sensitive-data-xss-exposure",
+    "language_or_domain": "web",
+    "tags": [
+      "security",
+      "storage",
+      "web"
+    ],
+    "problem_description": "Guardar un token de sesion/autenticacion en localStorage (o sessionStorage) lo hace accesible a CUALQUIER JavaScript que corra en la pagina, incluido un script inyectado via XSS - a diferencia de una cookie httpOnly, que el JavaScript no puede leer aunque haya XSS. Es una decision de arquitectura que amplifica el impacto de cualquier XSS de 'molesto' a 'robo de sesion completo'.",
+    "why_small_models_fail": "El modelo usa localStorage porque es la forma mas simple y directa de persistir un token desde JavaScript (la API de cookies es mas verbosa), sin modelar el tradeoff de seguridad frente a XSS que esa eleccion implica.",
+    "correct_approach": "Para tokens de sesion/autenticacion, preferir cookies httpOnly + Secure + SameSite (gestionadas por el servidor, invisibles a JS) sobre localStorage; si el token debe ser accesible a JS por diseño (ej. un SPA con arquitectura especifica), asumir explicitamente el riesgo y reforzar la mitigacion de XSS en el resto de la app.",
+    "bad_example": "localStorage.setItem(\"authToken\", token); // cualquier XSS en la pagina puede leer esto y robar la sesion",
+    "good_example": "// El servidor setea la cookie de sesion con: Set-Cookie: session=...; HttpOnly; Secure; SameSite=Strict\n// JavaScript nunca necesita ni puede leer el valor del token",
+    "source": "OWASP - HTML5 Security Cheat Sheet, 'Local Storage'; OWASP Session Management Cheat Sheet"
+  },
+  {
+    "id": "web-spa-event-listener-leak",
+    "language_or_domain": "web",
+    "tags": [
+      "javascript",
+      "spa",
+      "memory",
+      "web"
+    ],
+    "problem_description": "En una SPA (sin framework, o con manipulacion manual del DOM), agregar addEventListener cada vez que se renderiza/monta una vista sin removerlo cuando esa vista se destruye acumula listeners huerfanos - ademas de la fuga de memoria, un mismo evento puede terminar disparando el handler MULTIPLES veces (uno por cada montaje previo que nunca se limpio), un bug que empeora progresivamente cuanto mas tiempo lleva abierta la sesion.",
+    "why_small_models_fail": "El modelo agrega el listener en la funcion que renderiza/monta la vista (el lugar logico para 'activar' el comportamiento) sin agregar simetricamente el removeEventListener en el codigo que desmonta esa vista, porque en una prueba rapida de una sola navegacion el bug no es visible - recien aparece tras navegar ida y vuelta varias veces.",
+    "correct_approach": "Por cada addEventListener agregado al montar algo dinamico, agregar el removeEventListener correspondiente al desmontar; o usar un AbortController compartido y abort() al desmontar, que remueve todos los listeners asociados de una vez.",
+    "bad_example": "function montarVista() {\n  document.getElementById(\"boton\").addEventListener(\"click\", handler);\n}\n// se llama cada vez que se navega a esta vista, sin remover el listener anterior",
+    "good_example": "function montarVista() {\n  const controller = new AbortController();\n  document.getElementById(\"boton\").addEventListener(\"click\", handler, { signal: controller.signal });\n  return () => controller.abort(); // al desmontar, se llama esto y se limpia todo\n}",
+    "source": "MDN - AbortController, uso para limpieza de event listeners; patrones comunes de memory leaks en SPA"
+  },
+  {
+    "id": "web-scraped-images-copyright-risk",
+    "language_or_domain": "web",
+    "tags": [
+      "legal",
+      "images",
+      "web"
+    ],
+    "problem_description": "Buscar 'una foto de X' en un buscador de imagenes generico y usar la primera que aparece (via scraping o copiando la URL) para un sitio de un cliente real expone a ese cliente a un reclamo de copyright: la gran mayoria de imagenes indexadas por buscadores no son de uso libre, y 'aparecer en Google Images' no implica ningun derecho de uso.",
+    "why_small_models_fail": "El modelo resuelve 'necesito una foto de una pizza' con la ruta mas directa (buscar y tomar cualquier imagen que calce visualmente), sin modelar que el origen/licencia de la imagen es un problema legal real para el uso comercial, no solo una cuestion tecnica de si la imagen 'se ve bien'.",
+    "correct_approach": "Usar exclusivamente bancos de imagenes royalty-free con licencia explicita para uso comercial (Unsplash, Pexels, Pixabay, o material provisto directamente por el cliente) - nunca imagenes tomadas de una busqueda generica o de redes sociales de terceros.",
+    "bad_example": "Buscar \"pizza margarita\" en un buscador de imagenes generico y descargar el primer resultado para el sitio de la pizzeria, sin verificar su licencia.",
+    "good_example": "Usar la herramienta image_search apuntada a Unsplash/Pexels/Pixabay (todas con licencia de uso comercial gratuito explicita), o pedirle al cliente fotos propias de sus platos.",
+    "source": "Practica estandar de gestion de derechos de imagen para uso comercial; terminos de licencia de Unsplash/Pexels/Pixabay"
+  },
+  {
+    "id": "web-heading-hierarchy-skip-for-visual-size",
+    "language_or_domain": "web",
+    "tags": [
+      "accessibility",
+      "seo",
+      "html",
+      "web"
+    ],
+    "problem_description": "Elegir el nivel de encabezado (h1-h6) segun que tamaño de fuente 'se ve bien' en vez de segun la jerarquia real del contenido (ej. usar un h4 porque su tamaño por defecto queda mejor visualmente, saltando del h1 al h4 directamente) rompe la navegacion por encabezados de lectores de pantalla y confunde el analisis de estructura que hacen los buscadores.",
+    "why_small_models_fail": "El modelo elige el tag de encabezado en base al resultado visual esperado (los h1-h6 tienen tamaños de fuente por defecto distintos), tratandolos como 'tags de tamaño de texto' en vez de tags de jerarquia semantica - el tamaño visual se deberia controlar con CSS, no con el nivel del encabezado.",
+    "correct_approach": "Elegir el nivel de encabezado exclusivamente por jerarquia logica del contenido (un h2 real bajo el h1, nunca saltar niveles), y ajustar el tamaño visual con CSS (font-size) de forma independiente del nivel semantico elegido.",
+    "bad_example": "<h1>Restaurante Don Mario</h1>\n<h4>Nuestro menu</h4> <!-- se salteo h2 y h3 solo porque el tamaño de h4 'quedaba mejor' -->",
+    "good_example": "<h1>Restaurante Don Mario</h1>\n<h2 class=\"titulo-chico\">Nuestro menu</h2> <!-- jerarquia correcta, tamaño ajustado por CSS con una clase -->",
+    "source": "MDN - 'Heading Levels'; WebAIM - 'Semantic Structure', encabezados"
+  },
+  {
+    "id": "web-image-selection-without-visual-analysis",
+    "language_or_domain": "web",
+    "tags": [
+      "images",
+      "design",
+      "web"
+    ],
+    "problem_description": "Elegir una foto de fondo/producto solo por lo que describe la busqueda (\"foto de pizza\", \"fondo de restaurante\") sin analizar sus propiedades visuales reales (brillo, color dominante, cuanto \"ruido\"/detalle tiene) produce combinaciones que no funcionan: texto blanco superpuesto sobre una foto ya clara y de fondo variado (illegible), una paleta de acento calida elegida para combinar con una foto que en realidad es fria/azulada, o una imagen muy detallada usada como fondo de una seccion con texto encima sin ningun scrim/overlay que la aisle.",
+    "why_small_models_fail": "El modelo trata 'buscar una imagen' como un paso final autocontenido (la URL/archivo resultante 'ya es' el activo final a usar), sin modelar que una foto real tiene propiedades visuales (contraste, temperatura de color, complejidad) que determinan COMO hay que usarla - que color de texto poner encima, si necesita un overlay oscuro, si combina con la paleta ya elegida para el resto del sitio.",
+    "correct_approach": "Despues de buscar candidatas con image_search, analizar cada una con la herramienta de analisis de imagen (color dominante, brillo, calidez, complejidad) ANTES de decidir cual usar y como - elegir el color de texto/overlay en base a esos datos reales, no asumirlo.",
+    "bad_example": "<div style=\"background-image: url('foto-buscada.jpg')\">\n  <h1 style=\"color: white\">Bienvenidos</h1>\n</div>\n<!-- si la foto resulta ser clara, el texto blanco es illegible, y nadie lo verifico -->",
+    "good_example": "// 1. image_search(\"restaurante interior acogedor\") -> candidatas\n// 2. analyze_image(candidata) -> { brightness: \"clara\", suggested_overlay_text_color: \"oscura con scrim...\" }\n// 3. usar ese resultado para decidir: texto oscuro, o agregar un overlay oscuro semi-transparente antes del texto claro",
+    "source": "Practica estandar de diseño web - contraste texto/fondo (ver tambien WCAG 1.4.3 Contrast Minimum)"
+  },
+  {
+    "id": "web-generic-flat-design-no-motion",
+    "language_or_domain": "web",
+    "tags": [
+      "design",
+      "animation",
+      "motion",
+      "polish"
+    ],
+    "problem_description": "Los sitios generados por defecto quedan planos y estaticos: sin transiciones, sin revelado al hacer scroll, sin microinteracciones - se ven a una plantilla de tutorial de hace diez anios aunque el HTML/CSS sea tecnicamente correcto y pase todos los linters.",
+    "why_small_models_fail": "El corpus de entrenamiento tiene muchisimos mas ejemplos de HTML/CSS 'basico correcto' (tutoriales, snippets de documentacion oficial) que de sitios con nivel de pulido de produccion real; el modelo generaliza hacia el promedio del corpus, que es plano y sin movimiento.",
+    "correct_approach": "Salvo que la tarea pida explicitamente algo minimalista/estatico, agregar por defecto: (a) revelado de secciones al hacer scroll via IntersectionObserver, (b) transiciones reales en hover/focus de botones y tarjetas (transform + box-shadow, no solo un cambio de color), (c) respetar SIEMPRE prefers-reduced-motion - animar sin ese guard rompe accesibilidad para gente con trastornos vestibulares.",
+    "bad_example": ".card {\n  border: 1px solid #ccc;\n  padding: 1rem;\n}\n.card:hover {\n  border-color: #999;\n}",
+    "good_example": "/* CSS */\n.reveal {\n  opacity: 0;\n  transform: translateY(24px);\n  transition: opacity 0.6s ease, transform 0.6s ease;\n}\n.reveal.is-visible {\n  opacity: 1;\n  transform: translateY(0);\n}\n@media (prefers-reduced-motion: reduce) {\n  .reveal {\n    transition: none;\n    opacity: 1;\n    transform: none;\n  }\n}\n\n// JS\nconst observer = new IntersectionObserver((entries) => {\n  entries.forEach((entry) => {\n    if (entry.isIntersecting) {\n      entry.target.classList.add('is-visible');\n      observer.unobserve(entry.target);\n    }\n  });\n}, { threshold: 0.15 });\n\ndocument.querySelectorAll('.reveal').forEach((el) => observer.observe(el));",
+    "source": "web.dev - 'prefers-reduced-motion'; MDN - 'IntersectionObserver API'"
+  },
+  {
+    "id": "web-only-flexbox-never-grid",
+    "language_or_domain": "web",
+    "tags": [
+      "layout",
+      "css-grid",
+      "design"
+    ],
+    "problem_description": "El layout por defecto es siempre una columna unica apilada con flexbox (titulo, parrafo, imagen, repetir) sin importar el tipo de sitio - portfolios, landings y sitios editoriales terminan con la misma estructura lineal aburrida que un formulario simple, cuando el contenido pediria un layout asimetrico tipo revista.",
+    "why_small_models_fail": "Flexbox de una columna es el patron mas frecuente y mas facil de generar sin errores; CSS Grid con areas nombradas y layouts asimetricos aparece mucho menos en el corpus y requiere planear la estructura antes de escribir el CSS, no solo apilar elementos en el orden del HTML.",
+    "correct_approach": "Para landings/portfolios/sitios editoriales, usar CSS Grid con 'grid-template-areas' para layouts asimetricos (ej. una imagen grande ocupando 2 filas junto a dos tarjetas mas chicas), y 'repeat(auto-fit, minmax(...))' para grillas de tarjetas que se reacomodan solas sin media queries manuales.",
+    "bad_example": ".section { display: flex; flex-direction: column; gap: 1rem; }",
+    "good_example": ".bento {\n  display: grid;\n  gap: 1rem;\n  grid-template-columns: repeat(4, 1fr);\n  grid-template-areas:\n    'hero hero side1 side1'\n    'hero hero side2 side3';\n}\n.hero  { grid-area: hero; }\n.side1 { grid-area: side1; }\n.side2 { grid-area: side2; }\n.side3 { grid-area: side3; }\n\n@media (max-width: 640px) {\n  .bento {\n    grid-template-columns: 1fr;\n    grid-template-areas: 'hero' 'side1' 'side2' 'side3';\n  }\n}",
+    "source": "CSS Grid Layout (W3C); patron 'bento grid' de diseno usado en landings modernas"
+  },
+  {
+    "id": "web-navbar-no-scroll-behavior",
+    "language_or_domain": "web",
+    "tags": [
+      "navigation",
+      "animation",
+      "ux"
+    ],
+    "problem_description": "La barra de navegacion se genera estatica: mismo tamano y fondo arriba de todo el scroll de la pagina, sin ninguna reaccion. Los sitios que se sienten 'con nivel de produccion' casi siempre encogen la navbar o le agregan un fondo con blur al hacer scroll, dando sensacion de que la pagina responde a la interaccion.",
+    "why_small_models_fail": "Una navbar estatica es la version 'segura' y mas comun en ejemplos basicos; el comportamiento dependiente de scroll requiere JS activo (un listener, una clase que se togglea) que el modelo no agrega si nadie lo pide explicitamente palabra por palabra.",
+    "correct_approach": "Agregar un listener de scroll liviano (o IntersectionObserver sobre un sentinel) que agregue una clase '.scrolled' al pasar cierto umbral, y una transicion CSS en la navbar para achicar el padding y/o agregar 'backdrop-filter: blur(...)' con fondo semitransparente.",
+    "bad_example": "<nav class=\"navbar\">...</nav>\n\n.navbar { position: sticky; top: 0; background: white; padding: 1.5rem; }",
+    "good_example": ".navbar {\n  position: sticky;\n  top: 0;\n  padding: 1.5rem;\n  background: rgba(255, 255, 255, 0.7);\n  backdrop-filter: blur(8px);\n  transition: padding 0.3s ease, box-shadow 0.3s ease;\n}\n.navbar.scrolled {\n  padding: 0.75rem 1.5rem;\n  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);\n}\n\n// JS\nconst navbar = document.querySelector('.navbar');\nwindow.addEventListener('scroll', () => {\n  navbar.classList.toggle('scrolled', window.scrollY > 40);\n}, { passive: true });",
+    "source": "Patron comun en landings de produccion (Stripe, Linear, Vercel usan variantes de esto)"
+  },
+  {
+    "id": "web-buttons-only-color-hover-no-focus",
+    "language_or_domain": "web",
+    "tags": [
+      "microinteractions",
+      "buttons",
+      "accessibility"
+    ],
+    "problem_description": "Los botones/tarjetas solo cambian de color en ':hover', sin transform ni sombra (sin sensacion de profundidad/respuesta fisica), y ademas NO tienen ningun estilo en ':focus-visible' - un usuario que navega con teclado no tiene forma de ver cual elemento esta enfocado.",
+    "why_small_models_fail": "':hover { background: ... }' es el patron mas simple y frecuente en el corpus; el modelo rara vez agrega ':focus-visible' porque asume (incorrectamente) que el mouse es la unica forma de interaccion, y no considera que el hover-only deja a usuarios de teclado sin ninguna senal visual.",
+    "correct_approach": "Los estados interactivos van con transform + box-shadow (da sensacion de profundidad, no solo de color), y SIEMPRE con un estilo explicito de ':focus-visible' equivalente o mas visible que el de ':hover' - nunca 'outline: none' sin reemplazarlo por algo.",
+    "bad_example": ".btn:hover { background: #2563eb; }\n.btn:focus { outline: none; }",
+    "good_example": ".btn {\n  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;\n}\n.btn:hover {\n  transform: translateY(-2px);\n  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);\n  background: #2563eb;\n}\n.btn:focus-visible {\n  outline: 3px solid #93c5fd;\n  outline-offset: 2px;\n}\n.btn:active {\n  transform: translateY(0);\n}",
+    "source": "MDN - ':focus-visible'; WCAG 2.2 - 'Focus Visible' (criterio 2.4.7)"
+  },
+  {
+    "id": "web-no-dark-mode-custom-properties",
+    "language_or_domain": "web",
+    "tags": [
+      "dark-mode",
+      "css-custom-properties",
+      "design"
+    ],
+    "problem_description": "Los colores se escriben hardcodeados en cada regla CSS ('color: #111', 'background: #fff' repetido decenas de veces), asi que soportar modo oscuro significaria reescribir todo el archivo - por eso nunca se soporta, aunque 'prefers-color-scheme' hace que sea casi gratis si se usan variables desde el principio.",
+    "why_small_models_fail": "Escribir valores de color literales es lo mas directo turno a turno; centralizar en variables CSS requiere pensar el sistema de diseno ANTES de escribir la primera regla, un paso de planificacion que se salta si nadie lo pide explicitamente.",
+    "correct_approach": "Definir SIEMPRE los colores como custom properties en ':root', y una segunda definicion bajo '@media (prefers-color-scheme: dark)' - el resto del CSS usa 'var(--color-x)' y el modo oscuro queda soportado sin tocar ninguna otra regla.",
+    "bad_example": "body { background: #ffffff; color: #111111; }\n.card { background: #f5f5f5; }",
+    "good_example": ":root {\n  --bg: #ffffff;\n  --text: #111111;\n  --surface: #f5f5f5;\n}\n@media (prefers-color-scheme: dark) {\n  :root {\n    --bg: #0f1115;\n    --text: #e6e6e6;\n    --surface: #1a1d23;\n  }\n}\nbody { background: var(--bg); color: var(--text); }\n.card { background: var(--surface); }",
+    "source": "MDN - 'prefers-color-scheme'; web.dev - 'Prefers Color Scheme'"
+  },
+  {
+    "id": "web-hero-section-flat-no-depth",
+    "language_or_domain": "web",
+    "tags": [
+      "hero",
+      "gradient",
+      "glassmorphism",
+      "design"
+    ],
+    "problem_description": "La seccion 'hero' (lo primero que se ve al entrar al sitio) sale con fondo solido de un solo color y texto centrado - funcional pero sin ninguna jerarquia visual ni profundidad, cuando es justo la seccion que mas impacto de primera impresion tiene en cualquier landing page.",
+    "why_small_models_fail": "Un fondo solido con texto centrado es el resultado 'seguro' que nunca se ve mal, asi que el modelo converge ahi; tecnicas de fondo en capas (gradientes superpuestos, glassmorphism) requieren combinar varias propiedades CSS a la vez de forma deliberada, no aparecen por generalizacion de ejemplos simples.",
+    "correct_approach": "Usar un fondo de gradientes radiales superpuestos (efecto 'mesh gradient') en vez de un color solido, y para tarjetas/paneles sobre ese fondo usar 'glassmorphism' ('backdrop-filter: blur()' + fondo semitransparente + borde sutil) para dar sensacion de profundidad en capas.",
+    "bad_example": ".hero {\n  background: #4f46e5;\n  text-align: center;\n  padding: 6rem 1rem;\n}",
+    "good_example": ".hero {\n  min-height: 70vh;\n  display: grid;\n  place-items: center;\n  background:\n    radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.5), transparent 40%),\n    radial-gradient(circle at 80% 30%, rgba(236, 72, 153, 0.4), transparent 45%),\n    #0f1115;\n}\n.hero__card {\n  background: rgba(255, 255, 255, 0.08);\n  backdrop-filter: blur(12px);\n  border: 1px solid rgba(255, 255, 255, 0.15);\n  border-radius: 1rem;\n  padding: 2rem;\n}",
+    "source": "Tecnica 'mesh gradient' + 'glassmorphism', comunes en landings SaaS 2024-2026"
+  },
+  {
+    "id": "web-async-content-no-loading-state",
+    "language_or_domain": "web",
+    "tags": [
+      "loading",
+      "skeleton",
+      "perceived-performance"
+    ],
+    "problem_description": "Cuando el contenido depende de algo asincrono (una imagen pesada, datos traidos con fetch), no hay ningun estado de carga - el espacio queda en blanco y el contenido aparece de golpe (o se corre el layout) cuando llega, lo que se percibe como que la pagina 'esta rota' aunque tecnicamente funcione bien.",
+    "why_small_models_fail": "El 'camino feliz' (mostrar el contenido final) es lo unico que se pide explicitamente en la tarea; el estado intermedio de carga es un detalle de percepcion de performance que no tiene una linea de codigo obvia asociada, asi que se omite salvo que se instruya.",
+    "correct_approach": "Para cualquier contenido que dependa de una carga asincrona, mostrar un 'esqueleto' (skeleton) con una animacion de shimmer mientras carga, con el MISMO tamano que el contenido final para no generar layout shift, y reemplazarlo recien cuando el contenido real esta listo.",
+    "bad_example": "<div id=\"user-card\"></div>\n\nfetch('/api/user').then(r => r.json()).then(data => {\n  document.getElementById('user-card').innerHTML = renderCard(data);\n});",
+    "good_example": "/* CSS */\n.skeleton {\n  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 37%, #e5e7eb 63%);\n  background-size: 400% 100%;\n  animation: shimmer 1.4s ease infinite;\n  border-radius: 0.5rem;\n  height: 120px;\n}\n@keyframes shimmer {\n  0% { background-position: 100% 50%; }\n  100% { background-position: 0 50%; }\n}\n@media (prefers-reduced-motion: reduce) {\n  .skeleton { animation: none; }\n}\n\n// JS\nconst container = document.getElementById('user-card');\ncontainer.innerHTML = '<div class=\"skeleton\"></div>';\nfetch('/api/user').then(r => r.json()).then(data => {\n  container.innerHTML = renderCard(data);\n});",
+    "source": "web.dev - 'Skeleton screens'; patron popularizado por LinkedIn/Facebook (2015+)"
+  },
+  {
+    "id": "web-landing-page-no-scroll-rhythm",
+    "language_or_domain": "web",
+    "tags": [
+      "scroll-snap",
+      "landing-page",
+      "layout"
+    ],
+    "problem_description": "Landing pages largas se generan como un scroll continuo sin ninguna separacion visual de ritmo - todas las secciones se sienten iguales y el usuario no percibe cuando 'termina' una idea y 'empieza' otra, a diferencia de landings modernas donde cada seccion se siente como una pantalla completa con proposito propio.",
+    "why_small_models_fail": "Apilar secciones una tras otra en el orden del documento es el patron por default de HTML; 'scroll-snap' es una propiedad CSS especifica que cambia como se siente la navegacion pero no aparece necesaria a nivel de estructura del documento, asi que se omite si no se pide.",
+    "correct_approach": "Para landing pages de una sola pagina con secciones bien diferenciadas (hero, features, testimonios, CTA final), usar 'scroll-snap-type' en el contenedor y 'scroll-snap-align' en cada seccion para que el scroll 'enganche' en cada una, dando sensacion de secciones deliberadas en vez de un documento largo generico.",
+    "bad_example": "<main>\n  <section class=\"hero\">...</section>\n  <section class=\"features\">...</section>\n  <section class=\"cta\">...</section>\n</main>",
+    "good_example": "main {\n  scroll-snap-type: y proximity;\n  height: 100vh;\n  overflow-y: scroll;\n}\nmain > section {\n  min-height: 100vh;\n  scroll-snap-align: start;\n  display: grid;\n  place-items: center;\n}",
+    "source": "MDN - 'CSS Scroll Snap'; patron usado en landings de producto de una sola pagina"
+  },
+  {
+    "id": "web-aspect-ratio-collapses-in-grid-flex",
+    "language_or_domain": "web",
+    "tags": [
+      "css-grid",
+      "flexbox",
+      "layout",
+      "aspect-ratio"
+    ],
+    "problem_description": "Un elemento con 'aspect-ratio' pero solo 'max-width' (sin 'width' explicito), dentro de un 'display: grid' o 'display: flex', puede colapsar a 0x0 en vez de ocupar el espacio de su columna/fila.",
+    "why_small_models_fail": "'aspect-ratio' necesita una dimension de partida ya resuelta; sin 'width' explicito a veces no la consigue dentro de un contenedor de grid/flex. El modelo escribe 'max-width: 100%; aspect-ratio: 16/9' porque es el patron mas comun en tutoriales de imagenes responsive, sin considerar que el contexto (grid/flex item) cambia el resultado.",
+    "correct_approach": "Cualquier elemento con aspect-ratio que viva dentro de un grid o flex container necesita 'width: 100%' (o equivalente) explicito, no solo 'max-width'.",
+    "bad_example": ".grid-item img { max-width: 100%; aspect-ratio: 16/9; object-fit: cover; }",
+    "good_example": ".grid-item img { width: 100%; aspect-ratio: 16/9; object-fit: cover; }",
+    "source": "Guia de generacion de webs (context.md), seccion 10/12 - bugs reales encontrados renderizando webs generadas"
+  },
+  {
+    "id": "web-aspect-ratio-vs-grid-span-conflict",
+    "language_or_domain": "web",
+    "tags": [
+      "css-grid",
+      "layout",
+      "aspect-ratio",
+      "masonry"
+    ],
+    "problem_description": "En un grid tipo mosaico donde unos items ocupan mas filas que otros ('grid-row: span 2'), si todos comparten ademas una regla 'aspect-ratio' fija, el aspect-ratio gana y fuerza la misma altura proporcional en TODOS - los items con span quedan con una altura que no coincide con sus filas de grid, y se solapan entre si.",
+    "why_small_models_fail": "El modelo aplica 'aspect-ratio' a la celda de grid para controlar proporciones de imagen, sin ver que ya hay otro sistema (grid-row span) controlando la altura de esa misma celda - dos reglas de tamaño compitiendo, y aspect-ratio gana silenciosamente.",
+    "correct_approach": "En un grid mosaico, la altura de cada pieza la define el 'grid-row span' + 'grid-auto-rows', no un aspect-ratio fijo en la celda. Si hace falta aspect-ratio para no deformar una imagen, aplicarlo a un HIJO interior (la imagen dentro de la celda), nunca a la celda de grid que ya tiene su altura definida por el span.",
+    "bad_example": ".bento-item { grid-row: span 2; aspect-ratio: 1/1; }\n.bento-item.chico { aspect-ratio: 1/1; }",
+    "good_example": ".bento-item { grid-row: span 2; } /* altura la da el grid, no aspect-ratio */\n.bento-item img { width: 100%; height: 100%; aspect-ratio: 1/1; object-fit: cover; }",
+    "source": "Guia de generacion de webs (context.md), seccion 10/12 - bugs reales encontrados renderizando webs generadas"
+  },
+  {
+    "id": "web-flex-text-no-flex-grow-min-width",
+    "language_or_domain": "web",
+    "tags": [
+      "flexbox",
+      "layout",
+      "text-overflow"
+    ],
+    "problem_description": "Un texto de varias palabras dentro de un flex item sin 'flex: 1' (ni ancho explicito) puede encogerse al ancho de su palabra mas larga en vez de usar el espacio disponible - el texto se parte en una palabra por linea, crece de alto, y se monta sobre el contenido siguiente. Pasa con direcciones o frases largas; NO pasa con textos cortos, que por eso parecen correctos en pruebas rapidas.",
+    "why_small_models_fail": "El bug solo aparece con contenido de longitud variable real (una direccion larga, una frase de reseña), no con el texto corto de ejemplo que el modelo suele usar mientras escribe - pasa la 'prueba visual mental' con datos cortos y falla en produccion.",
+    "correct_approach": "Cualquier contenedor de texto de longitud variable dentro de un flex item necesita 'flex: 1' (y a menudo 'min-width: 0' para que pueda encogerse bien en pantallas chicas). Probarlo mentalmente con el contenido MAS LARGO que vaya a tener ese campo, no el mas corto.",
+    "bad_example": ".contacto-item { display: flex; gap: 0.5rem; }\n.contacto-item span { } /* sin flex, se encoge a la palabra mas larga */",
+    "good_example": ".contacto-item { display: flex; gap: 0.5rem; }\n.contacto-item span { flex: 1; min-width: 0; }",
+    "source": "Guia de generacion de webs (context.md), seccion 10/12 - bugs reales encontrados renderizando webs generadas"
+  },
+  {
+    "id": "web-marquee-half-empty-narrow-content",
+    "language_or_domain": "web",
+    "tags": [
+      "animation",
+      "marquee",
+      "javascript"
+    ],
+    "problem_description": "El patron 'duplicar los items una vez y animar translateX(-50%)' para un marquee/banda deslizante solo se ve bien si UN set de items ya es mas ancho que el viewport. Con pocos items o frases cortas (o en un monitor ancho), un set no llena la pantalla: al desplazar -50% la mitad derecha queda VACIA y se ve el salto al reiniciar.",
+    "why_small_models_fail": "El patron 'duplicar una vez + translateX(-50%)' es el ejemplo mas comun de marquee en tutoriales/snippets, casi siempre mostrado con contenido de ejemplo ya ancho - el modelo lo copia sin verificar que el contenido REAL del proyecto (a veces 3-4 palabras cortas) sea suficientemente ancho para que el truco funcione.",
+    "correct_approach": "Rellenar por JS hasta tener 2 mitades identicas que cubran el viewport: clonar la unidad mientras 'track.scrollWidth < contenedor.offsetWidth', y recien ahi duplicar todo el track una vez para el loop infinito.",
+    "bad_example": "<div class=\"marquee-track\">\n  <span>Item A</span><span>Item B</span>\n  <span>Item A</span><span>Item B</span> <!-- duplicado fijo, sin chequear ancho -->\n</div>",
+    "good_example": "const track = document.querySelector('.marquee-track');\nconst unidad = track.innerHTML;\nwhile (track.scrollWidth < track.parentElement.offsetWidth * 2) {\n  track.innerHTML += unidad;\n}\ntrack.innerHTML += track.innerHTML; // recien aca, duplicar para el loop",
+    "source": "Guia de generacion de webs (context.md), seccion 10/12 - bugs reales encontrados renderizando webs generadas"
+  },
+  {
+    "id": "web-position-sticky-killed-by-overflow-ancestor",
+    "language_or_domain": "web",
+    "tags": [
+      "css",
+      "position-sticky",
+      "scroll"
+    ],
+    "problem_description": "'position: sticky' se rompe en silencio (sin error) si CUALQUIER ancestro (body, html, un wrapper) tiene 'overflow: hidden/auto/scroll' - incluido 'overflow-x: hidden', que casi todas las webs ponen para evitar scroll lateral. El elemento sticky simplemente deja de fijarse, sin ningun mensaje de error.",
+    "why_small_models_fail": "'overflow-x: hidden' en el body/html es una practica tan comun (para evitar scroll horizontal accidental) que el modelo la agrega por habito, sin conectar mentalmente que eso rompe cualquier 'position: sticky' mas abajo en el arbol - son dos reglas escritas en momentos distintos que interactuan mal.",
+    "correct_approach": "Usar 'overflow-x: clip' en vez de 'hidden' en los ancestros (recorta igual pero no crea un contenedor de scroll), o implementar el elemento fijo con 'position: fixed' controlado por JS en vez de sticky, que no se rompe con overflow:hidden en ancestros.",
+    "bad_example": "html, body { overflow-x: hidden; } /* rompe cualquier sticky descendiente */",
+    "good_example": "html, body { overflow-x: clip; } /* mismo recorte, no mata sticky */",
+    "source": "Guia de generacion de webs (context.md), seccion 10/12 - bugs reales encontrados renderizando webs generadas"
+  },
+  {
+    "id": "web-scroll-animation-self-rect-jitter",
+    "language_or_domain": "web",
+    "tags": [
+      "javascript",
+      "animation",
+      "scroll",
+      "performance"
+    ],
+    "problem_description": "Si en cada frame de scroll se lee 'getBoundingClientRect()' de un elemento y a ESE MISMO elemento se le aplica un 'transform' (scale, translate) basado en esa lectura, se crea un bucle de realimentacion: el transform mueve el rect -> se recalcula -> vuelve a moverse -> la animacion tiembla/vibra visiblemente.",
+    "why_small_models_fail": "Parece logico leer la posicion del elemento que se esta animando para decidir cuanto transformarlo - el bug es sutil porque el codigo es correcto sintacticamente y funciona bien en el primer frame, el problema solo aparece como vibracion al scrollear de verdad, algo que no se ve leyendo el codigo.",
+    "correct_approach": "Calcular el transform a partir de un elemento DISTINTO y estable (ej. la tarjeta siguiente, un hermano sin transform), nunca del rect del propio elemento que se esta transformando. Fijar tambien 'transform-origin' para que el borde de anclaje no se mueva.",
+    "bad_example": "function onScroll() {\n  const rect = tarjeta.getBoundingClientRect(); // lee su PROPIO rect\n  tarjeta.style.transform = `scale(${calcularEscala(rect)})`;\n}",
+    "good_example": "function onScroll() {\n  const rectReferencia = siguienteTarjeta.getBoundingClientRect(); // elemento ESTABLE\n  tarjeta.style.transform = `scale(${calcularEscala(rectReferencia)})`;\n}",
+    "source": "Guia de generacion de webs (context.md), seccion 10/12 - bugs reales encontrados renderizando webs generadas"
+  },
+  {
+    "id": "web-mobile-nav-backdrop-filter-trap",
+    "language_or_domain": "web",
+    "tags": [
+      "css",
+      "navigation",
+      "mobile",
+      "backdrop-filter"
+    ],
+    "problem_description": "Si el header tiene 'backdrop-filter' (efecto vidrio), 'filter', o 'transform', ese header se convierte en el CONTENEDOR de posicionamiento de cualquier hijo con 'position: fixed'. El nav movil con 'position: fixed; inset: 0' entonces NO cubre toda la pantalla - queda atrapado dentro de la barra del header (~60px), y el menu aparece roto/recortado.",
+    "why_small_models_fail": "'backdrop-filter: blur()' en el header es una tecnica de diseño muy popular (glassmorphism) que el modelo aplica por su cuenta para verse moderno, sin saber que esa propiedad especifica crea un 'containing block' para descendientes fixed - un efecto secundario de CSS poco conocido incluso fuera de este contexto.",
+    "correct_approach": "Desactivar el backdrop-filter del header especificamente en movil (donde vive el nav fixed a pantalla completa), o en cualquier ancestro del nav que tenga filter/transform/will-change.",
+    "bad_example": "header { backdrop-filter: blur(12px); } /* rompe el nav fixed movil sin dar error */",
+    "good_example": "header { backdrop-filter: blur(12px); }\n@media (max-width: 768px) {\n  header { backdrop-filter: none; -webkit-backdrop-filter: none; }\n}",
+    "source": "Guia de generacion de webs (context.md), seccion 10/12 - bugs reales encontrados renderizando webs generadas"
+  },
+  {
+    "id": "web-nbsp-in-letter-reveal-overflow",
+    "language_or_domain": "web",
+    "tags": [
+      "javascript",
+      "animation",
+      "text",
+      "responsive"
+    ],
+    "problem_description": "Al dividir un titular en '<span>' por letra para animarlo (reveal letra a letra), si se usa '&nbsp;' para los espacios entre palabras, la frase entera se vuelve INQUEBRABLE (no puede cortar linea) - en movil desborda en horizontal y aparecen scroll lateral y elementos del header empujados fuera de la pantalla.",
+    "why_small_models_fail": "'&nbsp;' se usa habitualmente para 'espacios que no se rompen' en otros contextos (evitar viudas tipograficas), asi que el modelo lo aplica por habito al separar letras/palabras para animar - sin conectar que aca el efecto secundario (bloquear el salto de linea de TODA la frase) es exactamente lo que rompe el responsive.",
+    "correct_approach": "Usar un espacio NORMAL (' ') entre las palabras/letras separadas para animar, no '&nbsp;'. El espacio normal permite el corte de linea natural - los espacios en si no necesitan animarse.",
+    "bad_example": "palabras.map(p => `<span>${p}</span>&nbsp;`).join('')",
+    "good_example": "palabras.map(p => `<span>${p}</span>`).join(' ')",
+    "source": "Guia de generacion de webs (context.md), seccion 10/12 - bugs reales encontrados renderizando webs generadas"
+  },
+  {
+    "id": "web-burger-missing-position-relative",
+    "language_or_domain": "web",
+    "tags": [
+      "css",
+      "navigation",
+      "mobile",
+      "z-index"
+    ],
+    "problem_description": "El boton de menu hamburguesa (burger) sin 'position: relative' explicito puede tener su 'z-index' ignorado en ciertos contextos de apilamiento (stacking context) - el overlay del nav movil cubre el burger y el usuario no puede cerrar el menu ('las 3 rayitas se quedan arriba').",
+    "why_small_models_fail": "'z-index' sin 'position' distinto de 'static' simplemente no hace nada (regla base de CSS), pero el modelo suele agregar 'z-index' al burger sin verificar que tambien tenga 'position' explicito - un requisito facil de omitir porque el burger visualmente 'ya esta posicionado' por el flujo normal del header.",
+    "correct_approach": "El burger SIEMPRE necesita 'position: relative' ademas de su z-index, para que ese z-index tenga efecto real.",
+    "bad_example": ".burger { display: none; z-index: 110; } /* z-index no hace nada sin position */",
+    "good_example": ".burger { display: none; position: relative; z-index: 110; }",
+    "source": "Guia de generacion de webs (context.md), seccion 10/12 - bugs reales encontrados renderizando webs generadas"
+  },
+  {
+    "id": "web-class-name-with-dot-typo",
+    "language_or_domain": "web",
+    "tags": [
+      "html",
+      "css",
+      "typo"
+    ],
+    "problem_description": "El atributo 'class=\"...\"' en HTML acepta multiples clases separadas por espacios, SIN puntos. Si se escribe 'class=\"main-nav .nav-cta\"', el elemento termina con DOS clases: 'main-nav' y '.nav-cta' (el punto queda como parte literal del nombre) - el elemento hereda sin querer todos los estilos de 'main-nav', incluido a veces 'position: fixed; inset: 0' de un nav overlay, bloqueando todos los clicks de la pagina.",
+    "why_small_models_fail": "El punto antes de un nombre de clase es la sintaxis CORRECTA en un SELECTOR CSS ('.nav-cta { ... }') - el modelo a veces copia esa misma sintaxis por error al escribir el atributo 'class' en el HTML, donde el punto no tiene ese significado y en cambio se convierte en texto literal del nombre de la segunda clase.",
+    "correct_approach": "En 'class=\"...\"' del HTML nunca usar puntos ni barras - solo letras, numeros y guiones, separados por espacios si hay varias clases.",
+    "bad_example": "<a class=\"main-nav .nav-cta\" href=\"#contacto\">Reservar</a>",
+    "good_example": "<a class=\"nav-cta\" href=\"#contacto\">Reservar</a>",
+    "source": "Guia de generacion de webs (context.md), seccion 10/12 - bugs reales encontrados renderizando webs generadas"
+  },
+  {
+    "id": "web-nav-cta-css-specificity-invisible",
+    "language_or_domain": "web",
+    "tags": [
+      "css",
+      "specificity",
+      "navigation"
+    ],
+    "problem_description": "Si se define '.main-nav a { color: var(--color-texto); }' para los links del nav (especificidad 0,1,1 - clase + elemento) y por separado '.nav-cta { color: var(--color-texto-inv); }' (especificidad 0,1,0 - solo clase) para el boton CTA, la primera regla GANA sobre la segunda sin importar el orden en el archivo - el boton CTA termina con texto oscuro sobre su propio fondo oscuro, invisible.",
+    "why_small_models_fail": "El modelo suele escribir cada selector pensando en el elemento que quiere estilar, sin calcular la especificidad relativa entre reglas que compiten sobre el mismo elemento ('.nav-cta' es tambien un 'a' dentro de '.main-nav') - el resultado se ve correcto leyendo cada regla por separado, pero pierde en la cascada real.",
+    "correct_approach": "Escribir el color del CTA con un selector de igual o mayor especificidad que el de los links generales del nav: '.main-nav .nav-cta' (especificidad 0,2,0) en vez de solo '.nav-cta'.",
+    "bad_example": ".main-nav a { color: var(--color-texto); }\n.nav-cta { color: var(--color-texto-inv); } /* pierde contra la regla de arriba */",
+    "good_example": ".main-nav a { color: var(--color-texto); }\n.main-nav .nav-cta { color: var(--color-texto-inv); } /* gana: mayor especificidad */",
+    "source": "Guia de generacion de webs (context.md), seccion 10/12 - bugs reales encontrados renderizando webs generadas"
+  },
+  {
+    "id": "web-burger-zindex-under-nav-overlay",
+    "language_or_domain": "web",
+    "tags": [
+      "css",
+      "z-index",
+      "navigation",
+      "mobile"
+    ],
+    "problem_description": "Si el header tiene 'position: sticky; z-index: 50' (crea su propio stacking context) y el nav overlay movil tiene 'position: fixed; z-index: 55' medido desde la raiz del documento, el nav overlay (55) termina por encima de TODO el header (50) - incluido el propio boton burger que deberia servir para cerrarlo. El usuario abre el menu y no puede cerrarlo.",
+    "why_small_models_fail": "El modelo asigna z-index de forma relativa/local ('el nav tiene que estar por encima de las secciones', 'el header por encima del contenido') sin modelar que un z-index dentro de un stacking context propio (el header sticky) no se compara directamente con un z-index medido desde la raiz - son dos escalas distintas que parecen la misma.",
+    "correct_approach": "El header SIEMPRE con z-index mayor que el nav overlay movil, y el burger con z-index mayor que ambos: '.site-header { z-index: 100; }', 'nav movil { z-index: 90; }' (menor que el header). Nunca el nav overlay con z-index igual o mayor que el header.",
+    "bad_example": ".site-header { position: sticky; z-index: 50; }\nnav.mobile-overlay { position: fixed; z-index: 55; } /* tapa al header entero */",
+    "good_example": ".site-header { position: sticky; z-index: 100; }\nnav.mobile-overlay { position: fixed; z-index: 90; } /* queda debajo del header */\n.burger { position: relative; z-index: 110; } /* por encima de ambos */",
+    "source": "Guia de generacion de webs (context.md), seccion 10/12 - bugs reales encontrados renderizando webs generadas"
+  },
+  {
+    "id": "web-pure-white-background-default",
+    "language_or_domain": "web",
+    "tags": [
+      "design",
+      "color",
+      "css",
+      "branding"
+    ],
+    "problem_description": "A pesar de que el prompt/guia de diseño pide elegir un color de fondo segun el nombre y rubro del negocio (paleta calida, fria, oscura, etc.), '--color-fondo' termina siendo '#ffffff' (blanco puro) en la mayoria de los sitios generados, sin importar el negocio - incluso para nombres/rubros que sugieren claramente otra paleta (una cerveceria, un restaurante con nombre extravagante, una herreria).",
+    "why_small_models_fail": "El corpus de entrenamiento tiene un sesgo enorme hacia '#fff'/'white' como fondo por defecto de cualquier pagina (es el valor implicito de 'background' en el navegador y el que aparece en casi todo tutorial/boilerplate). Cuando la instruccion de diseño es una guia filosofica ('pensa en el negocio') en vez de una restriccion tecnica dura, el modelo la usa para elegir el color de ACENTO (donde hay libertad visible, ej. un rojo o un ambar) pero deja el fondo principal en el default estadistico mas seguro, porque nada le impide tecnicamente hacerlo - la regla dice 'el blanco no esta prohibido', lo cual el modelo lee como permiso para no razonar el fondo en absoluto.",
+    "correct_approach": "Tratar '--color-fondo: #ffffff' (o cualquier tono a menos de ~2% de diferencia perceptual del blanco puro, ej. #fefefe/#fdfdfd) como un error de diseño por defecto, no como una eleccion valida, salvo que el mood sea explicitamente clinico/salud/minimalista Y el nombre del negocio no sugiera otra cosa - y aun en ese caso, preferir un blanco roto (#fafafa, #f8f9fa) sobre el blanco puro. Antes de escribir el valor final de '--color-fondo', verificar explicitamente: ¿es #ffffff o casi? Si la respuesta es si, volver a la regla del nombre del negocio (seccion 2.1) y elegir un tinte real de la paleta (ver tabla de paleta por sector), no el default del navegador.",
+    "bad_example": ":root {\n  --color-fondo: #ffffff;\n  --color-acento: #ff4757; /* la unica decision de color real fue el acento */\n}",
+    "good_example": ":root {\n  /* 'Rosi La Loca', restaurante Madrid con nombre extravagante -> paleta calida/vibrante, no blanco de plantilla */\n  --color-fondo: #fff4ec;\n  --color-acento: #ff4757;\n}",
+    "source": "Guia de generacion de webs (web-builder-specialist.md), seccion 2.1 - bug real observado: sitios generados con acento y fondo-oscuro bien elegidos pero '--color-fondo' quedando en #ffffff literal en la mayoria de las corridas"
+  },
+  {
+    "id": "web-stagger-reveal-only-container-gets-visible-class",
+    "language_or_domain": "web",
+    "tags": [
+      "javascript",
+      "css",
+      "animation",
+      "intersection-observer",
+      "stagger"
+    ],
+    "problem_description": "Un grid de tarjetas con 'stagger reveal' (aparicion escalonada) queda completamente invisible (opacity:0 para siempre) aunque el IntersectionObserver dispare correctamente y no haya ningun error en consola. El contenedor SI recibe la clase 'is-visible', pero las tarjetas hijas nunca la reciben.",
+    "why_small_models_fail": "Al escribir el patron de stagger desde cero (en vez de adaptar el de la libreria de referencia ya resuelto), es natural observar el CONTENEDOR con el IntersectionObserver y escribir un selector CSS descendiente tipo '.stagger.is-visible .item:nth-child(n)' asumiendo que alcanza con que el PADRE tenga la clase. Pero si el 'opacity:0' inicial esta puesto en el hijo ('.item { opacity: 0 }'), ese CSS solo define el 'transition-delay' de cada hijo - nunca cambia su opacity, porque la regla que sube la opacity a 1 esta escrita como '.item.is-visible' (la clase en el hijo mismo), y nada en el JS se la agrega ahi.",
+    "correct_approach": "Cuando el observer del contenedor dispara, agregar la clase 'is-visible' (o el nombre que sea) tanto al contenedor COMO a cada uno de sus hijos con 'querySelectorAll' - el delay escalonado se logra con 'transition-delay' distinto por hijo (via CSS nth-child o asignado inline por indice en JS), pero el cambio de opacity real necesita la clase en el propio elemento que tiene 'opacity:0'.",
+    "bad_example": "// JS: solo el contenedor recibe la clase\nconst obs = new IntersectionObserver((entries) => {\n  entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add('is-visible'); });\n});\ndocument.querySelectorAll('.stagger').forEach((el) => obs.observe(el));\n\n/* CSS: el hijo nunca recibe .is-visible, solo se le fija el delay */\n.item { opacity: 0; transition: opacity .5s; }\n.item.is-visible { opacity: 1; }\n.stagger.is-visible .item:nth-child(2) { transition-delay: .1s; } /* no basta */",
+    "good_example": "// JS: la clase se agrega al contenedor Y a cada hijo\nconst obs = new IntersectionObserver((entries) => {\n  entries.forEach((entry) => {\n    if (entry.isIntersecting) {\n      entry.target.classList.add('is-visible');\n      entry.target.querySelectorAll('.item').forEach((item) => item.classList.add('is-visible'));\n      obs.unobserve(entry.target);\n    }\n  });\n});\ndocument.querySelectorAll('.stagger').forEach((el) => obs.observe(el));",
+    "source": "web-kit (app/web_kit_reference/animaciones/stagger-reveal.html) - patron ya resuelto correctamente ahi; bug real reproducido al escribir el patron desde cero en vez de adaptar la referencia, detectado con render_check (blank_region_warnings) en un sitio de ejemplo real"
+  },
+  {
+    "id": "web-hero-title-scramble-looks-shuffled",
+    "language_or_domain": "web",
+    "tags": [
+      "javascript",
+      "animation",
+      "text",
+      "hero"
+    ],
+    "problem_description": "El titulo principal del hero (h1) aparece con las letras o palabras visualmente desordenadas/ilegibles durante (o incluso despues de) la animacion de entrada, en vez de mostrar el texto real que se le pidio. Reportado por un usuario real viendo el sitio generado: 'aparece el original pero desordenado'.",
+    "why_small_models_fail": "Para el reveal del h1 se pide un efecto 'letra por letra o palabra por palabra' - el modelo, sin adaptar el patron ya resuelto del web-kit (animaciones/split-text.html, que preserva el orden real separando con split('')/split(/\\s+/) y agregando los spans uno por uno en secuencia), escribe su propia logica de split desde cero o reusa por error el patron de 'scramble' (animaciones/scramble-text.html - letras que ciclan aleatoriamente antes de asentarse, pensado SOLO para etiquetas cortas/hover, nunca para el titular principal). Cualquiera de los dos caminos puede terminar con las letras en un orden distinto al texto original, o con el efecto scramble corriendo sobre un titular grande donde se ve caotico.",
+    "correct_approach": "Para el h1 del hero, adaptar `animaciones/split-text.html` (funciones splitEnLetras/splitEnPalabras) tal cual, sin reescribirlo desde cero - ese codigo separa el texto preservando el orden y anima solo opacity/transform, nunca reordena caracteres. Nunca usar el patron de scramble-text.html en el titular principal. Verificar visualmente (o con el texto final del DOM) que el h1 renderizado coincide letra por letra con el texto que se le pidio.",
+    "bad_example": "// bug tipico: reconstruir el string en un orden distinto al separar/unir\nconst letras = texto.split('').sort(() => Math.random() - 0.5); // o cualquier logica que no preserve el indice original\nletras.forEach((l, i) => { /* ... */ });",
+    "good_example": "// adaptado de animaciones/split-text.html - preserva el orden real\nfunction splitEnLetras(el) {\n  const texto = el.textContent;\n  el.innerHTML = '';\n  texto.split('').forEach((char, i) => {\n    const span = document.createElement('span');\n    span.className = 'letra';\n    span.textContent = char;\n    span.style.transitionDelay = (i * 40) + 'ms';\n    el.appendChild(span);\n  });\n}",
+    "source": "Reporte real de usuario sobre un sitio generado con web-builder-specialist.md; el patron correcto ya existia en app/web_kit_reference/animaciones/split-text.html pero no se estaba usando"
+  },
+  {
+    "id": "web-threejs-uncapped-pixelratio-mobile-lag",
+    "language_or_domain": "web",
+    "tags": [
+      "javascript",
+      "three.js",
+      "webgl",
+      "3d",
+      "performance",
+      "mobile"
+    ],
+    "problem_description": "Una escena Three.js (objeto 3D o campo de particulas en el hero) va perfectamente fluida en el navegador de escritorio donde se probo, pero en un movil real (sobre todo gama media/alta con pantalla de alta densidad) el frame rate cae en picado, el scroll se vuelve entrecortado, y en casos extremos el navegador puede llegar a matar la pestana por uso de memoria/GPU.",
+    "why_small_models_fail": "Al escribir 'renderer.setPixelRatio(window.devicePixelRatio)' tal cual aparece en la mayoria de tutoriales de Three.js, el modelo no considera que 'devicePixelRatio' en un iPhone/Android de gama alta puede ser 3 o incluso mas - eso significa renderizar la escena a 3x la resolucion logica en cada eje, es decir hasta 9 VECES mas pixeles que en un monitor de escritorio con ratio 1. Una escena que en desktop es liviana se vuelve, en ese mismo movil, un trabajo de GPU varias veces mayor - y ademas no es visible en el propio movil de pruebas del desarrollador si este tiene un pixel ratio menor.",
+    "correct_approach": "Cappear siempre el pixel ratio con un tope razonable (2 suele bastar - la diferencia visual entre 2x y 3x/4x es casi imperceptible pero el coste de GPU crece al cuadrado): 'renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))'. Ademas, en una escena con muchos objetos/particulas, reducir la cantidad en dispositivos de gama baja (ej. por 'navigator.hardwareConcurrency' o simplemente un numero conservador por defecto) es mas seguro que asumir que el hardware de prueba representa a todos los visitantes.",
+    "bad_example": "const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });\nrenderer.setPixelRatio(window.devicePixelRatio); // sin tope: 3x-4x en moviles de gama alta",
+    "good_example": "const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });\nrenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); // tope en 2, coste de GPU acotado",
+    "source": "web-kit (app/web_kit_reference/3d/ - toda la carpeta, ej. hero-objeto-flotante.html y particulas-atmosfera.html) - los archivos ya aplican el tope correctamente; caso documentado preventivamente al incorporar la capa 3D real (Three.js) a la guia, gotcha bien conocido en la practica de WebGL/Three.js en movil"
+  },
+  {
+    "id": "web-threejs-euler-drag-rotation-feels-stuck",
+    "language_or_domain": "web",
+    "tags": [
+      "javascript",
+      "three.js",
+      "3d",
+      "interaction",
+      "quaternion"
+    ],
+    "problem_description": "Un objeto 3D que el usuario arrastra con el raton/dedo para girar (producto, modelo cargado) se siente rigido y dificil de controlar: arrastrar en diagonal no lo gira en diagonal (solo en escalones de horizontal/vertical), y cerca de ciertos angulos el giro se nota 'atascado' o deja de responder en un eje. Reportado por un usuario real probando la carpeta 3d/ del web-kit: 'mover los modelos 3D es complicadisimo... en los ejes xyz no solo xy o yz o xz'.",
+    "why_small_models_fail": "La forma mas obvia de programar 'arrastrar para girar' es sumar el delta del arrastre directamente a angulos de Euler por separado: 'objeto.rotation.y += dx * sensibilidad; objeto.rotation.x += dy * sensibilidad;'. Es intuitivo de escribir pero tiene dos problemas reales: (1) cada eje se manipula de forma INDEPENDIENTE, asi que un gesto diagonal produce una combinacion de dos rotaciones separadas en vez de una sola rotacion natural alrededor del eje que realmente sigue la mano del usuario - se siente mecanico, no como sostener un objeto real; (2) acumular rotation.x/y/z por separado sufre gimbal lock (cuando un eje se acerca a +-90 grados, otro eje pierde un grado de libertad), lo que produce esa sensacion de 'se traba' que describio el usuario. Ademas, casi siempre se termina limitando rotation.x con un clamp (ej. Math.max(-0.6, Math.min(0.6, ...))) para evitar que el gimbal lock se note, lo que ademas le quita al usuario la posibilidad de voltear el objeto libremente en el tercer eje.",
+    "correct_approach": "Usar un 'trackball' real con quaternions: en cada paso de arrastre, calcular el EJE de rotacion como el vector perpendicular a la direccion del gesto en pantalla ('new THREE.Vector3(dy, dx, 0).normalize()'), el ANGULO proporcional a la distancia arrastrada, construir un quaternion delta con 'setFromAxisAngle', y aplicarlo con 'objeto.quaternion.premultiply(delta)' (rotacion en espacio de camara, no local - por eso 'arrastrar a la derecha' siempre gira hacia el mismo lado sin importar la orientacion actual). Esto permite girar en combinaciones reales de x/y/z segun la direccion exacta del gesto (no solo eje por eje), no tiene gimbal lock, y no necesita ningun clamp de angulo - el objeto se puede voltear libremente como uno real. La inercia al soltar se logra decayendo el quaternion delta hacia la identidad con 'spin.slerp(new THREE.Quaternion(), factor)' en vez de decaer una velocidad angular por eje.",
+    "bad_example": "// Angulos de Euler por separado - se siente rigido, gimbal lock cerca de los polos\ncanvas.addEventListener('pointermove', (e) => {\n  const dx = e.clientX - ultimoX, dy = e.clientY - ultimoY;\n  objeto.rotation.y += dx * 0.006;\n  objeto.rotation.x += dy * 0.006;\n  objeto.rotation.x = Math.max(-0.6, Math.min(0.6, objeto.rotation.x)); // tapa el sintoma, no la causa\n});",
+    "good_example": "// Trackball con quaternions - un solo eje de giro combinado por gesto, sin gimbal lock ni clamp\nfunction girarPorArrastre(dx, dy) {\n  const eje = new THREE.Vector3(dy, dx, 0).normalize();\n  const angulo = Math.sqrt(dx * dx + dy * dy) * 0.006;\n  const delta = new THREE.Quaternion().setFromAxisAngle(eje, angulo);\n  objeto.quaternion.premultiply(delta);\n}",
+    "source": "web-kit (app/web_kit_reference/3d/producto-configurador-drag.html y cargar-modelo-gltf.html) - ambos reescritos a trackball con quaternions tras reporte real de usuario sobre la version anterior (angulos de Euler por eje)"
+  },
+  {
+    "id": "web-palette-defined-but-underused-pale-result",
+    "language_or_domain": "web",
+    "tags": [
+      "css",
+      "color",
+      "design"
+    ],
+    "problem_description": "La web define correctamente toda la paleta (fondo, fondo-alt, fondo-oscuro, acento con sus variantes) en `:root`, y `render_check`/`lint_web_page` pasan sin errores, pero el resultado visual se ve palido/diluido: casi todas las secciones usan `--color-fondo` (el tono claro) y el acento/fondo-oscuro solo aparecen en elementos chicos (un boton, un numero destacado, el footer) en vez de dominar al menos una seccion entera, aunque el diseño explicitamente pedia un 'momento de color' con una seccion a pantalla completa en el acento.",
+    "why_small_models_fail": "Definir la paleta completa en `:root` cumple con la LETRA de la regla (todos los custom properties existen, con valores razonables) sin cumplir su ESPIRITU (que se usen con fuerza en la maquetacion real) - un modelo puede quedar 'satisfecho' con haber declarado `--color-acento`/`--color-fondo-oscuro` sin notar que en la Fase 3 nunca les asigno `background` a ninguna seccion completa, solo los uso en detalles chicos (bordes, texto de botones, un numero). Esto es AUN MAS probable cuando el modelo recibe la paleta ya decidida por otro (ej. un 'diseñador' separado que entrega un JSON) en vez de haberla razonado el mismo: la instruccion 'usa esta paleta' se interpreta como 'declara estos valores hex', no como 'usalos con la misma intencion narrativa con la que se eligieron' - el campo que describe DONDE usar el acento a pantalla completa (el 'momento de color') es texto libre entre muchos otros campos del JSON, mucho mas facil de pasar por alto que los propios valores hex.",
+    "correct_approach": "Verificar explicitamente, seccion por seccion del HTML ya escrito, que al menos UNA seccion intermedia (no el header ni el footer) tenga su `background` completo en `--color-acento` o `--color-fondo-oscuro`, ademas del footer/CTA de siempre - no alcanza con usar el acento en botones/bordes/numeros, eso es 'usar el color' tecnicamente pero no es un momento de color real (ver seccion 2.2 de la guia, 'el color como narrativa visual'). Si el diseño (propio o recibido de otro) especifica un campo tipo `momento_de_color`, tratarlo como un requisito tan obligatorio como los valores hex, no como un detalle decorativo opcional. Antes de dar la maquetacion por terminada, contar cuantas secciones usan cada variante de fondo: si mas del 70-80% de las secciones usan la misma `--color-fondo` clara, la paleta esta infrautilizada aunque este bien definida y aunque `render_check`/`lint_web_page` pasen sin errores (esas tools no evaluan uso de color, solo estructura/renderizado tecnico).",
+    "bad_example": "/* :root define todo correctamente */\n:root { --color-acento: #c44536; --color-fondo-oscuro: #1a1512; }\n/* pero en la maquetacion real el acento solo aparece asi: */\n.btn-primary { background: var(--color-acento); } /* un boton chico */\n.stat-numero { color: var(--color-acento); } /* un numero */\n/* TODAS las secciones de contenido usan el mismo fondo claro: */\n.hero, .seccion-producto-estrella, .seccion-tradicion, .seccion-ambiente, .seccion-horario { background: var(--color-fondo); }",
+    "good_example": "/* la seccion que el diseño marco como 'momento de color' usa el acento COMPLETO, no solo en un boton */\n.seccion-producto-estrella {\n  background: var(--color-acento);\n  color: var(--color-texto-inv);\n}\n/* y al menos una seccion intermedia mas usa el fondo oscuro, no solo el footer */\n.seccion-tradicion { background: var(--color-fondo-oscuro); color: var(--color-texto-inv); }",
+    "source": "Reporte real de usuario viendo la captura de un sitio generado (Taberna La Fragua de Vulcano, experimento con diseñador y programador como especialistas separados) - la paleta declarada en :root era correcta y con buena justificacion, pero la seccion de 'Cocido Madrileño' que el propio diseño marcaba como momento_de_color se renderizo con el mismo fondo claro que el resto, dejando la web entera con aspecto palido/diluido pese a pasar render_check y lint_web_page sin errores"
+  },
+  {
+    "id": "web-invented-stock-photo-urls-duplicated",
+    "language_or_domain": "web",
+    "tags": [
+      "images",
+      "hallucination",
+      "html",
+      "content"
+    ],
+    "problem_description": "El HTML final tiene URLs de foto de bancos royalty-free (Unsplash/Pexels/Pixabay) que apuntan a contenido generico o irrelevante, y en varios casos la MISMA URL exacta aparece repetida en dos o mas `<img>` que segun su `alt`/contexto deberian ser fotos de cosas distintas (ej. 'Cocido Madrileño', 'Callos a la Madrileña' y 'Paella de Mariscos', tres platos distintos, con la identica URL de imagen). No hubo ningun error de red ni de la tool - el problema es que esas URLs nunca vinieron de una llamada real a `search_images`.",
+    "why_small_models_fail": "Un modelo entrenado con muchisimo texto de internet ha visto miles de URLs reales de Unsplash/Pexels con ese formato exacto (photo-XXXXXXXXXX, parametros ixlib/ixid/auto/fit/w/q) tantas veces que puede generar una URL con la FORMA correcta sin haber llamado a ninguna tool - la URL 'parece' real (sintacticamente valida) pero es una alucinacion: no se origino en una busqueda real de este proyecto, por eso es facil que dos huecos de contenido distinto terminen con la misma URL (el modelo reutiliza un patron/ID que 'recuerda' en vez de buscar una foto nueva para cada item). Esto pasa mas facil cuando el modelo esta enfocado en completar rapido una lista larga de items (una carta de 6 platos, una galeria de 4 fotos) y no tiene una instruccion explicita de que CADA imagen necesita su propia llamada a la tool.",
+    "correct_approach": "Cada `<img src>` de contenido real (no decorativo) tiene que poder rastrearse a un resultado literal de `search_images` (o `fetch_business_from_maps`/`fetch_menu_photos_from_maps` para fotos del propio negocio) - nunca escribir una URL de banco de imagenes de memoria, por mas plausible que parezca. Antes de dar la Fase 3/4 por terminada, revisar el propio HTML buscando URLs de imagen duplicadas entre items de contenido distinto - si aparece la misma URL en dos `<img>` con `alt` distinto, es casi seguro que al menos una se invento en vez de buscarse, y hay que corregirla con una busqueda real o reemplazarla por un placeholder de diseño honesto.",
+    "bad_example": "<!-- URLs con forma valida de Unsplash pero nunca vinieron de search_images - y la MISMA URL para dos platos distintos -->\n<img src=\"https://images.unsplash.com/photo-1513104890138-...\" alt=\"Cocido Madrileño\">\n<!-- ...mas abajo, un plato totalmente distinto: -->\n<img src=\"https://images.unsplash.com/photo-1513104890138-...\" alt=\"Paella de Mariscos\">",
+    "good_example": "<!-- cada URL viene de su propia llamada real: -->\n<!-- search_images({\"query\": \"cocido madrileño plato tradicional\", \"source\": \"pexels\"}) -> resultado real usado -->\n<img src=\"URL_REAL_DEVUELTA_POR_LA_TOOL_1\" alt=\"Cocido Madrileño\">\n<!-- search_images({\"query\": \"paella de mariscos española\", \"source\": \"pexels\"}) -> otro resultado real -->\n<img src=\"URL_REAL_DEVUELTA_POR_LA_TOOL_2\" alt=\"Paella de Mariscos\">",
+    "source": "Reporte real de usuario inspeccionando el codigo de un sitio generado (Taberna La Fragua de Vulcano) - 6 items de la carta usaban solo 2 URLs de Unsplash distintas repetidas entre si, ninguna originada en una llamada real a search_images (el modelo no llamo esa tool en ningun momento de la sesion)"
+  },
+  {
+    "id": "web-invented-fake-testimonials",
+    "language_or_domain": "web",
+    "tags": [
+      "content",
+      "reviews",
+      "testimonials",
+      "hallucination",
+      "ethics"
+    ],
+    "problem_description": "La seccion de testimonios/reseñas de la web muestra citas de clientes con nombre y apellido (ej. 'María González', 'Carlos Rodríguez') que suenan creibles y estan tematicamente relacionadas con el negocio, pero NINGUNA es una reseña real - son citas escritas por el modelo, atribuidas a personas que no existen. Esto paso incluso cuando la tool fetch_menu_and_reviews_from_maps SI habia devuelto reseñas reales del mismo negocio en la misma sesion.",
+    "why_small_models_fail": "Cuando el modelo tiene datos reales (reseñas reales via fetch_menu_and_reviews_from_maps) pero decide 'mejorar' o 'resumir' el contenido en vez de citarlo tal cual - por ejemplo, si la reseña real es larga, tiene errores de tipeo, o menciona detalles muy especificos (el nombre de un camarero, una fecha) que no encajan prolijamente en una tarjeta de testimonio corta - la salida mas facil es parafrasear en sus propias palabras. El problema es que sigue mostrando el resultado CON FORMATO de reseña real (comillas, nombre propio, estrellas) en vez de como copy generico sin atribucion - cruzando la linea entre 'escribir copy de marketing creible' (permitido, ver seccion 10) y 'inventar una reseña atribuida a una persona real que no la escribio' (EXPLICITAMENTE prohibido en la misma seccion 10, y el modelo no conecta ambas reglas en el momento de escribir la seccion de testimonios).",
+    "correct_approach": "Si fetch_menu_and_reviews_from_maps devolvio 'resenas' (lista de {autor, estrellas, texto} reales, ya ordenadas de mejor a peor valoracion), la seccion de testimonios se arma EXCLUSIVAMENTE con eso: 'texto' citado tal cual (se puede recortar con '...' si es muy largo, nunca reescribir/resumir con otras palabras) y 'autor' real tal cual. Si 'resenas' vino vacio o el negocio no tiene reseñas scrapeables, la opcion correcta es OMITIR la seccion de testimonios por completo (o reemplazarla por otra seccion del mapa de la Fase 0 - historia, especialidades, etc.) - nunca inventar una reseña con nombre de persona real ficticio para 'rellenar' la seccion. Escribir copy de marketing SIN atribucion a una persona (ej. un claim del propio negocio, no una cita) si sigue prohibido de fondo.",
+    "bad_example": "<!-- Ninguna de estas dos citas viene de fetch_menu_and_reviews_from_maps - son inventadas con nombres ficticios -->\n<blockquote>\"El mejor cocido madrileño que he probado en mi vida...\"</blockquote>\n<cite>María González ★★★★★</cite>\n<blockquote>\"Ambiente espectacular, comida excelente...\"</blockquote>\n<cite>Carlos Rodríguez ★★★★★</cite>",
+    "good_example": "<!-- 'texto' y 'autor' literales del resultado real de fetch_menu_and_reviews_from_maps -->\n<blockquote>\"Un ambiente espectacular, ideal para tomarse unas cañas en la barra. Nos pusieron una tapa de salpicón riquísima...\"</blockquote>\n<cite>Carolina Garcia ★★★★★</cite>\n<!-- si no hay reseñas reales disponibles: se omite la seccion de testimonios, no se inventa una -->",
+    "source": "Reporte real de usuario + verificacion directa (Taberna La Fragua de Vulcano): fetch_menu_and_reviews_from_maps trajo 3 reseñas reales con autor/estrellas/texto verificables en vivo contra Google Maps, pero el sitio generado mostraba 4 testimonios distintos con nombres genericos inventados, ninguno coincidiendo con las reseñas reales"
+  },
+  {
+    "id": "web-floating-cta-overlaps-heading-at-scroll",
+    "language_or_domain": "web",
+    "tags": [
+      "css",
+      "javascript",
+      "floating-cta",
+      "layout",
+      "z-index"
+    ],
+    "problem_description": "El boton flotante (floating-cta, visible tras ~300px de scroll) tapa parcialmente un encabezado o texto real de una seccion al llegar a cierta posicion de scroll - se ve en una captura de render_check pero no en el codigo, porque tanto el CTA como la seccion tapada estan bien escritos por separado, el problema es que sus posiciones coinciden en pantalla en ese punto concreto del recorrido.",
+    "why_small_models_fail": "El floating-cta se posiciona con `position: fixed` en una esquina (tipicamente abajo a la derecha) sin conocimiento del contenido que va a quedar debajo en cada momento del scroll - su propio codigo (adaptado de animaciones/componentes/floating-cta.html) es correcto en aislamiento (aparece despues de 300px, con la logica de mostrar/ocultar bien hecha). El bug no esta en ESE componente sino en que ninguna seccion del resto de la pagina reserva espacio/margen en su esquina inferior derecha para el CTA que va a estar flotando ahi la mayor parte del scroll - el modelo escribe cada seccion pensando en su contenido, no en que un elemento fijo de otra parte del codigo va a quedar superpuesto ahi cuando el usuario haya scrolleado lo suficiente. Es un bug que SOLO se nota renderizando y mirando capturas en varias posiciones de scroll, nunca leyendo el CSS de las dos partes por separado.",
+    "correct_approach": "Dejar un padding-right (o padding-bottom en movil) en las secciones de contenido que reserve el espacio real que ocupa el floating-cta (su alto+ancho+margen desde el borde), o - mas simple y robusto - evitar que titulares/texto importante terminen exactamente en la esquina inferior derecha de una seccion (dejar esa esquina para elementos decorativos o vacios). Verificarlo revisando las capturas de `render_check` en varias posiciones de scroll (no solo la primera), buscando especificamente si el floating-cta se superpone a texto legible en alguna.",
+    "bad_example": "/* CTA fijo sin que ninguna seccion reserve su espacio */\n.floating-cta { position: fixed; bottom: 20px; right: 20px; z-index: 1000; }\n.seccion-menu .columna:last-child { /* el titulo 'Para acompañar' llega justo hasta el borde inferior derecho, sin margen extra */ }",
+    "good_example": "/* la seccion reserva espacio real para el CTA que va a flotar encima */\n.contenedor-secciones { padding-right: 220px; } /* ancho del CTA + margen */\n@media (max-width: 768px) { .contenedor-secciones { padding-bottom: 80px; } } /* el CTA se convierte en barra inferior en movil */",
+    "source": "Observado en DOS builds independientes de deepseek-v3.2 para el mismo negocio (Taberna La Fragua de Vulcano) - una vez en el flujo diseñador+programador separado, otra vez en el flujo de un solo modelo de punta a punta - mismo defecto en ambos pese a codigo distinto, confirmado visualmente con las capturas por pantalla nuevas de render_check (invisible en la captura full_page vieja)"
+  },
+  {
+    "id": "web-search-description-text-mismatches-real-photo-content",
+    "language_or_domain": "web",
+    "tags": [
+      "images",
+      "search_images",
+      "classify_image_content",
+      "content-verification"
+    ],
+    "problem_description": "El hero de la web muestra una foto real (no inventada, viene de un resultado real de search_images) pero de OTRO negocio distinto - en un caso real, la foto tenia un cartel bien visible que decia 'RESTAURANTE ALBERTO' en el hero de una web para un negocio completamente distinto ('Taberna La Fragua de Vulcano'). La `description` de esa foto en el banco de imagenes sonaba perfectamente relevante ('restaurante tradicional Madrid' o similar), asi que paso el filtro de lectura de description sin levantar sospecha.",
+    "why_small_models_fail": "La busqueda de search_images es por PALABRAS CLAVE contra tags/captions escritos por otra persona (el fotografo o el banco de imagenes), no por contenido visual real - una foto etiquetada 'traditional restaurant Madrid' puede legitimamente ser la foto de CUALQUIER restaurante tradicional de Madrid, no necesariamente uno relacionado con el negocio que se esta construyendo. El modelo, al ver una description que menciona las palabras correctas, la trata como 'ya verificada' y deja de sospechar - sobre todo si en algun momento se le sugirio que verificar el contenido real con classify_image_content era un paso 'opcional' o 'aplazable' para ahorrar llamadas (ver la propia guia, que tuvo este error brevemente). El resultado es una foto tecnicamente nitida, bien resuelta, y tematicamente 'parecida' - pero que muestra a un negocio ajeno, con su propio nombre visible en el cartel, en el hero de la web de otro.",
+    "correct_approach": "`classify_image_content` (vision real, no descripcion de texto) es OBLIGATORIO para toda foto que vaya a usarse, nunca opcional ni aplazable 'porque la description ya suena bien' - la description y el analisis de contenido real son dos señales independientes que fallan de formas distintas, y una no sustituye a la otra (ver seccion 6 de la guia). Prestar atencion especial a texto/carteles/letreros visibles en la foto (`classify_image_content` deberia poder describir que dice un cartel legible) - si aparece un nombre de negocio en la imagen y no coincide con el negocio real, descartarla sin importar que tan bien encaje tecnicamente o tematicamente por su description.",
+    "bad_example": "// Se confia en la description sin verificar el contenido real\nconst candidata = resultados[0];\nif (candidata.description.includes('restaurante') && candidata.description.includes('Madrid')) {\n  usarComoHero(candidata.url); // nunca se llamo classify_image_content\n}",
+    "good_example": "// Se verifica el contenido real antes de dar la foto por buena\nconst candidata = resultados[0];\n// classify_image_content(candidata.url, 'restaurante tradicional') -> revisar tipo/calidad Y cualquier texto/cartel visible\n// si el resultado menciona un nombre de negocio distinto o contenido no relacionado, descartar y probar la siguiente candidata ya guardada",
+    "source": "Reporte real de usuario + verificacion visual directa: hero de un build de deepseek-v3.2 mostraba la fachada de 'Restaurante Alberto' (cartel legible en la foto) como imagen principal de la web de 'Taberna La Fragua de Vulcano' - la guia habia sugerido brevemente que classify_image_content podia aplazarse si la description ya sonaba bien, lo que permitio este caso; revertido inmediatamente a obligatorio tras el hallazgo"
+  },
+  {
+    "id": "web-split-word-trailing-space-collapses-inline-block",
+    "language_or_domain": "web",
+    "tags": [
+      "javascript",
+      "css",
+      "animation",
+      "text",
+      "hero",
+      "inline-block"
+    ],
+    "problem_description": "El h1 del hero con reveal palabra por palabra muestra las palabras PEGADAS entre si sin espacio ('Tradición desdelafragua' en vez de 'Tradición desde la fragua'), aunque el HTML fuente (antes de que JS lo reescriba) SI tenia los espacios correctos entre palabras.",
+    "why_small_models_fail": "Al reimplementar el split de palabras en vez de adaptar animaciones/split-text.html tal cual, es natural escribir 'wordSpan.textContent = word + \" \"' (el espacio queda DENTRO del propio span de la palabra, al final de su texto) pensando que eso separa una palabra de la siguiente. Pero cada palabra esta envuelta en un span con 'display: inline-block' (necesario para que la animacion de transform/opacity funcione por palabra) - un espacio en blanco que queda como el ULTIMO caracter dentro de una caja inline-block, pegado al borde derecho de esa caja, no se comporta igual que un espacio real ENTRE dos cajas hermanas: el navegador puede recortarlo/no renderizarlo como ancho visible, dejando las cajas adyacentes literalmente pegadas.",
+    "correct_approach": "El espacio tiene que ser un NODO DE TEXTO SEPARADO entre un span de palabra y el siguiente (hermano en el DOM, no contenido de ningun span) - exactamente el patron de animaciones/split-text.html: 'el.appendChild(spanPalabra); if (no es la ultima) el.appendChild(document.createTextNode(\" \"))'. Adaptar ese archivo tal cual evita este bug; reescribir el split desde cero es donde se reintroduce.",
+    "bad_example": "palabras.forEach(word => {\n  const span = document.createElement('span');\n  span.className = 'split-word';\n  span.textContent = word + ' '; // el espacio queda ADENTRO del span, no entre spans\n  contenedor.appendChild(span);\n});",
+    "good_example": "// adaptado de animaciones/split-text.html\npalabras.forEach((word, i) => {\n  const span = document.createElement('span');\n  span.className = 'split-word';\n  span.textContent = word; // sin espacio adentro\n  contenedor.appendChild(span);\n  if (i < palabras.length - 1) contenedor.appendChild(document.createTextNode(' ')); // nodo de texto HERMANO, separado\n});",
+    "source": "Reporte real de usuario + verificacion directa en un build de deepseek-v3.2 (Taberna La Fragua de Vulcano) - el H1 del hero renderizaba 'Tradición desdelafragua' pese a que el HTML original tenia los espacios correctos; comparado contra animaciones/split-text.html, que ya resuelve esto correctamente con un nodo de texto separado entre palabras"
+  },
+  {
+    "id": "web-button-text-color-invisible-on-dark-hero",
+    "language_or_domain": "web",
+    "tags": [
+      "css",
+      "color",
+      "contrast",
+      "button",
+      "accessibility"
+    ],
+    "problem_description": "Un boton secundario (outline, fondo transparente) se ve completamente vacio/sin texto legible cuando esta sobre una seccion de fondo oscuro (ej. el hero), aunque el HTML si tiene el texto del boton y el CSS si define un 'color' explicito para el.",
+    "why_small_models_fail": "La regla general del proyecto (seccion 9) es correcta - 'todo boton tiene que tener color explicito, nunca heredado' - pero un componente de boton generico ('.btn-secondary') se escribe UNA vez pensando en su caso de uso mas comun (fondo claro), con 'color: var(--color-texto)' (el texto oscuro para fondos claros). El bug aparece cuando ESE MISMO componente generico se reusa en un contexto de fondo OSCURO (el hero, que suele ser oscuro en varios moods) sin una variante/override - el boton 'cumple' la letra de la regla (tiene un color explicito, no heredado) pero ese color especifico es oscuro sobre oscuro, ilegible en la practica. El chequeo de 'tiene color explicito' no es lo mismo que 'tiene SUFICIENTE CONTRASTE en el contexto real donde aparece'.",
+    "correct_approach": "Cuando un componente de boton/texto se reutiliza en secciones con fondos de luminosidad distinta (clara vs oscura), necesita una variante especifica por contexto (ej. '.hero .btn-secondary { color: var(--color-texto-inv); border-color: var(--color-texto-inv); }' o una clase modificadora '.btn-secondary--sobre-oscuro'), no un unico color fijo para todos los usos. Verificar CADA boton contra el fondo REAL donde va a aparecer (via render_check/captura, no solo leyendo el CSS) - el checklist de 'color explicito, no heredado' es necesario pero no suficiente, falta el chequeo de contraste real por contexto.",
+    "bad_example": "/* Un solo color fijo para el boton secundario, sin importar el fondo donde se use */\n.btn-secondary { background: transparent; color: var(--color-texto); border: 2px solid var(--color-borde); }\n/* se reusa tal cual dentro del hero, que tiene fondo oscuro -> texto oscuro sobre fondo oscuro */",
+    "good_example": "/* variante especifica para cuando el boton esta sobre un fondo oscuro */\n.btn-secondary { background: transparent; color: var(--color-texto); border: 2px solid var(--color-borde); }\n.hero .btn-secondary { color: var(--color-texto-inv); border-color: var(--color-texto-inv); }",
+    "source": "Reporte real de usuario + verificacion directa en un build de deepseek-v3.2 (Taberna La Fragua de Vulcano) - el boton 'Reservar mesa' del hero (fondo oscuro) usaba 'color: var(--color-texto)' (el tono oscuro para fondos claros), quedando practicamente invisible en la captura de render_check"
+  },
+  {
+    "id": "web-search-web-image-scope-confusion",
+    "language_or_domain": "web",
+    "tags": [
+      "legal",
+      "images",
+      "web"
+    ],
+    "problem_description": "search_web_image (busqueda de imagenes en TODA la web, sin garantia de licencia) existe SOLO para sujetos especificos e identificables (una persona famosa puntual, el poster de una pelicula puntual) en contenido propio/informal del usuario - no para el sitio publico de un negocio real. Confundirla con search_images (bancos de stock con licencia comercial) y usarla para fotos genericas de un cliente (interior, platos) reproduce el mismo riesgo legal que ya se evito con esa separacion.",
+    "why_small_models_fail": "Ambas tools resuelven el mismo problema superficial (\"conseguir una URL de imagen\") y un modelo chico no necesariamente modela que la diferencia real es el ORIGEN/licencia de la imagen segun el CONTEXTO de uso (negocio real vs contenido personal), no solo si la imagen calza visualmente con lo pedido.",
+    "correct_approach": "Para el sitio de un negocio real (web-builder con un cliente): usar EXCLUSIVAMENTE search_images (bancos de stock). Para un sujeto especifico e identificable (un famoso, un poster de pelicula, una portada de libro) en un documento, presentacion, o proyecto personal/informal del usuario: usar search_web_image. Ante la duda sobre si el contexto es negocio real o personal, preguntar antes de usar search_web_image.",
+    "bad_example": "Usar search_web_image para conseguir \"foto de interior de restaurante acogedor\" para el sitio de un cliente real, en vez de search_images con un banco de stock con licencia comercial.",
+    "good_example": "Usar search_web_image para \"poster oficial de la pelicula Inception 2010\" en una presentacion personal del usuario; usar search_images (Pexels/Unsplash/Pixabay) para cualquier foto generica de un negocio real.",
+    "source": "Decision de diseño de este proyecto - ver tambien web-scraped-images-copyright-risk"
+  },
+  {
+    "id": "web-letter-split-cumulative-delay-invisible-title",
+    "language_or_domain": "web",
+    "tags": [
+      "animacion",
+      "reveal",
+      "ux",
+      "web"
+    ],
+    "problem_description": "Un reveal letra por letra del H1 del hero con delay escalonado (ej. 30ms por letra) mas un delay inicial artificial antes de arrancar puede dejar el titulo COMPLETAMENTE INVISIBLE (opacity:0) durante mas de 1.5 segundos al cargar la pagina - confirmado con captura real: el hueco donde deberia estar el titulo del hero quedaba vacio. El delay de CADA PASO individual (30ms) parece perfectamente razonable aislado, pero la SUMA sobre muchas letras de un titulo largo no.",
+    "why_small_models_fail": "El modelo evalua 'es lento' mirando el delay de un paso individual (30-40ms, se ve rapido), no el TOTAL acumulado sobre todas las unidades del split mas la duracion de la transicion del ultimo elemento - para un titulo de 20+ caracteres eso ya suma varios cientos de ms solo en delays, antes de sumar la transicion. Ademas, el modelo escribio su PROPIA version del split (en vez de adaptar el componente de referencia ya calibrado) y le agrego un delay inicial de 300ms sin ningun proposito, sumando aun mas tiempo muerto.",
+    "correct_approach": "Calcular el tiempo total ANTES de elegir la animacion: (cantidad_de_unidades - 1) * delay_por_unidad + duracion_transition. Si supera ~500-600ms, cambiar de granularidad: letra -> palabra (menos unidades) o directamente a un slide de linea completa sin stagger para titulares largos (el propio animaciones/split-text.html del web-kit ya incluye esa variante, etiquetada explicitamente como mejor opcion para titulares largos). Nunca agregar un delay inicial artificial antes de que el IntersectionObserver dispare el reveal.",
+    "bad_example": "Titulo de hero con textContent.split('') letra por letra, transitionDelay = i * 30 + 'ms', MAS un setTimeout(..., 300) antes de siquiera arrancar el loop de letras - para un titulo de 20 caracteres eso es 300ms + 20*30ms=600ms + 500ms de transicion = 1.4s con el titulo invisible.",
+    "good_example": "Para un titulo largo, usar el split por palabras (menos unidades, ej. 4 palabras * 60ms = 240ms de delay maximo) o el slide de linea completa (una sola transicion sin stagger, ~700ms fijos sin importar el largo del texto) - ver animaciones/split-text.html, variante .slide-up.",
+    "source": "Bug real reportado por el usuario y confirmado con captura de render_check - hero completamente vacio donde deberia estar el titulo"
+  },
+  {
+    "id": "web-split-word-wrapper-opacity-never-reset-two-sources",
+    "language_or_domain": "web",
+    "tags": [
+      "animacion",
+      "reveal",
+      "bug-real",
+      "web"
+    ],
+    "problem_description": "En un split-text anidado (palabra > letra), tanto el wrapper de CADA PALABRA como cada LETRA dentro arrancan en opacity:0 - pero el JS de animacion solo recorre y revela las letras (querySelectorAll('.split-letter')), nunca el wrapper de palabra. Si el wrapper queda en opacity:0 para siempre (via estilo inline O via una regla CSS de la clase, HAY QUE REVISAR LAS DOS FUENTES por separado - arreglar solo el inline y dejar la regla CSS intacta reproduce el mismo bug identico), el titulo entero queda invisible PERMANENTEMENTE sin importar cuanto se espere: no es un problema de timing, es que el padre nunca se revela aunque los hijos si lo hagan (opacity de un padre afecta visualmente a todo su contenido, sin importar la opacity propia de cada hijo).",
+    "why_small_models_fail": "El modelo escribe el split anidado (palabra contiene letras) sin notar que solo necesita UN nivel de opacity animada (las letras), y el otro nivel (la palabra) no deberia tener opacity propia en absoluto - es puro ruido visual que nadie revierte. Ademas, cuando se corrige el bug en un solo lugar (ej. el estilo inline en el JS) sin revisar si hay una regla CSS PARALELA para la misma clase (.split-word con opacity:0 en el .css), el bug persiste identico porque las reglas CSS de clase siguen aplicando independientemente de que se haya limpiado el JS.",
+    "correct_approach": "El wrapper de agrupacion (word span, line span, etc.) NO debe llevar opacity/transform propios - es puramente un contenedor de layout (display:inline-block para el word-wrap). Solo la UNIDAD MAS PEQUEÑA que realmente se anima (la letra) lleva opacity:0 inicial y se revierte a 1 via JS. Al arreglar un bug de opacity permanente, buscar TODAS las fuentes de esa regla - grep tanto el .css (reglas de clase) como el .js (estilos inline) por el nombre de la clase antes de dar el fix por completo; verificar SIEMPRE con una captura real despues del fix, no asumir que arreglar un solo lugar alcanza.",
+    "bad_example": "styles.css: '.split-word { opacity: 0; transform: translateY(1em); }' + script.js crea cada wordSpan con className='split-word' y anima solo '.split-letter' a opacity:1 - la regla CSS de '.split-word' nunca se revierte, el titulo queda invisible para siempre aunque el JS de letras funcione perfecto.",
+    "good_example": "El wrapper de palabra solo lleva 'display: inline-block' (sin opacity/transform, ni en CSS ni inline) - la unica opacity animada es la de cada '.split-letter' individual, que sube de 0 a 1 via JS con su propio transitionDelay escalonado.",
+    "source": "Bug real reportado por el usuario, reproducido y confirmado con captura de render_check en un proyecto real (titulo del hero completamente ausente) - el primer intento de arreglo (solo el JS) no resolvio nada porque la MISMA regla opacity:0 tambien estaba en el CSS"
+  }
+]

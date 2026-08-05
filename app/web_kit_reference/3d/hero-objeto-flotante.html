@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Escena 3D real con Three.js — objeto flotante con luz y profundidad (15.8)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body { font-family: system-ui, sans-serif; color: #fff; overflow: hidden; }
+
+  /* ================================================================
+     ESCENA 3D REAL (Three.js) — cuándo usar ESTO y no otra cosa.
+
+     La guía ya tiene DOS formas de "3D" más ligeras — no las reemplaces
+     por esta sin motivo, cada una resuelve un problema distinto:
+       - ../animaciones/rotacion-3d-scroll.html → 3D FALSO con CSS
+         (perspective + rotateY/X sobre un div plano). Cero JS, cero
+         coste de GPU real. Sirve para "girar" un mockup/cifra. Úsalo
+         si con eso alcanza.
+       - ../animaciones/fondo-shader-webgl.html → shader 2D (un plano a
+         pantalla completa). Da textura/movimiento de fondo, pero no
+         hay objetos ni cámara ni luz: es "profundidad" solo visual, no
+         una escena.
+       - ESTE archivo, y el resto de la carpeta 3d/ → escena 3D DE
+         VERDAD: geometría real, cámara, luces que proyectan sombreado
+         sobre el material según el ángulo. Es la pieza MÁS PESADA de
+         toda la guía (motor 3D completo). Resérvala para: mood E/F
+         cuando el proyecto pide explícitamente "que se note que es 3D"
+         (un producto que se puede "coger y girar", un hero de nivel
+         showcase/portfolio/agencia top), NO como animación decorativa
+         de más. Si dudas, usa rotacion-3d-scroll.html — cubre el 80%
+         de los casos con un coste de rendimiento mucho menor. Máximo
+         UNA escena Three.js por proyecto (nunca dos secciones con
+         motor 3D activo a la vez - el coste de GPU se suma, sobre todo
+         en móvil). Ver el resto de `3d/` para otras variantes
+         (producto interactivo, tipografía 3D, galería, red/globo,
+         blob orgánico, cristal, grafo de nodos, carga de modelo real).
+
+     AUTOALOJADO (hazlo así en cada proyecto — Three.js ya no publica
+     build UMD/global, solo módulos ES desde la v150+):
+       1. Descarga three.module.min.js de la release que uses
+          (github.com/mrdoob/three.js/tree/dev/build) o
+          `npm i three` y copia desde node_modules/three/build/.
+       2. Colócalo en assets/js/lib/three.module.min.js
+       3. Import map local (sin CDN):
+            <script type="importmap">
+            { "imports": { "three": "./assets/js/lib/three.module.min.js" } }
+            </script>
+       El código de este demo (más abajo) es idéntico en producción,
+       solo cambia el import map.
+
+     NOTA DE ESTE DEMO: para verse sin descargar nada, el import map de
+     abajo apunta a jsDelivr. EN PRODUCCIÓN sustitúyelo por la ruta
+     local — Three.js SÍ es una librería de terceros real (~150-600KB
+     según qué módulos importes), así que autoalojarla no es opcional:
+     sin eso, un CDN caído deja la escena entera en negro.
+  ================================================================ */
+
+  .seccion-3d {
+    position: relative; height: 100%;
+    /* = --color-fondo-oscuro del proyecto: fallback si WebGL falla */
+    background: radial-gradient(circle at 50% 40%, #1c1f2e, #0b0d14);
+    display: grid; place-items: center; text-align: center;
+  }
+  #escena-3d {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    display: block; z-index: 0; cursor: grab;
+  }
+  .contenido { position: relative; z-index: 1; padding: 2rem; pointer-events: none; }
+  .contenido h1 { font-size: clamp(2.5rem, 8vw, 5rem); font-weight: 900; letter-spacing: -.02em;
+    text-shadow: 0 4px 40px rgba(0,0,0,.6); }
+  .contenido p { margin-top: 1rem; opacity: .8; font-size: 1.05rem; }
+  .label { position: fixed; top: 1rem; left: 1rem; z-index: 50; font-size: .7rem;
+    color: #777; letter-spacing: .15em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+  <p class="label">Mueve el ratón sobre la escena — el objeto sigue el puntero</p>
+
+  <section class="seccion-3d">
+    <canvas id="escena-3d"></canvas>
+    <div class="contenido">
+      <h1>Profundidad real</h1>
+      <p>Geometría, cámara y luz de verdad — no un efecto CSS.</p>
+    </div>
+  </section>
+
+  <!-- DEMO ONLY: en producción, import map local a assets/js/lib/three.module.min.js -->
+  <script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+  <script type="module">
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const canvas = document.getElementById('escena-3d');
+    if (reduce) {
+      canvas.style.display = 'none'; // FALLBACK: queda el gradiente CSS
+    } else {
+      const THREE = await import('three');
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 100);
+      camera.position.set(0, 0, 6);
+
+      let renderer = null;
+      try {
+        renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      } catch (e) {
+        canvas.style.display = 'none'; // FALLBACK: sin WebGL, queda el gradiente CSS
+      }
+
+      if (renderer) {
+        renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+        renderer.setSize(innerWidth, innerHeight);
+
+        // ── Luces: esto es lo que da profundidad REAL (sombreado según
+        // el ángulo), imposible de imitar con CSS transform puro ──
+        scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+        const luzClave = new THREE.DirectionalLight(0xffffff, 1.4);
+        luzClave.position.set(3, 4, 5);
+        scene.add(luzClave);
+        const luzAcento = new THREE.PointLight(0x8b6cff, 6, 20); // ← sustituye por --color-acento
+        luzAcento.position.set(-4, -2, 3);
+        scene.add(luzAcento);
+
+        // ── Objeto: sustituye la geometría/color según el proyecto ──
+        // TorusKnot para mood B/C/F (elegante, escultural). Para mood E
+        // (industrial) prueba IcosahedronGeometry con
+        // new THREE.MeshBasicMaterial({ wireframe: true }).
+        const geometria = new THREE.TorusKnotGeometry(1.1, 0.34, 180, 24);
+        const material = new THREE.MeshStandardMaterial({
+          color: 0x8b6cff,      // ← --color-acento del proyecto
+          metalness: 0.55,
+          roughness: 0.25,
+        });
+        const objeto = new THREE.Mesh(geometria, material);
+        scene.add(objeto);
+
+        // ── Interacción: el objeto sigue el puntero con inercia (lerp),
+        // no 1:1 — se ve "premium", no nervioso ──
+        let targetX = 0, targetY = 0;
+        addEventListener('pointermove', (e) => {
+          targetX = (e.clientX / innerWidth - 0.5) * 2;
+          targetY = (e.clientY / innerHeight - 0.5) * 2;
+        });
+
+        addEventListener('resize', () => {
+          camera.aspect = innerWidth / innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(innerWidth, innerHeight);
+        });
+
+        const reloj = new THREE.Clock();
+        (function animar() {
+          requestAnimationFrame(animar);
+          const t = reloj.getElapsedTime();
+
+          objeto.rotation.x += (targetY * 0.6 - objeto.rotation.x) * 0.04;
+          objeto.rotation.y += (targetX * 0.8 - objeto.rotation.y) * 0.04;
+          objeto.rotation.z = t * 0.08;                 // giro lento propio, siempre presente
+          objeto.position.y = Math.sin(t * 0.6) * 0.15; // flotación sutil
+
+          renderer.render(scene, camera);
+        })();
+      }
+    }
+  </script>
+</body>
+</html>

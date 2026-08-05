@@ -1,0 +1,79 @@
+[
+  {
+    "id": "csharp-async-void-swallows-exceptions",
+    "language_or_domain": "csharp",
+    "tags": ["async", "error-handling", "csharp"],
+    "problem_description": "Un metodo async void no puede ser awaited por el caller; cualquier excepcion lanzada dentro se propaga directamente al SynchronizationContext y normalmente termina el proceso (o se pierde silenciosamente segun el host), en vez de propagarse como una Task fallida que el caller pueda capturar con try/catch.",
+    "why_small_models_fail": "El modelo usa async void como 'la forma de hacer un metodo async que no devuelve nada', calcando la firma de un metodo void sincrono, sin modelar que async Task (incluso sin valor de retorno util) es la unica forma de que las excepciones sean observables por el llamador.",
+    "correct_approach": "Usar siempre async Task (o async Task<T>) salvo en el caso especifico y aislado de un event handler de UI, que es la unica situacion donde async void es la firma requerida por el framework.",
+    "bad_example": "public async void Procesar() {\n    await GuardarAsync(); // si tira excepcion, el caller nunca se entera\n}",
+    "good_example": "public async Task Procesar() {\n    await GuardarAsync(); // el caller puede: await Procesar() y capturar la excepcion con try/catch\n}",
+    "source": "Microsoft Learn - Async/await best practices, 'Avoid async void'"
+  },
+  {
+    "id": "csharp-for-loop-closure-shared-variable",
+    "language_or_domain": "csharp",
+    "tags": ["closures", "loops", "csharp"],
+    "problem_description": "Desde C# 5, la variable de un foreach es per-iteracion (cada closure captura su propio valor), pero la variable de un for clasico (for (int i = 0; ...; i++)) sigue siendo UNA sola variable compartida entre todas las iteraciones - closures creados dentro de un for capturan la variable, no el valor, y todas terminan viendo el ultimo valor.",
+    "why_small_models_fail": "El modelo generaliza el arreglo que C# hizo para foreach (una de las correcciones de lenguaje mas conocidas) tambien al for clasico, sin saber que el fix solo aplico a foreach y no a for.",
+    "correct_approach": "Si se necesita capturar el valor de i en cada iteracion de un for clasico, copiarlo a una variable local dentro del cuerpo del loop antes de crear el closure.",
+    "bad_example": "var acciones = new List<Action>();\nfor (int i = 0; i < 3; i++) {\n    acciones.Add(() => Console.WriteLine(i));\n}\n// las tres imprimen 3, no 0,1,2",
+    "good_example": "var acciones = new List<Action>();\nfor (int i = 0; i < 3; i++) {\n    int copia = i;\n    acciones.Add(() => Console.WriteLine(copia));\n}\n// ahora imprimen 0,1,2 correctamente",
+    "source": "C# Language Specification - notas sobre el cambio de captura en foreach desde C# 5"
+  },
+  {
+    "id": "csharp-linq-deferred-execution-double-enumeration",
+    "language_or_domain": "csharp",
+    "tags": ["linq", "performance", "csharp"],
+    "problem_description": "Las queries LINQ sobre IEnumerable<T> son de evaluacion diferida: no se ejecutan hasta que se enumeran. Enumerar la misma query dos veces (ej. query.Count() y despues foreach sobre query) re-ejecuta TODA la query (incluyendo un round-trip a base de datos si es Entity Framework) dos veces, y si la fuente cambio entre medio, los resultados pueden ser inconsistentes entre ambas enumeraciones.",
+    "why_small_models_fail": "El modelo trata el resultado de una query LINQ como si fuera una coleccion ya materializada (como una List<T>), porque la sintaxis de uso es identica; no modela la diferencia entre IEnumerable diferido y una coleccion concreta.",
+    "correct_approach": "Materializar la query una sola vez con .ToList() o .ToArray() si se va a enumerar mas de una vez o si el costo de re-ejecutar (especialmente contra base de datos) importa.",
+    "bad_example": "var query = db.Usuarios.Where(u => u.Activo);\nvar total = query.Count();        // ejecuta la query en la DB\nforeach (var u in query) { ... }  // ejecuta la query en la DB OTRA VEZ",
+    "good_example": "var usuarios = db.Usuarios.Where(u => u.Activo).ToList(); // una sola ejecucion, materializada\nvar total = usuarios.Count;\nforeach (var u in usuarios) { ... }",
+    "source": "Microsoft Learn - LINQ, 'Query execution is deferred until you iterate over the query variable'"
+  },
+  {
+    "id": "csharp-struct-boxing-mutation-lost",
+    "language_or_domain": "csharp",
+    "tags": ["structs", "boxing", "csharp"],
+    "problem_description": "Cuando un struct se 'boxea' (se asigna a una variable de tipo object o de una interfaz que implementa), se crea una COPIA en el heap. Mutar esa copia boxeada (ej. a traves de una interfaz que expone un metodo mutador) no afecta al struct original en el stack, y el cambio se pierde silenciosamente sin ningun error.",
+    "why_small_models_fail": "El modelo trata structs e interfaces/objetos de forma uniforme (semantica de referencia), sin modelar la semantica de valor de los structs y el punto exacto donde el boxing crea una copia independiente.",
+    "correct_approach": "Evitar mutar structs a traves de una referencia boxeada; si se necesita mutabilidad compartida, usar una clase en vez de un struct.",
+    "bad_example": "interface IContador { void Incrementar(); }\nstruct Contador : IContador {\n    public int Valor;\n    public void Incrementar() => Valor++;\n}\nIContador c = new Contador(); // boxing aqui\nc.Incrementar();\n// c.Valor sigue en 0 vista desde afuera, el incremento fue sobre la copia boxeada",
+    "good_example": "class Contador : IContador { // clase en vez de struct: semantica de referencia real\n    public int Valor;\n    public void Incrementar() => Valor++;\n}",
+    "source": "C# Language Specification - Boxing and Unboxing Conversions"
+  },
+  {
+    "id": "csharp-idisposable-leak-on-exception",
+    "language_or_domain": "csharp",
+    "tags": ["resource-management", "exceptions", "csharp"],
+    "problem_description": "Crear un recurso IDisposable y llamar a Dispose() manualmente al final del metodo no libera el recurso si una excepcion se lanza entre la creacion y esa linea final - el recurso queda abierto (file handle, conexion de DB, etc.) hasta que el GC eventualmente lo finalice, si es que lo hace.",
+    "why_small_models_fail": "El modelo escribe el codigo para el camino feliz (crear, usar, cerrar) sin considerar el camino de excepcion, porque en el caso de prueba tipico no se lanza ninguna excepcion.",
+    "correct_approach": "Usar siempre using (o using declaration de C# 8+) para cualquier IDisposable, que garantiza Dispose() incluso si el bloque termina por excepcion.",
+    "bad_example": "var conexion = new SqlConnection(connStr);\nconexion.Open();\nEjecutarQuery(conexion); // si esto tira excepcion, conexion.Dispose() nunca se llama\nconexion.Dispose();",
+    "good_example": "using var conexion = new SqlConnection(connStr);\nconexion.Open();\nEjecutarQuery(conexion); // Dispose() se llama automaticamente al salir del scope, incluso por excepcion",
+    "source": "Microsoft Learn - using statement, 'ensure the correct use of IDisposable objects'"
+  },
+  {
+    "id": "csharp-nullable-reference-warning-not-error",
+    "language_or_domain": "csharp",
+    "tags": ["null-safety", "csharp"],
+    "problem_description": "Nullable Reference Types (habilitado con #nullable enable, C# 8+) produce solo WARNINGS del compilador cuando se accede a una referencia potencialmente null, no errores de compilacion por defecto. Codigo que 'parece' null-safe por la anotacion de tipos puede seguir lanzando NullReferenceException en runtime si los warnings se ignoran o el proyecto no los trata como error.",
+    "why_small_models_fail": "El modelo trata la anotacion string? como una garantia en tiempo de compilacion equivalente a un sistema de tipos con null-safety estricta (como Kotlin o Swift), sin modelar que en C# es un analisis estatico best-effort basado en warnings, no una garantia dura del compilador.",
+    "correct_approach": "Configurar <WarningsAsErrors>Nullable</WarningsAsErrors> (o TreatWarningsAsErrors) en el proyecto para que los warnings de nulabilidad rompan el build, y ademas seguir validando en runtime en las fronteras del sistema (input externo, deserializacion).",
+    "bad_example": "#nullable enable\nstring? nombre = ObtenerNombre();\nConsole.WriteLine(nombre.Length); // solo WARNING, compila igual y puede explotar en runtime",
+    "good_example": "#nullable enable\nstring? nombre = ObtenerNombre();\nif (nombre is null) throw new InvalidOperationException(\"nombre requerido\");\nConsole.WriteLine(nombre.Length); // seguro, y sin warning",
+    "source": "Microsoft Learn - Nullable reference types, 'nullable warnings are not compiler errors by default'"
+  },
+  {
+    "id": "csharp-datetime-now-vs-utcnow-timezone-bugs",
+    "language_or_domain": "csharp",
+    "tags": ["datetime", "csharp"],
+    "problem_description": "Usar DateTime.Now (hora local del servidor) en vez de DateTime.UtcNow para timestamps que se persisten o comparan entre servicios produce bugs sutiles cuando el servidor cambia de zona horaria, hay servidores en distintas regiones, o se atraviesa un cambio de horario de verano.",
+    "why_small_models_fail": "El modelo usa DateTime.Now porque es el nombre 'obvio' y mas corto, sin modelar que en sistemas distribuidos la ausencia de una zona horaria explicita es en si misma la fuente del bug.",
+    "correct_approach": "Usar DateTime.UtcNow (o mejor, DateTimeOffset.UtcNow) para cualquier timestamp que se persista, se compare entre procesos, o cruce limites de red, y convertir a hora local solo en la capa de presentacion.",
+    "bad_example": "var creado = DateTime.Now;\ndb.Guardar(creado); // ambiguo: en que zona horaria quedo guardado?",
+    "good_example": "var creado = DateTimeOffset.UtcNow;\ndb.Guardar(creado); // inequivoco, y convertible a cualquier zona horaria despues",
+    "source": "Microsoft Learn - DateTime.Now vs DateTime.UtcNow, best practices"
+  }
+]

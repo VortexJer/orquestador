@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grano de película + color grading — textura de cine</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #0a0a0e; color: #fff; }
+
+  /* ================================================================
+     GRANO DE PELÍCULA + COLOR GRADING.
+
+     Lo que más separa "diseño plano" de "producción audiovisual".
+
+     1) GRANO: una capa SVG fija con feTurbulence sobre toda la página.
+        Gratis, ligero, no se mueve. Ajusta SOLO con opacity (.03–.06).
+        mix-blend-mode: overlay lo integra con el contenido.
+
+     2) COLOR GRADING (sensación de LUT de cine): un filter CSS sutil
+        SOLO en la sección que quieras "cinematográfica", NUNCA en el
+        body entero (afectaría a texto, formularios, etc.).
+
+     Es MUY sutil a propósito: se nota incluso en cantidades mínimas.
+     Si lo ves claramente, te has pasado.
+  ================================================================ */
+
+  /* 1 — Capa de grano global */
+  .grano {
+    position: fixed; inset: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 9999;
+    opacity: .045; mix-blend-mode: overlay;
+  }
+
+  /* 2 — Color grading SOLO en el hero */
+  .hero {
+    min-height: 100vh; display: grid; place-items: center; text-align: center;
+    background: radial-gradient(circle at 50% 30%, #2a1c3e, #0a0a0e 70%);
+    filter: contrast(1.05) saturate(1.1) sepia(.04);   /* LUT sutil */
+  }
+  .hero h1 { font-size: clamp(2.5rem, 9vw, 6rem); font-weight: 900; letter-spacing: -.03em; }
+  .hero p  { margin-top: 1rem; opacity: .8; }
+
+  .normal { padding: 6rem 2rem; text-align: center; color: #888; }
+  .normal p { max-width: 46ch; margin: 0 auto; line-height: 1.6; }
+
+  @media (prefers-reduced-motion: reduce) { .grano { display: none; } }
+</style>
+</head>
+<body>
+
+  <!-- Capa de grano (SVG fija sobre todo) -->
+  <svg class="grano" xmlns="http://www.w3.org/2000/svg">
+    <filter id="grano-noise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/>
+    </filter>
+    <rect width="100%" height="100%" filter="url(#grano-noise)"/>
+  </svg>
+
+  <section class="hero">
+    <div>
+      <h1>Textura de cine</h1>
+      <p>Grano sutil global + color grading solo aquí</p>
+    </div>
+  </section>
+
+  <section class="normal">
+    <p>Esta sección NO lleva color grading: el filtro va únicamente en la sección que quieres cinematográfica, nunca en el body. El grano sí cubre toda la página, pero tan tenue que solo se percibe como "calidez de película".</p>
+  </section>
+
+</body>
+</html>

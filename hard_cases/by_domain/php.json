@@ -1,0 +1,68 @@
+[
+  {
+    "id": "php-loose-comparison-numeric-strings",
+    "language_or_domain": "php",
+    "tags": ["type-juggling", "php"],
+    "problem_description": "== en PHP hace 'type juggling' con reglas especificas para strings que parecen numeros: \"1\" == \"01\" es true, \"10\" == \"1e1\" es true, y (antes de PHP 8) \"abc\" == 0 tambien era true. Comparar valores de origen externo (input de formulario, query string) con == puede producir matches falsos que == estricto no tendria.",
+    "why_small_models_fail": "El modelo aprendio == como comparacion generica y no modela las reglas especificas de comparacion numerica de strings de PHP, que cambiaron ademas entre PHP 7 y PHP 8 (RFC 'saner string to number comparisons').",
+    "correct_approach": "Usar === (y !==) para comparar valores donde el tipo importa, especialmente con datos de entrada externos; reservar == solo si se necesita deliberadamente la coercion numerica.",
+    "bad_example": "if ($_GET['id'] == $idEsperado) { /* \"10\" == \"1e1\" puede dar un match no intencional */ }",
+    "good_example": "if ($_GET['id'] === (string) $idEsperado) { /* comparacion exacta, sin coercion numerica */ }",
+    "source": "PHP RFC - 'Saner string to number comparisons' (PHP 8); PHP Manual - Comparison Operators"
+  },
+  {
+    "id": "php-in-array-loose-comparison-trap",
+    "language_or_domain": "php",
+    "tags": ["type-juggling", "arrays", "php"],
+    "problem_description": "in_array($needle, $haystack) usa comparacion NO estricta por defecto (el tercer parametro strict es false); buscar un valor numerico o booleano en un array de strings puede dar un match falso por coercion de tipos, en vez de fallar como se esperaria.",
+    "why_small_models_fail": "El modelo llama a in_array() con la firma minima (dos argumentos) porque es la mas comun en ejemplos, sin considerar que el tercer parametro strict cambia el resultado quando los tipos no coinciden exactamente.",
+    "correct_approach": "Pasar siempre true como tercer argumento (in_array($needle, $haystack, true)) salvo que se necesite deliberadamente la coercion.",
+    "bad_example": "in_array(0, [\"php\", \"javascript\"]); // true en versiones antiguas de PHP por coercion de \"php\" a 0",
+    "good_example": "in_array(0, [\"php\", \"javascript\"], true); // false, comparacion estricta de tipo y valor",
+    "source": "PHP Manual - in_array(), parametro strict"
+  },
+  {
+    "id": "php-foreach-reference-leftover-variable",
+    "language_or_domain": "php",
+    "tags": ["arrays", "references", "php"],
+    "problem_description": "foreach ($arr as &$valor) deja $valor como una REFERENCIA al ultimo elemento del array despues de terminar el loop (la variable no se destruye). Si un foreach posterior reutiliza el mismo nombre de variable SIN &, la asignacion termina sobreescribiendo silenciosamente el ultimo elemento del array original.",
+    "why_small_models_fail": "El modelo trata la variable del foreach como una copia local temporal que desaparece al terminar el loop, sin modelar que el uso de & la deja viva como referencia despues, un comportamiento documentado pero facil de pasar por alto.",
+    "correct_approach": "Hacer unset() de la variable de referencia inmediatamente despues del foreach que la uso, antes de cualquier otro foreach que reutilice ese nombre.",
+    "bad_example": "$numeros = [1, 2, 3];\nforeach ($numeros as &$n) { $n *= 2; }\nforeach ($numeros as $n) { } // $n aca es alias del ultimo elemento de $numeros\n// esto sobreescribe $numeros[2] silenciosamente con el valor de $numeros[1]",
+    "good_example": "$numeros = [1, 2, 3];\nforeach ($numeros as &$n) { $n *= 2; }\nunset($n); // rompe la referencia antes de seguir usando ese nombre\nforeach ($numeros as $n) { }",
+    "source": "PHP Manual - foreach, nota oficial sobre referencias remanentes"
+  },
+  {
+    "id": "php-static-property-shared-across-instances",
+    "language_or_domain": "php",
+    "tags": ["oop", "php"],
+    "problem_description": "Una propiedad static de una clase es compartida por TODAS las instancias, no una por instancia. Codigo que intenta usarla como si fuera un contador o cache por-instancia (accediendola via $this->propiedadStatic) en realidad lee y escribe el mismo valor global compartido entre todos los objetos de esa clase.",
+    "why_small_models_fail": "El modelo declara static para 'compartir estado entre metodos de la misma instancia' (una necesidad legitima resuelta con una propiedad normal), sin distinguir esa intencion de 'compartir estado entre TODAS las instancias', que es lo que static realmente hace.",
+    "correct_approach": "Usar una propiedad de instancia normal (sin static) si el estado debe ser independiente por objeto; reservar static solo para estado deliberadamente global a la clase (ej. un contador de instancias creadas).",
+    "bad_example": "class Contador {\n    public static int $valor = 0;\n    public function incrementar(): void { $this->valor++; }\n}\n$a = new Contador(); $a->incrementar();\n$b = new Contador(); $b->incrementar();\n// Contador::$valor es 2, compartido - $a y $b NO tienen contadores independientes",
+    "good_example": "class Contador {\n    public int $valor = 0; // propiedad de instancia, no static\n    public function incrementar(): void { $this->valor++; }\n}\n$a = new Contador(); $a->incrementar();\n$b = new Contador(); $b->incrementar();\n// $a->valor es 1, $b->valor es 1, independientes",
+    "source": "PHP Manual - Static Properties"
+  },
+  {
+    "id": "php-missing-htmlspecialchars-xss",
+    "language_or_domain": "php",
+    "tags": ["security", "xss", "cwe-79", "php"],
+    "problem_description": "Imprimir directamente (echo) un valor que proviene del usuario (query string, formulario, base de datos con datos ingresados por usuarios) sin pasar por htmlspecialchars()/htmlentities() permite inyectar HTML/JavaScript arbitrario que se ejecuta en el navegador de otros usuarios (XSS almacenado o reflejado).",
+    "why_small_models_fail": "El modelo genera el echo mas directo y legible para mostrar un valor, sin aplicar por default el escapado de salida, porque en el ejemplo de prueba el valor 'se ve bien' y no contiene ningun payload malicioso evidente.",
+    "correct_approach": "Escapar SIEMPRE con htmlspecialchars($valor, ENT_QUOTES, 'UTF-8') cualquier dato dinamico que se imprima dentro de HTML, sin excepcion, independientemente de si 'parece' seguro.",
+    "bad_example": "echo \"<p>Bienvenido, \" . $_GET['nombre'] . \"</p>\"; // XSS: ?nombre=<script>...</script>",
+    "good_example": "echo \"<p>Bienvenido, \" . htmlspecialchars($_GET['nombre'], ENT_QUOTES, 'UTF-8') . \"</p>\";",
+    "source": "OWASP - Cross Site Scripting Prevention Cheat Sheet; PHP Manual - htmlspecialchars()"
+  },
+  {
+    "id": "php-md5-password-storage-insecure",
+    "language_or_domain": "php",
+    "tags": ["security", "cwe-916", "php"],
+    "problem_description": "Guardar contraseñas con md5() o sha1() (sin salt, y con algoritmos rapidos de calcular) permite crackearlas por fuerza bruta o tablas rainbow con facilidad; ademas comparar hashes con == en vez de una funcion de tiempo constante puede filtrar informacion via timing attacks.",
+    "why_small_models_fail": "El modelo recuerda md5()/sha1() como 'la forma de hashear un string' de ejemplos genericos, sin distinguir el caso especifico y sensible de almacenamiento de contraseñas, que requiere un algoritmo lento y con salt integrado.",
+    "correct_approach": "Usar password_hash() (bcrypt/argon2 segun configuracion) para generar el hash, y password_verify() para compararlo - ambas funciones ya manejan el salt y la comparacion segura internamente.",
+    "bad_example": "$hash = md5($password);\n// ...\nif ($hash === md5($intentoLogin)) { /* login ok */ }",
+    "good_example": "$hash = password_hash($password, PASSWORD_DEFAULT);\n// ...\nif (password_verify($intentoLogin, $hash)) { /* login ok, comparacion segura */ }",
+    "source": "OWASP - Password Storage Cheat Sheet; PHP Manual - password_hash()"
+  }
+]

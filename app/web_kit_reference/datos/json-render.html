@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pintar datos desde un array</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #fafaf9; color: #1c1917;
+    max-width: 800px; margin: 0 auto; padding: 3rem 1.5rem; }
+  h1 { margin-bottom: 1.5rem; }
+  .controles { display: flex; gap: .8rem; margin-bottom: 2rem; flex-wrap: wrap; }
+  .controles input, .controles select { padding: .6rem .8rem; border: 2px solid #e7e5e4;
+    border-radius: 8px; font: inherit; }
+  .controles input { flex: 1; min-width: 180px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }
+  .card { background: #fff; border-radius: 12px; padding: 1.3rem; box-shadow: 0 1px 6px rgba(0,0,0,.05); }
+  .card .emoji { font-size: 2.5rem; }
+  .card h3 { margin: .6rem 0 .2rem; font-size: 1.05rem; }
+  .card .cat { color: #a8a29e; font-size: .82rem; }
+  .card .precio { font-weight: 700; color: #ea580c; margin-top: .6rem; }
+  .card .agotado { color: #dc2626; font-size: .8rem; font-weight: 600; }
+  .vacio { color: #a8a29e; grid-column: 1/-1; text-align: center; padding: 2rem; }
+</style>
+</head>
+<body>
+  <h1>Catálogo</h1>
+  <p style="color:#78716c;margin-top:-1rem">Los datos vienen de un array JS. El buscador y el orden se aplican sin recargar.</p>
+
+  <div class="controles">
+    <input type="text" id="buscar" placeholder="Buscar planta...">
+    <select id="categoria">
+      <option value="">Todas las categorías</option>
+    </select>
+    <select id="orden">
+      <option value="nombre">Ordenar: nombre</option>
+      <option value="precio-asc">Precio: menor a mayor</option>
+      <option value="precio-desc">Precio: mayor a menor</option>
+    </select>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+<script>
+  // En un caso real cargarías esto con fetch('datos.json'), pero al abrir el
+  // archivo con doble clic (file://) fetch suele bloquearse, así que aquí va
+  // el array directamente. (Si sirves la web desde un servidor, usa fetch.)
+  const PRODUCTOS = [
+    { id:1, nombre:'Monstera', categoria:'Interior', precio:24.90, stock:12, emoji:'🌿' },
+    { id:2, nombre:'Cactus San Pedro', categoria:'Suculenta', precio:14.50, stock:30, emoji:'🌵' },
+    { id:3, nombre:'Orquídea blanca', categoria:'Flor', precio:32.00, stock:5, emoji:'🌸' },
+    { id:4, nombre:'Pothos', categoria:'Interior', precio:11.90, stock:25, emoji:'🪴' },
+    { id:5, nombre:'Lavanda', categoria:'Aromática', precio:9.50, stock:18, emoji:'💜' },
+    { id:6, nombre:'Helecho', categoria:'Interior', precio:16.00, stock:0, emoji:'🌿' },
+  ];
+
+  const grid = document.getElementById('grid');
+  const buscar = document.getElementById('buscar');
+  const selCat = document.getElementById('categoria');
+  const selOrden = document.getElementById('orden');
+
+  // rellenar el desplegable de categorías a partir de los datos (sin duplicados)
+  [...new Set(PRODUCTOS.map((p) => p.categoria))].forEach((cat) => {
+    const op = document.createElement('option');
+    op.value = cat; op.textContent = cat;
+    selCat.appendChild(op);
+  });
+
+  function render() {
+    const texto = buscar.value.toLowerCase();
+    const cat = selCat.value;
+
+    let lista = PRODUCTOS
+      .filter((p) => p.nombre.toLowerCase().includes(texto))
+      .filter((p) => !cat || p.categoria === cat);
+
+    if (selOrden.value === 'precio-asc') lista.sort((a, b) => a.precio - b.precio);
+    else if (selOrden.value === 'precio-desc') lista.sort((a, b) => b.precio - a.precio);
+    else lista.sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+    grid.innerHTML = '';
+    if (lista.length === 0) { grid.innerHTML = '<p class="vacio">No hay resultados.</p>'; return; }
+
+    lista.forEach((p) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="emoji">${p.emoji}</div>
+        <h3></h3>
+        <div class="cat"></div>
+        <div class="precio">${p.precio.toFixed(2)} €</div>
+        ${p.stock === 0 ? '<div class="agotado">Agotado</div>' : ''}`;
+      card.querySelector('h3').textContent = p.nombre;
+      card.querySelector('.cat').textContent = p.categoria;
+      grid.appendChild(card);
+    });
+  }
+
+  [buscar, selCat, selOrden].forEach((el) => el.addEventListener('input', render));
+  render();
+</script>
+</body>
+</html>

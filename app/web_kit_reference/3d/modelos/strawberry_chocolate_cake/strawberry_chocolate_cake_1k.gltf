@@ -1,0 +1,159 @@
+{
+  "asset": {
+    "generator": "Khronos glTF Blender I/O v4.1.63",
+    "version": "2.0"
+  },
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "blend_export",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "mesh": 0,
+      "name": "strawberry_chocolate_cake"
+    }
+  ],
+  "materials": [
+    {
+      "doubleSided": true,
+      "name": "strawberry_chocolate_cake",
+      "normalTexture": {
+        "index": 0
+      },
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 1
+        },
+        "metallicRoughnessTexture": {
+          "index": 2
+        }
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "suklaakakku_low_unwrapped.004",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 0,
+            "NORMAL": 1,
+            "TEXCOORD_0": 2
+          },
+          "indices": 3,
+          "material": 0
+        }
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "sampler": 0,
+      "source": 0
+    },
+    {
+      "sampler": 0,
+      "source": 1
+    },
+    {
+      "sampler": 0,
+      "source": 2
+    }
+  ],
+  "images": [
+    {
+      "mimeType": "image/jpeg",
+      "name": "strawberry_chocolate_cake_nor_gl",
+      "uri": "textures/strawberry_chocolate_cake_nor_gl_1k.jpg"
+    },
+    {
+      "mimeType": "image/jpeg",
+      "name": "strawberry_chocolate_cake_diff",
+      "uri": "textures/strawberry_chocolate_cake_diff_1k.jpg"
+    },
+    {
+      "mimeType": "image/jpeg",
+      "name": "strawberry_chocolate_cake_metal-strawberry_chocolate_cake_rough",
+      "uri": "textures/strawberry_chocolate_cake_arm_1k.jpg"
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "componentType": 5126,
+      "count": 15608,
+      "max": [
+        0.12058109790086746,
+        0.07919730246067047,
+        0.11299121379852295
+      ],
+      "min": [
+        -0.12367956340312958,
+        -2.7607267583107387e-8,
+        -0.12727659940719604
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 15608,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "componentType": 5126,
+      "count": 15608,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5123,
+      "count": 81162,
+      "type": "SCALAR"
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteLength": 187296,
+      "byteOffset": 0,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 187296,
+      "byteOffset": 187296,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 124864,
+      "byteOffset": 374592,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 162324,
+      "byteOffset": 499456,
+      "target": 34963
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 661780,
+      "uri": "strawberry_chocolate_cake.bin"
+    }
+  ]
+}

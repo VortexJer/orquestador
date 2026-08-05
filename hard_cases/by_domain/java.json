@@ -1,0 +1,79 @@
+[
+  {
+    "id": "java-equals-hashcode-contract-broken",
+    "language_or_domain": "java",
+    "tags": ["collections", "equals-hashcode", "java"],
+    "problem_description": "Sobrescribir equals() sin sobrescribir hashCode() (o al reves) rompe el contrato de Object: dos objetos 'iguales' segun equals() pueden caer en buckets distintos de un HashMap/HashSet y nunca encontrarse entre si, aunque el codigo compile y equals() funcione perfecto en aislamiento.",
+    "why_small_models_fail": "El modelo genera equals() porque es lo que se pidio explicitamente, pero no aplica la regla 'si sobrescribis uno, sobrescribis el otro' salvo que se le recuerde - no es un error de sintaxis, es un contrato implicito de la documentacion de Object.",
+    "correct_approach": "Siempre generar equals() y hashCode() juntos, basados en los mismos campos (o usar record de Java 16+, que los genera automaticamente y correctos).",
+    "bad_example": "class Point {\n  int x, y;\n  @Override\n  public boolean equals(Object o) {\n    if (!(o instanceof Point p)) return false;\n    return x == p.x && y == p.y;\n  }\n  // sin hashCode(): dos Point 'iguales' no se encuentran en un HashSet\n}",
+    "good_example": "record Point(int x, int y) {}\n// equals() y hashCode() correctos y consistentes generados automaticamente",
+    "source": "Java SE docs - Object.hashCode(), \"general contract\""
+  },
+  {
+    "id": "java-string-concat-loop-quadratic",
+    "language_or_domain": "java",
+    "tags": ["performance", "strings", "java"],
+    "problem_description": "Concatenar strings con + dentro de un loop es O(n^2) en el peor caso: cada + crea un nuevo objeto String inmutable copiando todo el contenido anterior, porque String en Java es inmutable.",
+    "why_small_models_fail": "El modelo genera el `resultado += texto` mas legible sin considerar el costo acumulado cuando el loop tiene muchas iteraciones - el codigo es correcto funcionalmente, solo degradado en rendimiento, asi que no falla ningun test funcional.",
+    "correct_approach": "Usar StringBuilder (o StringBuffer si hay concurrencia) y acumular con append(), convirtiendo a String una sola vez al final.",
+    "bad_example": "String resultado = \"\";\nfor (String parte : partes) {\n    resultado += parte; // copia todo lo acumulado en cada iteracion\n}",
+    "good_example": "StringBuilder sb = new StringBuilder();\nfor (String parte : partes) {\n    sb.append(parte);\n}\nString resultado = sb.toString();",
+    "source": "Effective Java (Bloch) - Item 63, 'Beware the performance of string concatenation'"
+  },
+  {
+    "id": "java-integer-caching-identity-comparison",
+    "language_or_domain": "java",
+    "tags": ["autoboxing", "java"],
+    "problem_description": "La JVM cachea instancias de Integer para valores entre -128 y 127 (autoboxing). Comparar Integer con == funciona 'por casualidad' para valores chicos (misma instancia cacheada) pero falla para valores mas grandes, donde == compara identidad de objeto, no valor.",
+    "why_small_models_fail": "El modelo prueba mentalmente con valores chicos (ej. contadores de ejemplo 1, 2, 3) donde == da el resultado 'correcto' por el cache, reforzando el habito incorrecto sin que aparezca el bug.",
+    "correct_approach": "Comparar wrappers (Integer, Long, etc.) siempre con .equals(), nunca con ==, salvo que se sepa con certeza que se trabaja con el tipo primitivo int.",
+    "bad_example": "Integer a = 200, b = 200;\nif (a == b) { /* false, aunque \"deberian ser iguales\" */ }",
+    "good_example": "Integer a = 200, b = 200;\nif (a.equals(b)) { /* true, correcto */ }",
+    "source": "Java Language Specification - 5.1.7 Boxing Conversion, Integer cache"
+  },
+  {
+    "id": "java-list-remove-int-vs-object-overload",
+    "language_or_domain": "java",
+    "tags": ["collections", "java"],
+    "problem_description": "List<Integer> tiene dos overloads de remove: remove(int index) y remove(Object o). Al llamar list.remove(1) sobre un List<Integer>, el compilador elige la version por INDICE, no la que borra el valor 1 - una fuente clasica de bugs silenciosos al migrar codigo de un List<String> a un List<Integer>.",
+    "why_small_models_fail": "El modelo generaliza 'remove busca y borra el elemento con ese valor', que es cierto para casi cualquier otra coleccion/lenguaje, sin modelar la ambiguedad de overload especifica de List<Integer> en Java.",
+    "correct_approach": "Para borrar por valor en un List<Integer>, hacer un cast explicito a Object o usar list.removeIf(v -> v == valor).",
+    "bad_example": "List<Integer> nums = new ArrayList<>(List.of(10, 20, 30));\nnums.remove(1); // borra el elemento en indice 1 (el 20), no el valor 1",
+    "good_example": "List<Integer> nums = new ArrayList<>(List.of(10, 20, 30));\nnums.remove(Integer.valueOf(20)); // ahora si borra por VALOR",
+    "source": "java.util.List Javadoc - remove(int) vs remove(Object)"
+  },
+  {
+    "id": "java-concurrent-modification-exception",
+    "language_or_domain": "java",
+    "tags": ["collections", "concurrency", "java"],
+    "problem_description": "Modificar una coleccion (add/remove) mientras se la recorre con un for-each (que usa un Iterator internamente) lanza ConcurrentModificationException al detectar que el modCount cambio entre llamadas a next() - incluso en un programa de un solo hilo.",
+    "why_small_models_fail": "El modelo escribe 'for (item : lista) { if (condicion) lista.remove(item); }' porque es la forma mas legible de expresar la intencion, sin modelar que el Iterator implicito del for-each valida el estado de la coleccion en cada paso.",
+    "correct_approach": "Usar Iterator explicito con iterator.remove(), o Collection.removeIf(), o construir una lista nueva con los elementos a mantener.",
+    "bad_example": "for (String item : lista) {\n    if (item.isEmpty()) lista.remove(item); // ConcurrentModificationException\n}",
+    "good_example": "lista.removeIf(String::isEmpty);",
+    "source": "java.util.ConcurrentModificationException Javadoc"
+  },
+  {
+    "id": "java-return-in-finally-swallows-exception",
+    "language_or_domain": "java",
+    "tags": ["control-flow", "exceptions", "java"],
+    "problem_description": "Un return (o break/continue) dentro de un bloque finally descarta silenciosamente cualquier excepcion que se estuviera propagando desde el try/catch, y tambien descarta el valor de retorno que el try iba a devolver - sin ningun warning del compilador en la mayoria de configuraciones.",
+    "why_small_models_fail": "El modelo agrega un return de 'limpieza' o 'valor por defecto' dentro de finally pensando en garantizar que la funcion siempre devuelva algo, sin modelar que esto anula por completo cualquier excepcion en curso.",
+    "correct_approach": "No poner return/break/continue dentro de finally; usar finally solo para liberar recursos (o try-with-resources), y dejar que el control de flujo normal fluya desde el try/catch.",
+    "bad_example": "try {\n    return riesgoso();\n} finally {\n    return -1; // SIEMPRE devuelve -1, incluso si riesgoso() tiro una excepcion\n}",
+    "good_example": "try {\n    return riesgoso();\n} catch (Exception e) {\n    log.error(\"fallo\", e);\n    return -1;\n} finally {\n    cerrarRecursos();\n}",
+    "source": "JLS 14.20.2 - Execution of try-finally, abrupt completion overridden by finally"
+  },
+  {
+    "id": "java-checked-exception-lambda-friction",
+    "language_or_domain": "java",
+    "tags": ["exceptions", "lambdas", "java"],
+    "problem_description": "Las interfaces funcionales estandar (Runnable, Function, Supplier) no declaran throws de excepciones checked. Envolver una llamada que lanza una checked exception dentro de una lambda de ese tipo obliga a un try/catch interno que muchas veces termina en un catch(Exception e) vacio o que solo imprime el stack trace, tragandose el error.",
+    "why_small_models_fail": "El modelo resuelve el error de compilacion 'unhandled exception' de la forma mas rapida (atraparla ahi mismo) sin proponer una alternativa que preserve el manejo de errores en el llamador.",
+    "correct_approach": "Definir una interfaz funcional propia que declare throws, o envolver la excepcion checked en una RuntimeException con la causa original preservada, en vez de tragarla.",
+    "bad_example": "list.forEach(item -> {\n    try {\n        procesar(item); // lanza IOException checked\n    } catch (Exception e) {\n        // tragado, sin logging ni re-throw\n    }\n});",
+    "good_example": "list.forEach(item -> {\n    try {\n        procesar(item);\n    } catch (IOException e) {\n        throw new RuntimeException(\"fallo procesando \" + item, e);\n    }\n});",
+    "source": "Effective Java (Bloch) - Item 71, 'Avoid unnecessary use of checked exceptions'"
+  }
+]

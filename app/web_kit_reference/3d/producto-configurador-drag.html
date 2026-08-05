@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configurador de producto 3D — arrastrar para girar, con inercia (15.10)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body { font-family: system-ui, sans-serif; color: #fff; overflow: hidden; }
+
+  /* ================================================================
+     PRODUCTO "COGIBLE" — el visitante arrastra con el ratón/dedo para
+     girar el objeto, como si lo tuviera en la mano: el giro combina
+     LOS TRES ejes (x/y/z) segun la direccion exacta del gesto, via
+     quaternions (ver 'girarPorArrastre' mas abajo) - no esta limitado
+     a solo dos ejes sueltos como una implementacion ingenua con
+     rotation.x/rotation.y, que se siente rigida y dificil de
+     controlar. Sin tope de angulo: el objeto se puede voltear libre.
+
+     CUÁNDO usarlo: producto físico real (un tarro, una botella, un
+     dispositivo, un packaging) que se beneficia de "poder verlo desde
+     todos los angulos" - ecommerce/producto artesanal/tecnologia. Si
+     el objeto es solo decorativo (no un producto), usa en cambio
+     hero-objeto-flotante.html (sigue al puntero, no requiere arrastre
+     activo del usuario).
+
+     Este demo NO usa RoundedBoxGeometry (es un addon aparte, no viene
+     en el core de three) - el "producto" se arma combinando primitivas
+     del core (cilindro + toro) en un THREE.Group, técnica válida para
+     cualquier forma simple sin depender de más módulos de los
+     necesarios. Para un producto real con geometría compleja, ver
+     cargar-modelo-gltf.html en su lugar.
+
+     AUTOALOJAR: mismo proceso que hero-objeto-flotante.html.
+  ================================================================ */
+
+  .seccion-producto {
+    position: relative; height: 100%;
+    background: radial-gradient(circle at 50% 55%, #1c1f2e, #0b0d14);
+    display: grid; place-items: center; text-align: center;
+  }
+  #producto-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+  #producto-3d.arrastrando { cursor: grabbing; }
+  .contenido { position: relative; z-index: 1; padding: 2rem; pointer-events: none; }
+  .contenido h1 { font-size: clamp(2.2rem, 6vw, 4rem); font-weight: 900; letter-spacing: -.02em;
+    text-shadow: 0 4px 40px rgba(0,0,0,.6); }
+  .pista { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); z-index: 2;
+    font-size: .8rem; color: #999; letter-spacing: .05em; pointer-events: none; }
+</style>
+</head>
+<body>
+  <section class="seccion-producto">
+    <canvas id="producto-3d"></canvas>
+    <div class="contenido">
+      <h1>Tu producto, en 3D</h1>
+    </div>
+  </section>
+  <p class="pista">arrastra para girar · suelta y sigue girando solo</p>
+
+  <script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+  <script type="module">
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const canvas = document.getElementById('producto-3d');
+    if (reduce) {
+      canvas.style.display = 'none';
+    } else {
+      const THREE = await import('three');
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 100);
+      camera.position.set(0, 0.4, 6);
+
+      let renderer = null;
+      try {
+        renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      } catch (e) {
+        canvas.style.display = 'none';
+      }
+
+      if (renderer) {
+        renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+        renderer.setSize(innerWidth, innerHeight);
+
+        // ── Iluminación de 3 puntos (clave/relleno/contraluz) - estándar
+        // de fotografía de producto, no una luz ambiental sola ──
+        scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+        const luzClave = new THREE.DirectionalLight(0xffffff, 1.6);
+        luzClave.position.set(3, 4, 4);
+        scene.add(luzClave);
+        const luzRelleno = new THREE.DirectionalLight(0x8b6cff, 0.6); // ← --color-acento
+        luzRelleno.position.set(-4, 1, 2);
+        scene.add(luzRelleno);
+        const contraluz = new THREE.DirectionalLight(0xffffff, 0.8);
+        contraluz.position.set(0, 3, -5);
+        scene.add(contraluz);
+
+        // ── "Producto" armado con primitivas del core (sustituir por
+        // un modelo real cuando exista, ver cargar-modelo-gltf.html) ──
+        const producto = new THREE.Group();
+        const cuerpo = new THREE.Mesh(
+          new THREE.CylinderGeometry(1, 1.05, 2.4, 48),
+          new THREE.MeshStandardMaterial({ color: 0xe8e4da, metalness: 0.15, roughness: 0.35 })
+        );
+        producto.add(cuerpo);
+        const tapa = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.75, 0.75, 0.4, 48),
+          new THREE.MeshStandardMaterial({ color: 0x8b6cff, metalness: 0.6, roughness: 0.25 }) // ← --color-acento
+        );
+        tapa.position.y = 1.4;
+        producto.add(tapa);
+        const anillo = new THREE.Mesh(
+          new THREE.TorusGeometry(1.02, 0.05, 16, 48),
+          new THREE.MeshStandardMaterial({ color: 0x8b6cff, metalness: 0.7, roughness: 0.2 })
+        );
+        anillo.rotation.x = Math.PI / 2;
+        anillo.position.y = -0.5;
+        producto.add(anillo);
+        scene.add(producto);
+
+        // ── "Trackball" real con quaternions: el objeto gira como si lo
+        // tuvieras en la mano, en CUALQUIER eje combinado - no en solo
+        // dos ejes sueltos (rotation.x += dy / rotation.y += dx, que es
+        // mas dificil de controlar: arrastrar en diagonal no gira en
+        // diagonal, y cerca de los polos se siente "atascado"). Aca el
+        // eje de giro se calcula en cada arrastre a partir de la
+        // direccion del gesto en pantalla (perpendicular a esa
+        // direccion), y la rotacion se aplica en espacio de CAMARA con
+        // 'premultiply' - por eso "arrastrar hacia la derecha" siempre
+        // gira hacia el mismo lado sin importar como este orientado el
+        // objeto en ese momento. Es la tecnica estandar de cualquier
+        // visor 3D profesional (Sketchfab, configuradores reales) y
+        // ademas evita el gimbal lock de manipular rotation.x/y/z
+        // sueltos.
+        let arrastrando = false;
+        let ultimoX = 0, ultimoY = 0;
+        const spin = new THREE.Quaternion(); // ultimo impulso de giro, para la inercia
+        const idIdentidad = new THREE.Quaternion();
+        const idle = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0.004);
+
+        function girarPorArrastre(dx, dy) {
+          if (dx === 0 && dy === 0) return;
+          const sensibilidad = 0.006;
+          // Eje perpendicular al gesto: combina X e Y del modelo (y su
+          // diagonal si el gesto es diagonal) en una sola rotacion natural.
+          const eje = new THREE.Vector3(dy, dx, 0).normalize();
+          const angulo = Math.sqrt(dx * dx + dy * dy) * sensibilidad;
+          spin.setFromAxisAngle(eje, angulo);
+          producto.quaternion.premultiply(spin);
+        }
+
+        canvas.addEventListener('pointerdown', (e) => {
+          arrastrando = true;
+          canvas.classList.add('arrastrando');
+          ultimoX = e.clientX; ultimoY = e.clientY;
+          canvas.setPointerCapture(e.pointerId);
+        });
+        canvas.addEventListener('pointermove', (e) => {
+          if (!arrastrando) return;
+          girarPorArrastre(e.clientX - ultimoX, e.clientY - ultimoY);
+          ultimoX = e.clientX; ultimoY = e.clientY;
+        });
+        const soltar = () => { arrastrando = false; canvas.classList.remove('arrastrando'); };
+        canvas.addEventListener('pointerup', soltar);
+        canvas.addEventListener('pointerleave', soltar);
+
+        addEventListener('resize', () => {
+          camera.aspect = innerWidth / innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(innerWidth, innerHeight);
+        });
+
+        (function animar() {
+          requestAnimationFrame(animar);
+
+          if (!arrastrando) {
+            // Inercia: sigue girando con el ultimo impulso, que se atenua
+            // solo (slerp hacia "sin giro") hasta volver a la auto-rotacion
+            // de reposo en Y - sin ningun tope artificial de angulo, el
+            // objeto puede voltearse libremente como uno real.
+            const anguloRestante = 2 * Math.acos(Math.min(1, Math.abs(spin.w)));
+            if (anguloRestante > 0.0006) {
+              producto.quaternion.premultiply(spin);
+              spin.slerp(idIdentidad, 0.06);
+            } else {
+              producto.quaternion.premultiply(idle);
+            }
+          }
+
+          renderer.render(scene, camera);
+        })();
+      }
+    }
+  </script>
+</body>
+</html>

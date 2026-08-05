@@ -1,0 +1,68 @@
+[
+  {
+    "id": "office-word-manual-bold-instead-of-heading-style",
+    "language_or_domain": "office_word",
+    "tags": ["word", "structure", "accessibility"],
+    "problem_description": "Dar formato de 'titulo' a un texto solo con negrita/tamaño de fuente mas grande, en vez de aplicar un estilo de Titulo real (Heading 1/2/3), rompe el panel de navegacion del documento, impide generar una tabla de contenidos automatica, y es invisible para lectores de pantalla que dependen de la jerarquia de encabezados reales para navegar.",
+    "why_small_models_fail": "El modelo (o la herramienta de generacion que arma el .docx) prioriza que el titulo 'se vea' como titulo visualmente, sin aplicar el estilo semantico subyacente que Word usa para construir la estructura navegable del documento.",
+    "correct_approach": "Aplicar siempre estilos de Titulo reales (Heading 1, Heading 2, etc.) a los encabezados de seccion, nunca simular la apariencia con negrita/tamaño manual.",
+    "bad_example": "Texto en negrita, tamaño 16, sin estilo de parrafo aplicado, usado como si fuera un titulo de seccion.",
+    "good_example": "Parrafo con estilo 'Heading 1' aplicado explicitamente - genera entrada en el panel de navegacion y en la tabla de contenidos automatica.",
+    "source": "Microsoft docs - 'Make your Word documents accessible', uso de estilos de titulo"
+  },
+  {
+    "id": "office-word-heading-hierarchy-level-skip",
+    "language_or_domain": "office_word",
+    "tags": ["word", "structure"],
+    "problem_description": "Saltar de un Heading 1 directamente a un Heading 3 sin un Heading 2 intermedio rompe la logica del esquema del documento: la tabla de contenidos y el panel de navegacion muestran una jerarquia que no refleja la organizacion real del contenido, y confunde a quien navega el documento por su estructura.",
+    "why_small_models_fail": "El modelo elige el nivel de encabezado en base a 'que tan importante se ve' el texto en el momento, sin rastrear consistentemente el nivel jerarquico que ya vino usando en secciones anteriores del mismo documento.",
+    "correct_approach": "Verificar, antes de asignar un nivel de encabezado, que sea exactamente un nivel mas profundo que el encabezado padre inmediato - nunca saltar niveles hacia abajo en la jerarquia.",
+    "bad_example": "Titulo del documento (Heading 1)\n  Subseccion (Heading 3) -- salto de nivel, falta un Heading 2 intermedio",
+    "good_example": "Titulo del documento (Heading 1)\n  Seccion (Heading 2)\n    Subseccion (Heading 3)",
+    "source": "Microsoft docs - Document outline y accesibilidad de estructura de encabezados"
+  },
+  {
+    "id": "office-word-manual-numbering-instead-of-list-style",
+    "language_or_domain": "office_word",
+    "tags": ["word", "lists"],
+    "problem_description": "Escribir '1.', '2.', '3.' como texto literal en vez de usar el estilo de lista numerada real de Word hace que insertar o borrar un elemento requiera renumerar todo a mano - y es facil que la numeracion quede inconsistente si se edita el documento despues sin volver a revisar cada numero.",
+    "why_small_models_fail": "El modelo/la herramienta de generacion produce el texto '1. primer punto\\n2. segundo punto' porque es la forma mas directa de expresar una lista en texto plano, sin aplicar el objeto de lista numerada nativo del formato .docx.",
+    "correct_approach": "Usar el estilo de lista numerada nativo (add_paragraph con style='List Number' en python-docx, o el equivalente segun la libreria) en vez de escribir los numeros como parte del texto.",
+    "bad_example": "1. Revisar el contrato\n2. Firmar el contrato\n3. Enviar copia al cliente\n(todo como texto plano dentro de parrafos normales)",
+    "good_example": "Tres parrafos con estilo 'List Number' aplicado - Word mantiene la numeracion automaticamente aunque se inserten o borren elementos despues.",
+    "source": "python-docx docs - List styles; Microsoft docs - Numbered lists"
+  },
+  {
+    "id": "office-word-table-header-row-not-marked",
+    "language_or_domain": "office_word",
+    "tags": ["word", "tables", "accessibility"],
+    "problem_description": "Una tabla de datos sin marcar explicitamente la fila de encabezado como fila de encabezado repetida no repite esos encabezados si la tabla se parte entre paginas, y los lectores de pantalla no pueden asociar cada celda de datos con el encabezado de su columna - el contenido de la tabla se vuelve ambiguo fuera del contexto visual inmediato.",
+    "why_small_models_fail": "La generacion de la tabla se enfoca en que los datos esten en las celdas correctas; marcar la primera fila como 'repeat as header row' es un paso adicional de formato que no afecta la apariencia en una tabla corta de una sola pagina, asi que se omite sin que se note en pruebas simples.",
+    "correct_approach": "Marcar siempre la primera fila de cualquier tabla de datos como fila de encabezado repetida, y usar el estilo de tabla con encabezado (Table Header) en vez de negrita manual sobre una fila cualquiera.",
+    "bad_example": "Tabla de 50 filas con la primera fila en negrita manual, sin marcar como 'repeat header row' - en la pagina 2 no se ve a que corresponde cada columna.",
+    "good_example": "Tabla con la primera fila marcada como encabezado repetido - se repite automaticamente en cada pagina donde continua la tabla.",
+    "source": "Microsoft docs - 'Repeat table header on subsequent pages'"
+  },
+  {
+    "id": "office-word-inconsistent-terminology-across-document",
+    "language_or_domain": "office_word",
+    "tags": ["word", "clarity"],
+    "problem_description": "Referirse al mismo concepto con terminos distintos en distintas secciones del mismo documento (ej. 'cliente', 'usuario' y 'comprador' para la misma entidad en un contrato o especificacion) crea ambiguedad sobre si son la misma cosa o entidades distintas - especialmente grave en documentos legales o tecnicos donde la precision del termino importa.",
+    "why_small_models_fail": "Al generar secciones distintas del documento (posiblemente en llamadas o pasadas separadas), el modelo no siempre mantiene un glosario interno consistente de que termino usar para cada concepto, variando la palabra elegida segun lo que suene mejor en cada oracion individual.",
+    "correct_approach": "Definir explicitamente los terminos clave una vez (idealmente en una seccion de definiciones si el documento lo amerita) y reutilizar exactamente esa misma palabra en todo el documento para ese concepto, sin sinonimos 'por variedad'.",
+    "bad_example": "Seccion 1: 'el cliente debera notificar...'\nSeccion 3: 'el usuario podra solicitar...'\nSeccion 5: 'el comprador tiene derecho a...'\n(las tres se refieren a la misma parte del contrato)",
+    "good_example": "Seccion 1: 'el Cliente debera notificar...'\nSeccion 3: 'el Cliente podra solicitar...'\nSeccion 5: 'el Cliente tiene derecho a...'\n(termino definido una vez y reutilizado consistentemente)",
+    "source": "Buenas practicas de redaccion tecnica/legal - consistencia terminologica"
+  },
+  {
+    "id": "office-word-missing-alt-text-images",
+    "language_or_domain": "office_word",
+    "tags": ["word", "accessibility", "images"],
+    "problem_description": "Insertar imagenes, graficos o capturas de pantalla sin texto alternativo (alt text) hace que el contenido sea invisible para lectores de pantalla y que se pierda toda la informacion transmitida por la imagen si esta no llega a cargar o mostrarse.",
+    "why_small_models_fail": "Insertar la imagen 'resuelve' la tarea visualmente (el documento se ve completo), y el campo de texto alternativo es un metadato adicional que no afecta la apariencia inmediata del documento, por lo que se omite salvo que se pida explicitamente.",
+    "correct_approach": "Agregar siempre una descripcion breve y especifica en el texto alternativo de cualquier imagen/grafico que transmita informacion relevante para entender el documento (no decorativa).",
+    "bad_example": "Imagen insertada (un grafico de barras con las ventas trimestrales) sin ningun texto alternativo configurado.",
+    "good_example": "Imagen insertada con texto alternativo: 'Grafico de barras: ventas trimestrales 2024, con crecimiento del 12% en Q3 respecto a Q2.'",
+    "source": "Microsoft docs - 'Everything you need to know to write effective alt text'"
+  }
+]

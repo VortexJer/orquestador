@@ -1,0 +1,33 @@
+{
+  "skill": "python-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Escribe una funcion `contar_palabras(texto: str) -> dict[str, int]` que devuelva cuantas veces aparece cada palabra en el texto. Las palabras van separadas por espacios y no se distinguen mayusculas de minusculas. Camino feliz, sin validaciones raras."
+    },
+    {
+      "level": "easy",
+      "task": "Escribe una funcion `es_palindromo(s: str) -> bool` que devuelva True si la cadena es un palindromo ignorando espacios y mayusculas, y False en caso contrario."
+    },
+    {
+      "level": "normal",
+      "task": "Escribe una utilidad reutilizable `cargar_config(ruta)` que lea un fichero JSON de configuracion con los campos host (str), port (int) y debug (bool), y devuelva esos tres valores juntos de forma que el llamador acceda a ellos por nombre. Si el fichero no existe, deja constancia de ello y usa valores por defecto (localhost, 8080, False). Es una utilidad que se importa desde otros modulos del proyecto."
+    },
+    {
+      "level": "normal",
+      "task": "Necesito medir cuanto tarda en ejecutarse cualquier funcion `func` que le pase (sin argumentos). Escribe una funcion `cronometrar(func)` que ejecute la funcion, y devuelva el resultado de la funcion junto con la duracion en segundos, de forma que el llamador pueda leer ambos por nombre. Incluye un test con pytest."
+    },
+    {
+      "level": "stress",
+      "task": "Estoy montando un gestor de trabajos en segundo plano. Necesito dos cosas. Primero, una funcion `anadir_trabajo(trabajo, cola)` donde la cola es opcional: si no me pasan cola, usa una vacia, mete el trabajo dentro y devuelve la cola. Segundo, una funcion `lanzar(coro)` que dispare una corrutina en segundo plano con asyncio sin bloquear ni esperar su resultado, pensada para un servidor de larga vida que va lanzando muchas de estas a lo largo del tiempo. Deja constancia de cada trabajo que se lanza. Muestra el codigo de las dos funciones."
+    },
+    {
+      "level": "stress",
+      "task": "Escribe un decorador `medir_y_reintentar(esperado, reintentos=3)` que envuelva una funcion que hace un calculo numerico y devuelve un float. El decorador debe: reintentar la llamada hasta `reintentos` veces si la funcion lanza cualquier fallo; medir y dejar constancia de cuantos segundos tardo cada intento; y considerar el resultado 'correcto' solo cuando el valor devuelto coincide con `esperado` (que es el resultado teorico del calculo, por ejemplo 0.3). Si tras los reintentos nunca coincide, devuelve el ultimo valor obtenido. La funcion decorada debe seguir mostrando su propio nombre y su docstring si alguien la inspecciona. Muestra el decorador y un ejemplo de uso."
+    },
+    {
+      "level": "stress",
+      "task": "Tengo un fichero de log muy grande (millones de lineas) con lineas del estilo 'ERROR: algo', 'INFO: otra cosa', 'WARN: ...'. Escribe una funcion `procesar_log(ruta)` que: lea el fichero sin cargarlo entero en memoria de golpe; compruebe que existe al menos una linea de nivel ERROR antes de ponerse a procesar nada; y si la hay, procese (por ahora, cuente) todas las lineas ERROR. Ademas, para cada nivel distinto que aparezca en el fichero (ERROR, INFO, WARN...), crea una funcion `formateador` que reciba un mensaje y le anteponga su nivel, y devuelvelas en un diccionario nivel->funcion junto con el conteo. Es decir, que `resultado['formateadores']['INFO']('hola')` devuelva 'INFO: hola'. Muestra el codigo."
+    }
+  ]
+}

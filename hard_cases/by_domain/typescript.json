@@ -1,0 +1,79 @@
+[
+  {
+    "id": "ts-promise-all-swallows-errors",
+    "language_or_domain": "typescript",
+    "tags": ["async", "error-handling", "typescript"],
+    "problem_description": "Promise.all([...]) rechaza en cuanto la primera promesa falla; las demas promesas siguen corriendo y, si tambien rechazan, se convierten en unhandled rejections que no llegan al catch del caller.",
+    "why_small_models_fail": "El modelo asocia 'ejecutar en paralelo' directamente con Promise.all por frecuencia de uso en el corpus, sin considerar el caso donde varias fallan a la vez.",
+    "correct_approach": "Usar Promise.allSettled([...]) cuando se necesita el resultado de cada tarea independientemente de si otras fallan, e inspeccionar el status de cada resultado.",
+    "bad_example": "const results = await Promise.all(tasks.map(t => run(t)));",
+    "good_example": "const settled = await Promise.allSettled(tasks.map(t => run(t)));\nconst failures = settled.filter(r => r.status === \"rejected\");",
+    "source": "MDN - Promise.allSettled"
+  },
+  {
+    "id": "ts-structural-typing-excess-property",
+    "language_or_domain": "typescript",
+    "tags": ["type-system", "typescript"],
+    "problem_description": "TypeScript solo aplica el chequeo de propiedades excedentes sobre literales de objeto asignados directamente; si el mismo objeto se guarda antes en una variable, la comprobacion estructural lo deja pasar aunque tenga propiedades extra no declaradas en el tipo.",
+    "why_small_models_fail": "El modelo trata el chequeo de tipos como una propiedad del tipo en abstracto, no como una regla que depende de la forma sintactica de la asignacion.",
+    "correct_approach": "No depender del excess-property-check para detectar typos en claves; usar tipos exactos (satisfies) o validacion en runtime (zod) cuando el dato viene de fuera del programa.",
+    "bad_example": "const cfg = { host: \"x\", tiemout: 10 };\nconst c: Config = cfg; // no marca error, 'tiemout' no existe en Config",
+    "good_example": "const c = { host: \"x\", tiemout: 10 } satisfies Config; // ahora si marca el typo",
+    "source": "TypeScript Handbook - Excess Property Checks"
+  },
+  {
+    "id": "ts-enum-reverse-mapping-pollution",
+    "language_or_domain": "typescript",
+    "tags": ["enums", "typescript"],
+    "problem_description": "Los enums numericos de TypeScript generan una 'reverse mapping' en tiempo de ejecucion: el objeto compilado tiene tanto las claves con nombre como las claves numericas apuntando al nombre. Iterar con Object.keys(MiEnum) devuelve el doble de entradas de las esperadas (nombres + indices).",
+    "why_small_models_fail": "El modelo trata al enum como una construccion puramente de tipos (como en otros lenguajes tipados), sin modelar que TypeScript lo compila a un objeto JS real con esa reverse mapping.",
+    "correct_approach": "Si se necesita iterar los valores, usar un enum de strings (sin reverse mapping) o un 'as const' con un objeto literal en vez de enum numerico.",
+    "bad_example": "enum Estado { Activo, Inactivo }\nObject.keys(Estado); // [\"0\",\"1\",\"Activo\",\"Inactivo\"]",
+    "good_example": "enum Estado { Activo = \"ACTIVO\", Inactivo = \"INACTIVO\" }\nObject.keys(Estado); // [\"Activo\",\"Inactivo\"] - sin reverse mapping numerica",
+    "source": "TypeScript Handbook - Enums, Reverse mappings"
+  },
+  {
+    "id": "ts-non-null-assertion-hides-runtime-error",
+    "language_or_domain": "typescript",
+    "tags": ["type-system", "null-safety", "typescript"],
+    "problem_description": "El operador de aserción no-nula (valor!) silencia el error del compilador pero no agrega ninguna comprobacion en runtime; si el valor efectivamente es null/undefined en produccion, el programa explota con un TypeError generico en vez de manejarse como caso esperado.",
+    "why_small_models_fail": "El modelo usa `!` como atajo para 'hacer compilar' cuando el tipo es Opcional, tratandolo como equivalente a una validacion real, cuando solo es una promesa al compilador sin respaldo en ejecucion.",
+    "correct_approach": "Usar un chequeo explicito (if/early return, o el operador ??) que maneje el caso null/undefined en vez de silenciarlo con !.",
+    "bad_example": "function getName(user: User | undefined) {\n  return user!.name; // explota en runtime si user es undefined\n}",
+    "good_example": "function getName(user: User | undefined) {\n  if (!user) throw new Error(\"user requerido\");\n  return user.name;\n}",
+    "source": "TypeScript Handbook - Non-null Assertion Operator"
+  },
+  {
+    "id": "ts-readonly-array-shallow-immutability",
+    "language_or_domain": "typescript",
+    "tags": ["type-system", "immutability", "typescript"],
+    "problem_description": "readonly T[] (o Readonly<T[]>) solo impide reasignar el array y usar metodos mutadores de nivel superior (push, splice); los objetos anidados dentro de cada elemento siguen siendo completamente mutables.",
+    "why_small_models_fail": "El modelo asume que 'readonly' se propaga recursivamente como en algunos otros lenguajes/frameworks, cuando en TypeScript es shallow por defecto.",
+    "correct_approach": "Si se necesita inmutabilidad profunda, aplicar Readonly recursivamente (tipo utilitario propio o una libreria) o congelar con Object.freeze en runtime ademas del tipo.",
+    "bad_example": "function process(items: readonly Item[]) {\n  items[0].price = 0; // compila sin error, el objeto interno no es readonly\n}",
+    "good_example": "type DeepReadonly<T> = { readonly [K in keyof T]: DeepReadonly<T[K]> };\nfunction process(items: readonly DeepReadonly<Item>[]) {\n  // items[0].price = 0 ahora si marca error de tipos\n}",
+    "source": "TypeScript Handbook - Readonly Array and Tuple Types"
+  },
+  {
+    "id": "ts-array-foreach-async-doesnt-await",
+    "language_or_domain": "typescript",
+    "tags": ["async", "arrays", "typescript"],
+    "problem_description": "Array.prototype.forEach no espera callbacks async: array.forEach(async item => ...) dispara todas las iteraciones en paralelo sin esperar ninguna, y cualquier error dentro se convierte en una promesa rechazada no manejada (unhandled rejection) en vez de propagarse al try/catch que envuelve el forEach.",
+    "why_small_models_fail": "forEach con una arrow function async 'parece' secuencial por la sintaxis, y el modelo no modela que forEach ignora el valor de retorno (la Promise) de cada callback.",
+    "correct_approach": "Usar un for...of con await dentro (secuencial) o Promise.all(array.map(async ...)) (paralelo, con errores propagables) segun se necesite.",
+    "bad_example": "items.forEach(async (item) => {\n  await save(item);\n});\nconsole.log(\"listo\"); // se imprime ANTES de que termine ningun save",
+    "good_example": "for (const item of items) {\n  await save(item);\n}\nconsole.log(\"listo\"); // ahora si espera a que terminen todos",
+    "source": "MDN - Array.prototype.forEach, nota sobre callbacks asincronos"
+  },
+  {
+    "id": "ts-narrowing-lost-in-closure",
+    "language_or_domain": "typescript",
+    "tags": ["type-system", "closures", "typescript"],
+    "problem_description": "TypeScript angosta el tipo de una variable tras un chequeo (typeof/instanceof/truthy), pero si esa variable es mutable (let, no const) y se la usa dentro de una funcion anidada (closure, callback de setTimeout, etc.), el compilador descarta el angostamiento porque no puede garantizar que no cambio antes de que el closure se ejecute.",
+    "why_small_models_fail": "El modelo confia en que el chequeo previo 'ya probo' el tipo y sigue usandolo sin re-chequear dentro del closure, generando un error de compilacion (o forzando un 'as' inseguro para silenciarlo) en vez de resolver la causa real.",
+    "correct_approach": "Copiar el valor angostado a una constante local antes de entrar al closure, o volver a chequear el tipo dentro del callback.",
+    "bad_example": "function schedule(value: string | null) {\n  if (value !== null) {\n    setTimeout(() => {\n      console.log(value.toUpperCase()); // error: value es 'string | null' aca\n    }, 100);\n  }\n}",
+    "good_example": "function schedule(value: string | null) {\n  if (value !== null) {\n    const narrowed = value;\n    setTimeout(() => {\n      console.log(narrowed.toUpperCase()); // ok, narrowed es 'string' y no puede reasignarse\n    }, 100);\n  }\n}",
+    "source": "TypeScript Handbook - Type Narrowing, control flow analysis"
+  }
+]

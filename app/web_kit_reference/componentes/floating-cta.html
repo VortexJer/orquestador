@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Floating CTA — botón flotante sticky</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #f5f4f0; color: #1a1a1a;
+         min-height: 300vh; padding: 2rem; }
+
+  /* Contenido de relleno para que haya scroll */
+  .contenido { max-width: 600px; margin: 0 auto; padding-top: 4rem; }
+  .contenido h1 { font-size: 2rem; margin-bottom: 1rem; }
+  .contenido p  { color: #666; line-height: 1.8; margin-bottom: 1.5rem; }
+
+  /* ============================================================
+     FLOATING CTA — se muestra cuando el usuario ha hecho scroll
+     y desaparece cuando llega al footer (para no solaparse).
+
+     Úsalo para: "Reservar", "Contactar", "Llamar", etc.
+  ============================================================ */
+
+  .floating-cta {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 100;
+
+    /* Estado inicial: oculto abajo */
+    transform: translateY(calc(100% + 2rem));
+    opacity: 0;
+    transition: transform .4s cubic-bezier(.22,1,.36,1), opacity .4s ease;
+  }
+
+  /* Visible cuando JS añade .mostrar */
+  .floating-cta.mostrar {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  .floating-cta a {
+    display: flex; align-items: center; gap: .75rem;
+    background: #e07a3f; color: #fff;
+    padding: 1rem 1.75rem; border-radius: 100px;
+    text-decoration: none; font-weight: 700; font-size: 1rem;
+    box-shadow: 0 8px 30px rgba(224,122,63,.45);
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .floating-cta a:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px rgba(224,122,63,.55);
+  }
+  .floating-cta .icono { font-size: 1.1rem; }
+
+  /* ── Variante: barra inferior ancha (móvil-first) ── */
+  .floating-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 1rem;
+    background: rgba(13,13,13,.95);
+    backdrop-filter: blur(12px);
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem;
+    transform: translateY(100%);
+    transition: transform .4s cubic-bezier(.22,1,.36,1);
+  }
+  .floating-bar.mostrar { transform: translateY(0); }
+  .floating-bar p { color: #fff; font-size: .9rem; }
+  .floating-bar a {
+    background: #e07a3f; color: #fff; padding: .75rem 1.5rem;
+    border-radius: 8px; text-decoration: none; font-weight: 700;
+    white-space: nowrap; flex-shrink: 0;
+  }
+
+  /* Ocultar barra en escritorio donde el botón flotante es suficiente */
+  @media (min-width: 600px) { .floating-bar { display: none; } }
+  @media (max-width: 599px) { .floating-cta { display: none; } }
+</style>
+</head>
+<body>
+
+  <div class="contenido">
+    <h1>Haz scroll hacia abajo</h1>
+    <p>Después de 300px de scroll aparecerá el botón flotante en la esquina inferior derecha (escritorio) o la barra en la parte inferior (móvil).</p>
+    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p>
+    <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident.</p>
+  </div>
+
+  <!-- Botón flotante (escritorio) -->
+  <div class="floating-cta" id="floatingCta">
+    <a href="tel:679301382">
+      <span class="icono">📞</span>
+      Reservar mesa
+    </a>
+  </div>
+
+  <!-- Barra inferior (móvil) -->
+  <div class="floating-bar" id="floatingBar">
+    <p>¿Listo para visitarnos?</p>
+    <a href="tel:679301382">Llamar ahora</a>
+  </div>
+
+<script>
+  const cta = document.getElementById('floatingCta');
+  const bar = document.getElementById('floatingBar');
+  const UMBRAL = 300; // px de scroll antes de mostrar
+
+  // Selector del footer (para ocultar el CTA cuando llega al final)
+  // const footer = document.querySelector('footer');
+
+  let visible = false;
+
+  window.addEventListener('scroll', () => {
+    const debeVerseAhora = window.scrollY > UMBRAL;
+
+    if (debeVerseAhora !== visible) {
+      visible = debeVerseAhora;
+      cta.classList.toggle('mostrar', visible);
+      bar.classList.toggle('mostrar', visible);
+    }
+  }, { passive: true });
+</script>
+</body>
+</html>

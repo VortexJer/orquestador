@@ -1,0 +1,33 @@
+{
+  "skill": "sql-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Tengo una tabla empleados(id, nombre, departamento, salario). Escribe una consulta que devuelva los 10 empleados con salario mas alto, mostrando nombre, departamento y salario."
+    },
+    {
+      "level": "easy",
+      "task": "Tabla pedidos(id, cliente_id, importe, estado). Cuenta cuantos pedidos hay por estado."
+    },
+    {
+      "level": "normal",
+      "task": "Tengo clientes(id, nombre) y pedidos(id, cliente_id, importe). Quiero los 5 clientes que mas han gastado en total, con su nombre y su gasto total, ordenados de mayor a menor. Un cliente sin ningun pedido no debe aparecer."
+    },
+    {
+      "level": "normal",
+      "task": "Tabla facturas(id, cliente_id, fecha_emision, total). fecha_emision esta indexada y la tabla tiene millones de filas en produccion. Dame el total facturado durante el año 2024."
+    },
+    {
+      "level": "stress",
+      "task": "Tengo pedidos(id, cliente_id, fecha, importe) y una tabla clientes_bloqueados(cliente_id) donde cliente_id puede venir a NULL en algunas filas por como se carga. Quiero los pedidos de clientes que NO esten bloqueados, y de esos solo los del ultimo año. La tabla de pedidos es enorme en produccion, asi que la consulta tiene que poder usar el indice de fecha."
+    },
+    {
+      "level": "stress",
+      "task": "Dos cosas. Uno: una operacion que lea el saldo de la cuenta con id 1 y, si tiene 50 o mas, le descuente 50; tiene que ser segura si varias transacciones tocan la misma cuenta a la vez. Dos: un borrado de sesiones caducadas para una tarea de limpieza; el WHERE lo voy a montar concatenando filtros opcionales (fecha, usuario) que pueden venir todos vacios."
+    },
+    {
+      "level": "stress",
+      "task": "Tabla ventas(id, vendedor, importe, fecha). Para cada venta quiero ver su posicion dentro de las ventas de su vendedor (la venta mas alta del vendedor es la posicion 1, y si dos empatan en importe deben compartir posicion) y ademas, en la misma fila, cual es la venta mas alta de ese vendedor. Y al final quiero quedarme solo con las ventas que estan entre las 3 mas altas de su vendedor."
+    }
+  ]
+}

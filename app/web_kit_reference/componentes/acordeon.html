@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Acordeón (FAQ)</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #fafaf9; color: #1c1917;
+         max-width: 640px; margin: 0 auto; padding: 4rem 1.5rem; }
+  h1 { margin-bottom: 2rem; }
+  .item { border-bottom: 1px solid #e7e5e4; }
+  .pregunta { width: 100%; text-align: left; background: none; border: none;
+    padding: 1.3rem 0; font-size: 1.05rem; font-weight: 500; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center; color: inherit; }
+  .pregunta .icono { transition: transform .3s ease; color: #f97316; font-size: 1.4rem; }
+  .pregunta[aria-expanded="true"] .icono { transform: rotate(45deg); }
+
+  /* el truco para animar altura: grid-template-rows de 0fr a 1fr */
+  .respuesta { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s ease; }
+  .respuesta.abierta { grid-template-rows: 1fr; }
+  .respuesta > div { overflow: hidden; }
+  .respuesta p { margin: 0 0 1.3rem; color: #57534e; line-height: 1.6; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .respuesta, .icono { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <h1>Preguntas frecuentes</h1>
+  <div id="acordeon">
+    <div class="item">
+      <button class="pregunta" aria-expanded="false"><span>¿Cómo funciona este acordeón?</span><span class="icono">+</span></button>
+      <div class="respuesta"><div><p>Al pulsar la pregunta se despliega la respuesta. Solo se anima la altura con un truco de CSS grid (0fr → 1fr), que es la forma limpia de animar alturas desconocidas.</p></div></div>
+    </div>
+    <div class="item">
+      <button class="pregunta" aria-expanded="false"><span>¿Es accesible?</span><span class="icono">+</span></button>
+      <div class="respuesta"><div><p>Sí: usa botones reales, atributo aria-expanded que cambia, y funciona con teclado (Tab + Enter).</p></div></div>
+    </div>
+    <div class="item">
+      <button class="pregunta" aria-expanded="false"><span>¿Puedo abrir varios a la vez?</span><span class="icono">+</span></button>
+      <div class="respuesta"><div><p>Por defecto sí. Si quieres que solo uno esté abierto a la vez (tipo acordeón estricto), descomenta la línea marcada en el JS.</p></div></div>
+    </div>
+  </div>
+
+<script>
+  document.querySelectorAll('.pregunta').forEach((boton) => {
+    boton.addEventListener('click', () => {
+      const abierto = boton.getAttribute('aria-expanded') === 'true';
+
+      // Para modo "solo uno abierto", descomenta este bloque:
+      // document.querySelectorAll('.pregunta').forEach((b) => {
+      //   b.setAttribute('aria-expanded', 'false');
+      //   b.nextElementSibling.classList.remove('abierta');
+      // });
+
+      boton.setAttribute('aria-expanded', String(!abierto));
+      boton.nextElementSibling.classList.toggle('abierta', !abierto);
+    });
+  });
+</script>
+</body>
+</html>

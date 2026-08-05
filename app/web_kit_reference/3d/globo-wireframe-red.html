@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Globo wireframe con red de conexiones — presencia global/tech (15.13)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body { font-family: system-ui, sans-serif; color: #fff; overflow: hidden; }
+
+  /* ================================================================
+     GLOBO + RED DE CONEXIONES — un planeta wireframe con puntos sobre
+     la superficie unidos por arcos, look "presencia internacional /
+     red de datos". Encaja en negocios tech/SaaS/logística/consultoría
+     con alcance multi-ciudad o que quieren transmitir escala/alcance -
+     NO lo uses en un negocio de barrio, ahí desentona por completo.
+
+     Los arcos son curvas de Bezier que se elevan por ENCIMA de la
+     esfera (no líneas rectas atravesándola) - así se leen como rutas
+     sobre la superficie, no como flechas que la cruzan por dentro.
+
+     AUTOALOJAR: mismo proceso que hero-objeto-flotante.html.
+  ================================================================ */
+
+  .seccion-globo {
+    position: relative; height: 100%;
+    background: radial-gradient(circle at 50% 50%, #10131f, #05060a);
+    display: grid; place-items: center; text-align: center;
+  }
+  #globo-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .contenido { position: relative; z-index: 1; padding: 2rem; pointer-events: none; }
+  .contenido h1 { font-size: clamp(2rem, 6vw, 3.5rem); font-weight: 800; text-shadow: 0 4px 30px rgba(0,0,0,.7); }
+</style>
+</head>
+<body>
+  <section class="seccion-globo">
+    <canvas id="globo-3d"></canvas>
+    <div class="contenido"><h1>Alcance global</h1></div>
+  </section>
+
+  <script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+  <script type="module">
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const canvas = document.getElementById('globo-3d');
+    if (reduce) {
+      canvas.style.display = 'none';
+    } else {
+      const THREE = await import('three');
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 100);
+      camera.position.set(0, 0.5, 7);
+
+      let renderer = null;
+      try {
+        renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      } catch (e) {
+        canvas.style.display = 'none';
+      }
+
+      if (renderer) {
+        renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+        renderer.setSize(innerWidth, innerHeight);
+
+        const grupo = new THREE.Group();
+
+        // ── Esfera wireframe limpia (EdgesGeometry evita la maraña
+        // diagonal de un material.wireframe=true directo) ──
+        const radio = 2.2;
+        const esferaGeom = new THREE.SphereGeometry(radio, 24, 16);
+        const bordes = new THREE.EdgesGeometry(esferaGeom);
+        const wireframe = new THREE.LineSegments(
+          bordes,
+          new THREE.LineBasicMaterial({ color: 0x2c3a5a, transparent: true, opacity: 0.5 })
+        );
+        grupo.add(wireframe);
+
+        // ── Puntos sobre la superficie, distribuidos con espiral de
+        // Fibonacci (reparto uniforme real, no aleatorio con huecos) ──
+        const N = 40;
+        const puntos = [];
+        for (let i = 0; i < N; i++) {
+          const y = 1 - (i / (N - 1)) * 2;
+          const r = Math.sqrt(1 - y * y);
+          const theta = Math.PI * (1 + Math.sqrt(5)) * i;
+          const p = new THREE.Vector3(Math.cos(theta) * r, y, Math.sin(theta) * r).multiplyScalar(radio);
+          puntos.push(p);
+          const nodo = new THREE.Mesh(
+            new THREE.SphereGeometry(0.035, 8, 8),
+            new THREE.MeshBasicMaterial({ color: 0x8b6cff }) // ← --color-acento
+          );
+          nodo.position.copy(p);
+          grupo.add(nodo);
+        }
+
+        // ── Arcos: algunos pares de puntos unidos por una curva que se
+        // eleva sobre la superficie, no una linea recta que la cruza ──
+        const nArcos = 14;
+        for (let i = 0; i < nArcos; i++) {
+          const a = puntos[Math.floor(Math.random() * N)];
+          const b = puntos[Math.floor(Math.random() * N)];
+          if (a === b) continue;
+          const medio = a.clone().add(b).multiplyScalar(0.5);
+          medio.setLength(radio * (1.25 + Math.random() * 0.35)); // eleva el punto de control hacia afuera
+          const curva = new THREE.QuadraticBezierCurve3(a, medio, b);
+          const geometriaArco = new THREE.BufferGeometry().setFromPoints(curva.getPoints(24));
+          const arco = new THREE.Line(
+            geometriaArco,
+            new THREE.LineBasicMaterial({ color: 0x22d3a8, transparent: true, opacity: 0.55 })
+          );
+          grupo.add(arco);
+        }
+
+        scene.add(grupo);
+
+        let targetX = 0, targetY = 0;
+        addEventListener('pointermove', (e) => {
+          targetX = (e.clientX / innerWidth - 0.5) * 2;
+          targetY = (e.clientY / innerHeight - 0.5) * 2;
+        });
+        addEventListener('resize', () => {
+          camera.aspect = innerWidth / innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(innerWidth, innerHeight);
+        });
+
+        const reloj = new THREE.Clock();
+        (function animar() {
+          requestAnimationFrame(animar);
+          const t = reloj.getElapsedTime();
+
+          grupo.rotation.y = t * 0.12; // rotación propia constante, look "planeta girando"
+          grupo.rotation.x += (targetY * 0.15 - grupo.rotation.x) * 0.03;
+          camera.position.x += (targetX * 0.6 - camera.position.x) * 0.03;
+          camera.lookAt(0, 0, 0);
+
+          renderer.render(scene, camera);
+        })();
+      }
+    }
+  </script>
+</body>
+</html>

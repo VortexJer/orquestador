@@ -1,0 +1,205 @@
+MISION
+======
+Sos Claude Code corriendo DENTRO del servidor GPU alquilado (RunPod o
+Modal, 1x NVIDIA L4 24GB) para el proyecto "Orquestador de Modelos
+Especializados". No tenes memoria de ninguna conversacion previa sobre
+esto - toda la informacion que necesitas esta en este archivo y en el
+repo que tenes al lado (docker-compose.yml, README.md, app/, config/,
+eval/, scripts/, skills/, hard_cases/). Lee la seccion "ALCANCE DEL
+CATALOGO" mas abajo antes de asumir que todo lo que ves en skills/ y
+hard_cases/ hay que activarlo en este deploy - no es asi.
+
+Contexto en una frase: es un gateway que clasifica tareas de
+programacion y las manda a modelos abiertos de 7B-24B con un ciclo de
+verificacion (lint/compilar/tests) y una base de casos dificiles (RAG),
+en vez de usar un modelo frontera enorme. Todo el codigo del
+orquestador (router heuristico, especialista Python con su ciclo de
+herramientas, RAG, gateway FastAPI) ya esta escrito y probado en modo
+"mock" (sin GPU, sin pesos reales) - se corrio, se testeo, y paso.
+Tu trabajo ahora es la parte que no se podia hacer sin GPU: bajar los
+pesos reales, levantar los servidores de inferencia, y validar que todo
+el pipeline funciona igual de bien con un modelo real.
+
+IMPORTANTE sobre los nombres de modelo de abajo: se escribieron con la
+mejor informacion disponible al momento de diseñar esto, pero los repos
+de Hugging Face cambian de nombre/version con el tiempo. Si un
+`huggingface-cli download` falla con 404, ANTES de asumir que el modelo
+ya no existe, busca en huggingface.co el repo correcto (misma familia,
+mismo tamaño, misma cuantizacion) en vez de improvisar un modelo
+distinto sin avisar. Si no encontras un equivalente razonable, para y
+reporta el problema en vez de sustituirlo silenciosamente por otra cosa.
+
+ALCANCE DEL CATALOGO - NO TE CONFUNDAS CON LO QUE VES EN EL REPO
+==================================================================
+El repo tiene bastante mas contenido del que este deploy activa. Antes
+de tocar nada, tene esto claro:
+
+- `skills/` tiene 20 archivos (12 lenguajes de codigo + seguridad + IaC
+  + creacion de sitios web + 4 tareas de oficina: correo, Word, Excel,
+  PowerPoint) y `hard_cases/by_domain/` tiene 128 casos curados
+  repartidos en esos mismos dominios. Es contenido REAL y completo, no
+  relleno. El especialista web (`web-builder-specialist`) tiene ademas
+  sus 7 herramientas (scraping, busqueda de imagenes/web, analisis
+  visual, chequeo de links, render con navegador headless real)
+  100% implementadas en `app/tools/` y probadas - pero eso tampoco
+  cambia el alcance de ESTE deploy, que sigue siendo solo Python.
+- A pesar de eso, `config/specialists.yaml` solo tiene `enabled: true`
+  en `python-specialist` y `generalist-tiny`. Ese es el alcance real de
+  este deploy de fase 1 - NO actives los demas especialistas en
+  `config/specialists.yaml` ni cambies ningun `enabled: false` a
+  `true` a menos que el usuario te lo pida explicitamente. Activar un
+  especialista nuevo implica escribir su clase en `app/specialists/`
+  (hoy solo existen `python_specialist.py` y
+  `generalist_tiny_specialist.py`) y su tool runner real en
+  `app/tools/` - es trabajo de una fase futura, no de este despliegue.
+- `config/tools_catalog.yaml` es documentacion de referencia (que
+  herramienta usar por lenguaje cuando le toque su fase), no algo que
+  este deploy necesite instalar o ejecutar.
+- `groq_agent/` es una terminal de pruebas LOCAL que el usuario corre
+  en su propia maquina contra la API de Groq (un proveedor externo,
+  nada que ver con este servidor). No la instales, no la actives, no
+  la menciones en tu reporte salvo que el usuario pregunte
+  especificamente por ella - es completamente independiente de este
+  despliegue en la L4.
+
+Tu unico trabajo real en este despliegue sigue siendo: bajar los pesos
+del router (Qwen2.5-1.5B-Instruct) y del especialista Python
+(Qwen2.5-Coder-14B-Instruct-AWQ), levantar vLLM + Qdrant, ingerir
+`hard_cases/by_domain/*.json` completo (eso si, TODOS los archivos -
+`app/rag/ingest.py` ya los carga a todos, aunque solo python-specialist
+los use activamente hoy), y validar router + carga real.
+
+REGLAS DE OPERACION
+===================
+- No expongas el puerto de la API a internet sin antes cambiar
+  API_KEYS en .env del valor de desarrollo ("dev-local-key") a algo
+  real. Si no estas seguro de si el endpoint va a quedar publico, pregunta
+  antes de abrir el puerto en el firewall/proxy del proveedor.
+- No dejes la GPU cargada con modelos mas tiempo del necesario para
+  testear una vez termines - cada segundo factura. Si el plan es dejarlo
+  corriendo en produccion, decilo explicitamente en tu reporte final en
+  vez de asumirlo.
+- No hagas cambios destructivos (borrar volumenes, `docker system prune
+  -a`, forzar reinicios) sin confirmar primero.
+- Si RunPod Serverless (contenedores efimeros con handler propio) es el
+  modo real de despliegue en vez de un Pod persistente con Docker
+  Compose, el docker-compose.yml de este repo sirve como REFERENCIA de
+  los flags correctos de vLLM, no como el mecanismo de despliegue en si
+  - vas a necesitar adaptar esto al formato de endpoint/handler de
+  RunPod Serverless. Si no es obvio cual de los dos modos es este
+  servidor, preguntale al usuario antes de asumir.
+
+PASO 1 - Verificar el entorno
+==============================
+1. Confirma que el repo esta presente (busca docker-compose.yml,
+   README.md, app/main.py) y en que directorio.
+2. Corre `nvidia-smi` y confirma que hay 1x GPU L4 con ~24GB visibles.
+3. Confirma que Docker y el nvidia-container-toolkit funcionan:
+   `docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi`
+   Si esto falla, instala/configura el toolkit antes de seguir (las
+   imagenes base de RunPod normalmente ya lo traen).
+
+PASO 2 - Bajar los pesos reales
+================================
+Candidatos (verificar nombre exacto en HF antes de bajar, ver nota de
+arriba):
+
+  - Router + validador (siempre caliente, ~1-2GB):
+    Qwen/Qwen2.5-1.5B-Instruct
+
+  - Especialista de codigo principal (Python en fase 1, ~9-11GB en AWQ):
+    Qwen/Qwen2.5-Coder-14B-Instruct-AWQ
+    (si no existe una version AWQ pre-cuantizada confiable, la
+    alternativa es bajar Qwen/Qwen2.5-Coder-14B-Instruct en bf16 y
+    cuantizar vos mismo a AWQ con AutoAWQ, o usar una GGUF Q4_K_M con
+    llama.cpp como plan B si vLLM+AWQ da problemas)
+
+  - Embedder (ya se baja solo, ver mas abajo): BAAI/bge-small-en-v1.5
+
+Usa `huggingface-cli download <repo> --local-dir <path>` o dejar que
+vLLM lo baje solo en el primer arranque (mas simple, pero el primer
+arranque tarda mas - preferible bajarlo antes a mano para separar el
+tiempo de descarga del tiempo de "ya funciona, ahora testeamos").
+
+PASO 3 - Levantar los servicios
+=================================
+1. Copia .env.example a .env si no existe, y ajusta:
+     INFERENCE_MODE=http
+     INFERENCE_BASE_URL=http://localhost:8001/v1
+     ROUTER_BASE_URL=http://localhost:8000/v1
+     QDRANT_MODE=remote
+     QDRANT_URL=http://localhost:6333
+     API_KEYS=<generar una clave real, no dejar dev-local-key>
+     ROUTER_IMPL=heuristic   <- dejar en heuristic hasta el paso 5
+
+2. `docker-compose --profile gpu up -d`
+   Esto levanta: api, qdrant, vllm-router (puerto 8000), vllm-coder
+   (puerto 8001). Revisa `docker-compose logs -f vllm-coder` hasta ver
+   que el servidor OpenAI-compatible esta escuchando (puede tardar
+   varios minutos la primera vez por la carga del modelo a VRAM).
+
+3. Ingesta la base de casos dificiles contra el Qdrant remoto (a
+   diferencia del modo embebido de desarrollo, esto SI se puede correr
+   con la API ya corriendo, sin conflicto de lock):
+     docker-compose exec api python -m app.rag.ingest
+
+PASO 4 - Smoke test
+====================
+   docker-compose exec api python scripts/smoke_test.py \
+     --base-url http://localhost:8080 --api-key <tu API key real>
+
+   Tiene que terminar en "RESULTADO: OK". Si el paso de /v1/generate
+   falla o tarda demasiado, revisa logs de vllm-coder antes de seguir -
+   no tiene sentido medir carga o accuracy sobre un backend roto.
+
+PASO 5 - Activar y evaluar el router LLM real (criterio de aceptacion)
+========================================================================
+Hasta aca todo corrio con HeuristicRouter (regex, sin LLM). Ahora que
+hay un servidor real para el router:
+
+1. Cambia ROUTER_IMPL=llm en .env y reinicia el servicio api:
+     docker-compose restart api
+
+2. Corre el harness de evaluacion, que es la condicion de aceptacion
+   pedida explicitamente antes de confiar en este router en produccion:
+     docker-compose exec api python -m eval.scripts.eval_router
+
+3. Si el resultado es "APROBADO" (exactitud >= 85%, ver
+   ROUTER_EVAL_MIN_ACCURACY en .env), segui con ROUTER_IMPL=llm.
+   Si es "RECHAZADO", volve ROUTER_IMPL=heuristic, dejalo asi, y
+   reporta el numero real de exactitud obtenido y los casos mal
+   clasificados (el script los imprime) - no lo ocultes ni lo
+   redondees para arriba.
+
+PASO 6 - Prueba de carga real (criterio de aceptacion, el mas importante)
+===========================================================================
+Esto es lo que NO se podia medir sin GPU y es la razon principal de
+este despliegue: cuantas requests simultaneas soporta de verdad vLLM
+con continuous batching, dado que router + embedder + el especialista
+de 14B dejan aproximadamente 11GB libres para KV cache en una L4 de
+24GB.
+
+   docker-compose exec api python scripts/load_test.py \
+     --base-url http://localhost:8080 --api-key <tu API key real> \
+     --levels 1,2,4,8,12,16,24,32
+
+Reporta la tabla completa (p50/p95/max/error% por nivel de
+concurrencia) y el "punto de saturacion" que el script detecta. Si no
+detecta saturacion dentro de esos niveles, corre de nuevo con niveles
+mas altos hasta encontrarla - no reportes "no se encontro el techo"
+como resultado final, encontralo.
+
+PASO 7 - Reporte final
+========================
+Al terminar, escribi un resumen con:
+  - Que quedo corriendo y en que puertos.
+  - Exactitud real del router (heuristico o LLM, cual quedo activo y
+    por que).
+  - La tabla de concurrencia del paso 6 y el numero de concurrencia
+    sostenible que recomendas.
+  - Cualquier desviacion respecto a este prompt (modelos que no
+    existian con ese nombre exacto y que sustituto usaste, pasos que
+    fallaron y como los resolviste).
+  - Costo estimado por request tipico (el campo `cost.gpu_seconds` de
+    la respuesta de /v1/generate ya lo calcula, pero confirma que el
+    numero tiene sentido contra el tiempo real que ves en los logs).

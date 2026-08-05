@@ -1,0 +1,68 @@
+[
+  {
+    "id": "cpp-vector-reallocation-invalidates-iterators",
+    "language_or_domain": "cpp",
+    "tags": ["memory", "containers", "cpp"],
+    "problem_description": "push_back en un std::vector puede disparar una reasignacion del buffer interno cuando se supera la capacidad reservada; eso invalida TODOS los iteradores, punteros y referencias existentes a elementos del vector, incluso a elementos que no cambiaron de valor. Usarlos despues es comportamiento indefinido, sin garantia de crash inmediato.",
+    "why_small_models_fail": "El modelo trata al vector como un array de tamaño fijo salvo por el nombre de la operacion, sin modelar que agregar UN elemento puede invalidar referencias a elementos completamente distintos del que se agrego.",
+    "correct_approach": "No guardar iteradores/punteros/referencias a elementos de un vector a traves de una operacion que pueda cambiar su capacidad (push_back, insert, resize); usar indices si se necesita persistencia, o reservar capacidad de antemano con reserve() cuando el tamaño final es conocido.",
+    "bad_example": "std::vector<int> v = {1,2,3};\nint& ref = v[0];\nfor (int i = 0; i < 1000; i++) v.push_back(i); // puede reallocar\nstd::cout << ref; // comportamiento indefinido: ref puede apuntar a memoria liberada",
+    "good_example": "std::vector<int> v = {1,2,3};\nsize_t idx = 0; // guardar el INDICE, no una referencia\nfor (int i = 0; i < 1000; i++) v.push_back(i);\nstd::cout << v[idx]; // seguro, v[idx] sigue siendo valido tras la realocacion",
+    "source": "cppreference - std::vector, 'Iterator invalidation'"
+  },
+  {
+    "id": "cpp-object-slicing-pass-by-value",
+    "language_or_domain": "cpp",
+    "tags": ["polymorphism", "oop", "cpp"],
+    "problem_description": "Pasar (o asignar) un objeto de una clase derivada a una variable/parametro de tipo base POR VALOR corta ('slices') la parte derivada: solo se copia la porcion de la clase base, perdiendo los datos y el comportamiento polimorfico especificos de la clase derivada, sin ningun error de compilacion.",
+    "why_small_models_fail": "El modelo asume que el polimorfismo se preserva automaticamente por el simple hecho de que la clase derivada hereda de la base, sin modelar que en C++ el polimorfismo dinamico solo funciona a traves de punteros o referencias, nunca por valor.",
+    "correct_approach": "Pasar y almacenar objetos polimorficos siempre por referencia o puntero (crudo, o mejor unique_ptr/shared_ptr), nunca por valor, cuando se necesita preservar el comportamiento de la clase derivada.",
+    "bad_example": "void procesar(Base b) { b.metodoVirtual(); } // b es una COPIA solo-Base\nDerivada d;\nprocesar(d); // llama a Base::metodoVirtual, no a Derivada::metodoVirtual",
+    "good_example": "void procesar(const Base& b) { b.metodoVirtual(); }\nDerivada d;\nprocesar(d); // ahora si se preserva el polimorfismo, llama a Derivada::metodoVirtual",
+    "source": "C++ FAQ - 'What is object slicing?'"
+  },
+  {
+    "id": "cpp-signed-integer-overflow-ub",
+    "language_or_domain": "cpp",
+    "tags": ["numerics", "undefined-behavior", "cpp"],
+    "problem_description": "El desbordamiento de un entero CON signo (int, long, etc.) es comportamiento indefinido en C++, a diferencia de los enteros SIN signo donde el desbordamiento hace wraparound de forma bien definida (modulo 2^n). El compilador puede asumir que el overflow con signo nunca ocurre y optimizar en base a esa suposicion, produciendo resultados sorprendentes (ej. eliminar un chequeo `if (x + 1 < x)` pensado para detectar overflow).",
+    "why_small_models_fail": "El modelo generaliza el wraparound bien definido de los enteros sin signo (o el comportamiento de otros lenguajes donde el overflow con signo simplemente wrappea) al caso con signo de C++, donde en cambio es UB explicito segun el estandar.",
+    "correct_approach": "Chequear overflow ANTES de la operacion (comparando contra INT_MAX/INT_MIN), o usar tipos/funciones que detecten overflow explicitamente (ej. __builtin_add_overflow en GCC/Clang, o std::in_range en C++20).",
+    "bad_example": "int x = INT_MAX;\nif (x + 1 < x) { /* 'deteccion' de overflow */ }\n// UB: el compilador puede optimizar asumiendo que x+1 nunca desborda y eliminar el if entero",
+    "good_example": "int x = INT_MAX;\nif (x > INT_MAX - 1) { /* overflow detectado ANTES de la suma, sin UB */ }",
+    "source": "cppreference - Arithmetic operators, 'signed integer overflow is undefined behavior'"
+  },
+  {
+    "id": "cpp-rule-of-three-five-violation",
+    "language_or_domain": "cpp",
+    "tags": ["memory", "oop", "cpp"],
+    "problem_description": "Definir un destructor personalizado (porque la clase administra un recurso crudo, ej. un puntero obtenido con new) sin tambien definir el constructor de copia y el operador de asignacion de copia (regla de los 3, o de los 5 si se agregan move) deja al compilador generar versiones por defecto que hacen COPIA SUPERFICIAL del puntero - dos objetos terminan apuntando al mismo recurso, y ambos destructores lo liberan, causando double-free.",
+    "why_small_models_fail": "El modelo escribe el destructor porque el requisito explicito es 'liberar el recurso', y no infiere que eso obliga a definir (o explicitamente eliminar/=default con cuidado) tambien el resto de las funciones especiales de la clase.",
+    "correct_approach": "Aplicar la regla de los 5 (destructor, constructor de copia, operator= de copia, constructor de move, operator= de move) cuando se administra un recurso crudo, o mejor: evitar el recurso crudo por completo y usar un smart pointer (unique_ptr/shared_ptr), que ya implementa esto correctamente.",
+    "bad_example": "class Buffer {\n  int* data;\n public:\n  Buffer(size_t n) : data(new int[n]) {}\n  ~Buffer() { delete[] data; } // solo el destructor\n  // copy constructor y operator= generados por el compilador copian el PUNTERO, no el contenido\n};",
+    "good_example": "class Buffer {\n  std::unique_ptr<int[]> data;\n public:\n  Buffer(size_t n) : data(std::make_unique<int[]>(n)) {}\n  // destructor, move y (deleted) copy ya correctos automaticamente por unique_ptr\n};",
+    "source": "C++ Core Guidelines - C.20/C.21, 'Rule of Zero/Five'"
+  },
+  {
+    "id": "cpp-use-after-free-dangling-pointer",
+    "language_or_domain": "cpp",
+    "tags": ["memory", "undefined-behavior", "cpp"],
+    "problem_description": "delete ptr libera la memoria pero NO pone ptr en nullptr automaticamente; usar ptr despues (dereferenciarlo, o incluso solo compararlo con otro puntero liberado) es comportamiento indefinido - puede parecer que 'funciona' en debug y fallar aleatoriamente en release, o viceversa.",
+    "why_small_models_fail": "El modelo asume que delete 'limpia' la variable como pasaria con un dispose/free en lenguajes con recoleccion de basura o con semantica de invalidacion explicita, sin modelar que en C++ es responsabilidad del programador nulear el puntero manualmente.",
+    "correct_approach": "Poner el puntero en nullptr inmediatamente despues de delete si va a seguir vivo en scope, o mejor, evitar new/delete manuales y usar smart pointers (unique_ptr/shared_ptr) que se auto-invalidan de forma segura.",
+    "bad_example": "int* p = new int(5);\ndelete p;\nstd::cout << *p; // use-after-free, UB",
+    "good_example": "auto p = std::make_unique<int>(5);\n// p se libera automaticamente al salir de scope, sin posibilidad de use-after-free manual",
+    "source": "C++ Core Guidelines - ES.65, 'Don't dereference an invalid pointer'"
+  },
+  {
+    "id": "cpp-unspecified-evaluation-order-side-effects",
+    "language_or_domain": "cpp",
+    "tags": ["undefined-behavior", "expressions", "cpp"],
+    "problem_description": "En expresiones con multiples efectos secundarios sobre la misma variable (ej. f(i++, i++), o a[i] = i++ antes de C++17), el orden de evaluacion de los argumentos/subexpresiones no estaba especificado por el estandar (pre-C++17 en varios casos), asi que distintos compiladores (o el mismo compilador con distintas flags de optimizacion) pueden producir resultados distintos para el mismo codigo.",
+    "why_small_models_fail": "El modelo asume un orden de evaluacion izquierda-a-derecha 'natural' como en muchos otros lenguajes con orden de evaluacion garantizado, sin saber que C++ historicamente dejo esto sin especificar para varios casos de expresiones.",
+    "correct_approach": "No escribir expresiones donde el mismo objeto se modifica mas de una vez sin un punto de secuencia claro entre esas modificaciones; separar en sentencias distintas para que el orden sea explicito y portable.",
+    "bad_example": "int i = 0;\nint resultado = f(i++, i++); // orden de evaluacion de los dos i++ no especificado (pre-C++17)",
+    "good_example": "int i = 0;\nint a = i++;\nint b = i++;\nint resultado = f(a, b); // orden explicito e inequivoco",
+    "source": "cppreference - Order of evaluation, 'Undefined behavior' / 'Unspecified behavior' notes"
+  }
+]

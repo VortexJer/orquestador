@@ -1,0 +1,569 @@
+# Catalogo de referencia de herramientas por especialista/dominio.
+#
+# Este archivo es DOCUMENTACION + CONFIGURACION declarativa: describe
+# que herramienta usar para cada verificacion (lint/format, compilar o
+# type-check, ejecutar tests, seguridad, generacion de documentos) por
+# lenguaje/dominio, con el comando de referencia y el requisito de
+# instalacion. `wired_in_code: true` marca las que ya tienen un modulo
+# real en app/tools/ ejecutandose en el ciclo generar->validar->corregir
+# (hoy: python, las 4 de oficina, y las 7 de web). El resto queda
+# documentado para cuando se habiliten esos especialistas (ver
+# config/specialists.yaml, `enabled: false`) - agregar el modulo real en
+# app/tools/ no requiere tocar el core del especialista, solo su
+# tool_runner.
+#
+# category: lint_format | typecheck_compile | test | security | docgen | db_explain | scraping | search | render_check
+
+python:
+  - name: ruff
+    category: lint_format
+    purpose: "Lint y formato (reglas Pyflakes/pycodestyle por defecto)."
+    command: "python -m ruff check ."
+    install: "pip install ruff"
+    wired_in_code: true
+  - name: mypy
+    category: typecheck_compile
+    purpose: "Chequeo de tipos estatico."
+    command: "python -m mypy archivo.py"
+    install: "pip install mypy"
+    wired_in_code: true
+  - name: pytest
+    category: test
+    purpose: "Ejecucion de tests."
+    command: "python -m pytest -q"
+    install: "pip install pytest"
+    wired_in_code: true
+  - name: pip-audit
+    category: security
+    purpose: "Escaneo de dependencias con vulnerabilidades conocidas."
+    command: "pip-audit"
+    install: "pip install pip-audit"
+    wired_in_code: false
+
+javascript:
+  - name: eslint
+    category: lint_format
+    purpose: "Lint (sin type-check, JS no tiene tipos estaticos)."
+    command: "npx eslint ."
+    install: "npm install --save-dev eslint"
+    wired_in_code: false
+  - name: "jest / vitest"
+    category: test
+    purpose: "Ejecucion de tests (el que ya use el proyecto)."
+    command: "npx jest  |  npx vitest run"
+    install: "npm install --save-dev jest   (o vitest)"
+    wired_in_code: false
+  - name: "npm audit"
+    category: security
+    purpose: "Escaneo de dependencias con vulnerabilidades conocidas."
+    command: "npm audit"
+    install: "incluido con npm"
+    wired_in_code: false
+
+typescript:
+  - name: eslint
+    category: lint_format
+    purpose: "Lint (con plugin @typescript-eslint)."
+    command: "npx eslint ."
+    install: "npm install --save-dev eslint @typescript-eslint/parser"
+    wired_in_code: false
+  - name: tsc
+    category: typecheck_compile
+    purpose: "Chequeo de tipos sin emitir output."
+    command: "npx tsc --noEmit"
+    install: "npm install --save-dev typescript"
+    wired_in_code: false
+  - name: "jest / vitest"
+    category: test
+    purpose: "Ejecucion de tests."
+    command: "npx jest  |  npx vitest run"
+    install: "npm install --save-dev vitest"
+    wired_in_code: false
+  - name: "npm audit"
+    category: security
+    purpose: "Escaneo de dependencias."
+    command: "npm audit"
+    install: "incluido con npm"
+    wired_in_code: false
+
+java:
+  - name: checkstyle
+    category: lint_format
+    purpose: "Convenciones de estilo."
+    command: "mvn checkstyle:check  |  gradle checkstyleMain"
+    install: "plugin de Maven/Gradle"
+    wired_in_code: false
+  - name: spotbugs
+    category: lint_format
+    purpose: "Analisis estatico de bugs comunes (bytecode)."
+    command: "mvn spotbugs:check  |  gradle spotbugsMain"
+    install: "plugin de Maven/Gradle"
+    wired_in_code: false
+  - name: "javac / maven / gradle"
+    category: typecheck_compile
+    purpose: "Compilacion."
+    command: "mvn compile  |  gradle compileJava"
+    install: "JDK + Maven o Gradle"
+    wired_in_code: false
+  - name: JUnit
+    category: test
+    purpose: "Ejecucion de tests."
+    command: "mvn test  |  gradle test"
+    install: "dependencia junit en pom.xml/build.gradle"
+    wired_in_code: false
+  - name: "OWASP Dependency-Check"
+    category: security
+    purpose: "Escaneo de dependencias con vulnerabilidades conocidas."
+    command: "mvn org.owasp:dependency-check-maven:check"
+    install: "plugin de Maven"
+    wired_in_code: false
+
+csharp:
+  - name: "dotnet format"
+    category: lint_format
+    purpose: "Formato de codigo."
+    command: "dotnet format"
+    install: "incluido en el SDK de .NET"
+    wired_in_code: false
+  - name: "dotnet build"
+    category: typecheck_compile
+    purpose: "Compilacion (incluye chequeo de nullable reference types)."
+    command: "dotnet build"
+    install: "SDK de .NET"
+    wired_in_code: false
+  - name: "dotnet test"
+    category: test
+    purpose: "Ejecucion de tests (xUnit/NUnit/MSTest)."
+    command: "dotnet test"
+    install: "SDK de .NET"
+    wired_in_code: false
+  - name: "dotnet list package --vulnerable"
+    category: security
+    purpose: "Escaneo de dependencias NuGet vulnerables."
+    command: "dotnet list package --vulnerable"
+    install: "incluido en el SDK de .NET"
+    wired_in_code: false
+
+cpp:
+  - name: clang-format
+    category: lint_format
+    purpose: "Formato de codigo."
+    command: "clang-format -i archivo.cpp"
+    install: "paquete del sistema (apt/brew) clang-format"
+    wired_in_code: false
+  - name: "gcc/clang -Wall -Wextra -Wpedantic"
+    category: typecheck_compile
+    purpose: "Compilacion con warnings altos como señal de calidad."
+    command: "g++ -Wall -Wextra -Wpedantic -std=c++20 -c archivo.cpp"
+    install: "gcc o clang"
+    wired_in_code: false
+  - name: "cppcheck / clang-tidy"
+    category: lint_format
+    purpose: "Analisis estatico (memoria, UB probable, estilo)."
+    command: "cppcheck archivo.cpp  |  clang-tidy archivo.cpp"
+    install: "paquete del sistema cppcheck / clang-tidy"
+    wired_in_code: false
+  - name: "ctest / GoogleTest"
+    category: test
+    purpose: "Ejecucion de tests."
+    command: "ctest"
+    install: "cmake + framework de test del proyecto"
+    wired_in_code: false
+  - name: compile_run_cpp
+    category: test
+    purpose: "Compila con -Wall -Wextra -Wpedantic (y UBSan si el toolchain lo trae) y EJECUTA con timeout; el timeout caza bucles infinitos (ej. 'arreglar' una invalidacion de iterador reiniciandolo) que no se ven leyendo el codigo."
+    command: "app.tools.native_run.compile_run_cpp"
+    install: "g++ o clang++ en el PATH"
+    wired_in_code: true
+
+go:
+  - name: gofmt
+    category: lint_format
+    purpose: "Formato de codigo (unica verdad de estilo en Go)."
+    command: "gofmt -l ."
+    install: "incluido con el toolchain de Go"
+    wired_in_code: false
+  - name: "go vet"
+    category: typecheck_compile
+    purpose: "Compilacion + deteccion de errores sospechosos comunes."
+    command: "go vet ./..."
+    install: "incluido con el toolchain de Go"
+    wired_in_code: false
+  - name: staticcheck
+    category: lint_format
+    purpose: "Analisis estatico avanzado (mas alla de go vet)."
+    command: "staticcheck ./..."
+    install: "go install honnef.co/go/tools/cmd/staticcheck@latest"
+    wired_in_code: false
+  - name: "go test -race"
+    category: test
+    purpose: "Ejecucion de tests con detector de data races activado."
+    command: "go test -race ./..."
+    install: "incluido con el toolchain de Go"
+    wired_in_code: false
+  - name: govulncheck
+    category: security
+    purpose: "Escaneo de dependencias/stdlib con vulnerabilidades conocidas."
+    command: "govulncheck ./..."
+    install: "go install golang.org/x/vuln/cmd/govulncheck@latest"
+    wired_in_code: false
+
+rust:
+  - name: "cargo fmt"
+    category: lint_format
+    purpose: "Formato de codigo."
+    command: "cargo fmt --check"
+    install: "incluido con rustup"
+    wired_in_code: false
+  - name: "cargo check"
+    category: typecheck_compile
+    purpose: "Chequeo de compilacion sin generar binario (rapido)."
+    command: "cargo check"
+    install: "incluido con rustup"
+    wired_in_code: false
+  - name: "cargo clippy"
+    category: lint_format
+    purpose: "Lints idiomaticos especificos de Rust."
+    command: "cargo clippy -- -D warnings"
+    install: "rustup component add clippy"
+    wired_in_code: false
+  - name: "cargo test"
+    category: test
+    purpose: "Ejecucion de tests."
+    command: "cargo test"
+    install: "incluido con rustup"
+    wired_in_code: false
+  - name: "cargo audit"
+    category: security
+    purpose: "Escaneo de dependencias (crates.io) con vulnerabilidades conocidas."
+    command: "cargo audit"
+    install: "cargo install cargo-audit"
+    wired_in_code: false
+
+php:
+  - name: "phpcs / php-cs-fixer"
+    category: lint_format
+    purpose: "Estilo de codigo."
+    command: "phpcs .  |  php-cs-fixer fix --dry-run"
+    install: "composer require --dev squizlabs/php_codesniffer"
+    wired_in_code: false
+  - name: phpstan
+    category: typecheck_compile
+    purpose: "Analisis estatico de tipos (PHP no tiene compilador tradicional)."
+    command: "phpstan analyse"
+    install: "composer require --dev phpstan/phpstan"
+    wired_in_code: false
+  - name: phpunit
+    category: test
+    purpose: "Ejecucion de tests."
+    command: "phpunit"
+    install: "composer require --dev phpunit/phpunit"
+    wired_in_code: false
+  - name: "composer audit"
+    category: security
+    purpose: "Escaneo de dependencias con vulnerabilidades conocidas."
+    command: "composer audit"
+    install: "incluido con Composer"
+    wired_in_code: false
+
+ruby:
+  - name: rubocop
+    category: lint_format
+    purpose: "Estilo y varios chequeos de correctitud."
+    command: "rubocop"
+    install: "gem install rubocop"
+    wired_in_code: false
+  - name: "rspec / minitest"
+    category: test
+    purpose: "Ejecucion de tests (el que ya use el proyecto)."
+    command: "rspec  |  rake test"
+    install: "gem install rspec  (o minitest, suele venir con Ruby)"
+    wired_in_code: false
+  - name: bundler-audit
+    category: security
+    purpose: "Escaneo de gems con vulnerabilidades conocidas."
+    command: "bundle audit"
+    install: "gem install bundler-audit"
+    wired_in_code: false
+
+kotlin:
+  - name: ktlint
+    category: lint_format
+    purpose: "Estilo de codigo."
+    command: "ktlint"
+    install: "brew install ktlint  (o via gradle plugin)"
+    wired_in_code: false
+  - name: "kotlinc / gradle"
+    category: typecheck_compile
+    purpose: "Compilacion."
+    command: "gradle compileKotlin"
+    install: "SDK de Kotlin + Gradle"
+    wired_in_code: false
+  - name: "JUnit / Kotest"
+    category: test
+    purpose: "Ejecucion de tests."
+    command: "gradle test"
+    install: "dependencia en build.gradle.kts"
+    wired_in_code: false
+
+web:
+  - name: web_scraper
+    category: scraping
+    purpose: "Trae texto/links de una URL, y extrae horarios/telefono/rating de un negocio via JSON-LD (schema.org) si el sitio lo publica."
+    command: "app.tools.web_scraper.fetch_page / extract_business_info"
+    install: "pip install beautifulsoup4 httpx"
+    wired_in_code: true
+  - name: web_lint
+    category: lint_format
+    purpose: "Chequeo de estructura HTML: viewport, title, meta description, alt text, jerarquia de encabezados."
+    command: "app.tools.web_lint.lint_html"
+    install: "pip install beautifulsoup4"
+    wired_in_code: true
+  - name: image_search
+    category: scraping
+    purpose: "Busqueda de fotos ROYALTY-FREE (Pexels/Unsplash/Pixabay) para fondos/productos - nunca scraping de un buscador generico."
+    command: "app.tools.image_search.search_images"
+    install: "API key gratis por fuente: PEXELS_API_KEY / UNSPLASH_ACCESS_KEY / PIXABAY_API_KEY"
+    wired_in_code: true
+  - name: image_analysis
+    category: lint_format
+    purpose: "Color dominante, brillo, calidez, nitidez/borrosidad y resolucion de una imagen - para decidir COMO usarla (color de texto encima, si sirve de fondo a pantalla completa) antes de elegirla, no despues."
+    command: "app.tools.image_analysis.analyze_image"
+    install: "Pillow (ya incluido, dependencia transitiva de python-pptx)"
+    wired_in_code: true
+  - name: web_search
+    category: search
+    purpose: "Busqueda web general sin API key, MULTI-MOTOR (menos fragil): cascada DuckDuckGo Lite -> DDG HTML -> SearXNG (metabuscador, JSON; SEARXNG_URL propia + lista publica) -> Brave (si BRAVE_API_KEY); el primero con resultados gana. User-Agent rotado, 2 pasadas con jitter, encoding/espaciado arreglados, y error explicito si TODOS fallan (para que el modelo no invente)."
+    command: "app.tools.web_search.search_web"
+    install: "pip install beautifulsoup4 httpx  (opcional para fiabilidad: BRAVE_API_KEY o SEARXNG_URL en .env)"
+    wired_in_code: true
+  - name: deep_research
+    category: search
+    purpose: "Investigacion RECURSIVA y cibersegura: busca, lee las paginas top, sigue sus enlaces relevantes 1-2 capas mas, y devuelve fuentes (url+titulo+pasajes) + resumen para redactar con citas. Presupuesto acotado (max_paginas/profundidad/por-dominio)."
+    command: "app.tools.deep_research.deep_research"
+    install: "pip install beautifulsoup4 httpx"
+    wired_in_code: true
+  - name: web_safety
+    category: search
+    purpose: "Capa de fetch CIBERSEGURA por debajo de web_fetch/search/deep_research: filtro SSRF (bloquea localhost/IPs privadas/metadatos de nube/esquemas no-http), revalida cada redireccion, tope de bytes y solo texto/HTML."
+    command: "app.tools.web_safety.fetch_seguro / validar_url"
+    install: "incluido (httpx, stdlib ipaddress/socket)"
+    wired_in_code: true
+  - name: link_checker
+    category: test
+    purpose: "Verifica que los links de un sitio generado no esten rotos (404, timeout) antes de darlo por terminado."
+    command: "app.tools.link_checker.check_links"
+    install: "pip install httpx"
+    wired_in_code: true
+  - name: render_check
+    category: render_check
+    purpose: "Renderiza la pagina en un navegador headless real (Chromium) y devuelve captura + errores de consola/JS/requests fallidos - el 'ejecutador que comprueba' de este dominio."
+    command: "app.tools.render_check.render_check"
+    install: "pip install playwright && playwright install chromium"
+    wired_in_code: true
+  - name: eslint
+    category: lint_format
+    purpose: "Lint del JS/CSS del sitio (mismo tool que el especialista JavaScript)."
+    command: "npx eslint ."
+    install: "npm install --save-dev eslint"
+    wired_in_code: false
+
+# APIs de referencia gratuitas: "bases de datos de ejemplos" que le dan al
+# modelo datos REALES en vez de dejarle inventar firmas, versiones o codigo.
+# Todas gratis; hosts fijados por codigo (allowlist en app/tools/api_client.py),
+# nunca elegidos por el modelo -> sin vector SSRF. Van a los especialistas de
+# codigo (familia referencia_codigo) y a web (familia web_datos).
+referencia:
+  - name: api_client
+    category: search
+    purpose: "Cliente HTTP compartido de las APIs de referencia: ALLOWLIST de hosts (el modelo aporta el termino, no la URL, asi que se fija el host en vez de filtrar SSRF), solo https, timeout, tope de bytes y User-Agent con contacto (crates.io lo exige)."
+    command: "app.tools.api_client.get_json / post_json"
+    install: "incluido (httpx)"
+    wired_in_code: true
+  - name: code_examples
+    category: search
+    purpose: "Ejemplos de codigo REALES desde Stack Overflow: respuestas mas votadas/aceptadas con su codigo extraido (bloques <pre>) + explicacion + link. La estrella para no inventar el uso de una libreria. 300/dia sin clave; STACKEXCHANGE_KEY -> 10.000/dia."
+    command: "app.tools.code_examples.buscar_ejemplos"
+    install: "pip install beautifulsoup4 httpx  (opcional: STACKEXCHANGE_KEY en .env)"
+    wired_in_code: true
+  - name: search_code
+    category: search
+    purpose: "Codigo real de repos publicos de GitHub (code search API) con el fragmento que coincide + repo + enlace. Complementa a code_examples: como se USA de verdad una libreria/patron. Requiere GITHUB_TOKEN (gratis, sin scopes)."
+    command: "app.tools.code_search.buscar_codigo"
+    install: "GITHUB_TOKEN en .env (https://github.com/settings/tokens)"
+    wired_in_code: true
+  - name: package_info
+    category: search
+    purpose: "Metadatos ACTUALES de un paquete desde su registro oficial (PyPI/npm/crates.io/Go/Packagist/RubyGems/NuGet/Maven): version ultima, descripcion, repo, licencia. Mata la version inventada/desfasada. Gratis, sin clave."
+    command: "app.tools.package_info.info_paquete"
+    install: "incluido (httpx)"
+    wired_in_code: true
+  - name: vuln_check
+    category: security_scan
+    purpose: "Vulnerabilidades conocidas (CVEs) de un paquete via OSV.dev y en que version se arreglaron. Agrega GitHub Advisory/RustSec/PyPA/Go vuln DB. Gratis, sin clave. Nucleo del trabajo de seguridad de dependencias."
+    command: "app.tools.vuln_lookup.consultar_vulnerabilidades"
+    install: "incluido (httpx)"
+    wired_in_code: true
+  - name: wikipedia
+    category: search
+    purpose: "Articulo REAL de Wikipedia sobre un tema (texto plano) + titulo y URL. La mejor fuente para un documento/presentacion/web SOBRE algo del mundo (un coche, empresa, persona, lugar, hecho): datos reales en vez de escribir de memoria. es/en, gratis, sin clave."
+    command: "app.tools.wikipedia.consultar_wikipedia"
+    install: "incluido (httpx)"
+    wired_in_code: true
+  - name: find_api
+    category: search
+    purpose: "Directorio de MILES de APIs publicas (APIs.guru) por tema: nombre, descripcion, categoria, docs, OpenAPI. Para cablear datos reales (clima, cripto, divisas...) en una web en vez de inventarlos. Gratis, sin clave."
+    command: "app.tools.api_directory.buscar_api"
+    install: "incluido (httpx)"
+    wired_in_code: true
+  - name: sample_data
+    category: scraping
+    purpose: "Datos de ejemplo realistas (DummyJSON): productos, usuarios, posts, carritos, recetas... Para prototipar una web/demo con contenido creible sin inventar un JSON ni exponer datos reales. Gratis, sin clave."
+    command: "app.tools.api_directory.datos_de_ejemplo"
+    install: "incluido (httpx)"
+    wired_in_code: true
+
+# Recursos de DISEÑO web gratuitos: material real (iconos/tipografias/paletas/
+# componentes) para que el que construye la web no invente un font-family ni
+# dibuje un SVG a mano. Van al web-builder y al web-designer (familia diseño_web).
+diseño:
+  - name: search_icons
+    category: scraping
+    purpose: "Iconify: 200.000+ iconos de 150+ colecciones (Material, MDI, Font Awesome, Lucide...). Busca por termino y devuelve nombre + URL SVG lista para <img>. Gratis, sin clave."
+    command: "app.tools.web_design.search_icons"
+    install: "incluido (httpx)"
+    wired_in_code: true
+  - name: search_fonts
+    category: scraping
+    purpose: "Google Fonts (metadata sin key): familias REALES filtrables por nombre/categoria, con el <link> css2 y los pesos correctos. Evita el font-family inventado o con pesos que no existen."
+    command: "app.tools.web_design.search_fonts"
+    install: "incluido (httpx)"
+    wired_in_code: true
+  - name: color_palette
+    category: lint_format
+    purpose: "The Color API: paleta armonica a partir de un color base (analogic/complement/triad/monochrome...). Da cohesion en vez de elegir colores sueltos a ojo. Gratis, sin clave."
+    command: "app.tools.web_design.color_palette"
+    install: "incluido (httpx)"
+    wired_in_code: true
+  - name: design_assets
+    category: scraping
+    purpose: "Constructor de URLs listas de assets gratis: avatares (DiceBear), placeholders (placehold.co), fotos de relleno (Lorem Picsum), logos de marca (Simple Icons, verificados) y QR (QR Server). El valor: el modelo no conoce estas URLs y aqui las obtiene bien formadas."
+    command: "app.tools.web_design.design_assets"
+    install: "incluido (httpx)"
+    wired_in_code: true
+  - name: uiverse
+    category: scraping
+    purpose: "Biblioteca UIverse (repo open-source galaxy, MIT): muestra variada de componentes con animacion (botones, cards, loaders, toggles...) en HTML+CSS listos para copiar-pegar y adaptar. Devuelve el codigo de los primeros. Gratis; GITHUB_TOKEN opcional sube el limite de listado."
+    command: "app.tools.web_design.uiverse"
+    install: "incluido (httpx); opcional GITHUB_TOKEN para mas listados/hora"
+    wired_in_code: true
+
+sql:
+  - name: sqlfluff
+    category: lint_format
+    purpose: "Lint de SQL (dialecto configurable: postgres, mysql, etc.)."
+    command: "sqlfluff lint archivo.sql --dialect postgres"
+    install: "pip install sqlfluff"
+    wired_in_code: false
+  - name: "EXPLAIN"
+    category: db_explain
+    purpose: "Plan de ejecucion, para detectar seq scans/nested loops inesperados."
+    command: "EXPLAIN ANALYZE <query>  (Postgres)  /  EXPLAIN QUERY PLAN <query>  (SQLite)"
+    install: "motor de base de datos efimero (Postgres o SQLite) para la sandbox"
+    wired_in_code: false
+  - name: run_sql
+    category: db_explain
+    purpose: "Ejecuta la query contra una SQLite EN MEMORIA montada con esquema+datos de prueba y devuelve las filas reales + EXPLAIN QUERY PLAN. Verifica correctitud y uso de indice en vez de afirmarlos de memoria (mata la fabricacion del plan)."
+    command: "app.tools.sql_sandbox.run_sql"
+    install: "sqlite3 (stdlib, sin dependencias)"
+    wired_in_code: true
+
+iac:
+  - name: tflint
+    category: lint_format
+    purpose: "Lint de codigo Terraform."
+    command: "tflint"
+    install: "ver github.com/terraform-linters/tflint"
+    wired_in_code: false
+  - name: "terraform validate"
+    category: typecheck_compile
+    purpose: "Validacion de sintaxis/coherencia interna sin tocar infra real."
+    command: "terraform validate"
+    install: "incluido con el CLI de Terraform"
+    wired_in_code: false
+  - name: "terraform plan"
+    category: test
+    purpose: "Dry-run: que se CREARIA/MODIFICARIA/DESTRUIRIA, sin aplicar nada."
+    command: "terraform plan"
+    install: "incluido con el CLI de Terraform"
+    wired_in_code: false
+  - name: checkov
+    category: security
+    purpose: "Chequeos de seguridad/compliance sobre config de infra (Terraform, K8s, etc.)."
+    command: "checkov -d ."
+    install: "pip install checkov"
+    wired_in_code: false
+  - name: "kubeconform / kubeval"
+    category: lint_format
+    purpose: "Validacion de manifiestos de Kubernetes contra el schema de la API."
+    command: "kubeconform manifiesto.yaml"
+    install: "ver github.com/yannh/kubeconform"
+    wired_in_code: false
+
+security:
+  - name: semgrep
+    category: security
+    purpose: "Fuente de verdad primaria de este especialista: reglas estaticas multi-lenguaje (CWE conocidos)."
+    command: "semgrep --config auto ."
+    install: "pip install semgrep"
+    wired_in_code: false
+  - name: bandit
+    category: security
+    purpose: "Reglas de seguridad especificas de Python (complementa a semgrep)."
+    command: "bandit -r ."
+    install: "pip install bandit"
+    wired_in_code: false
+  - name: gosec
+    category: security
+    purpose: "Reglas de seguridad especificas de Go."
+    command: "gosec ./..."
+    install: "go install github.com/securego/gosec/v2/cmd/gosec@latest"
+    wired_in_code: false
+
+office_email:
+  - name: email_lint
+    category: docgen
+    purpose: "Chequeo de forma: asunto especifico, placeholders sin completar, saludo/cierre, longitud."
+    command: "app.tools.email_lint.lint_email(asunto, cuerpo)"
+    install: "incluido en el repo, sin dependencia externa"
+    wired_in_code: true
+
+office_word:
+  - name: docx_tool
+    category: docgen
+    purpose: "Generar .docx con estilos de Heading/listas/tablas reales, y validar esa estructura."
+    command: "app.tools.docx_tool.create_docx / check_docx"
+    install: "pip install python-docx"
+    wired_in_code: true
+
+office_spreadsheet:
+  - name: xlsx_tool
+    category: docgen
+    purpose: "Generar .xlsx con formulas/fechas/encabezados reales, y validar la estructura."
+    command: "app.tools.xlsx_tool.create_workbook / check_workbook"
+    install: "pip install openpyxl"
+    wired_in_code: true
+  - name: eval_xlsx_formulas
+    category: test
+    purpose: "CALCULA las formulas de la hoja (lo que openpyxl/check_workbook NO hacen) y marca anomalias: cuota/porcentaje invertida (>100%), referencia a hoja/celda equivocada (celda vacia), errores (#DIV/0!)."
+    command: "app.tools.xlsx_eval.eval_workbook"
+    install: "pip install formulas"
+    wired_in_code: true
+
+office_presentation:
+  - name: pptx_tool
+    category: docgen
+    purpose: "Generar .pptx con notas del orador y validar densidad de bullets/notas."
+    command: "app.tools.pptx_tool.create_presentation / check_presentation"
+    install: "pip install python-pptx"
+    wired_in_code: true

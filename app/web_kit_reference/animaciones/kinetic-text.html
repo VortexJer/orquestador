@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kinetic text — texto interactivo con el cursor</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #0d0d0d; color: #fff;
+         overflow-x: hidden; cursor: none; } /* cursor personalizado */
+
+  /* Cursor personalizado */
+  .cursor-dot  { position: fixed; width: 6px; height: 6px; background: #fff;
+                 border-radius: 50%; pointer-events: none; z-index: 9999;
+                 transform: translate(-50%, -50%); }
+  .cursor-ring { position: fixed; width: 30px; height: 30px;
+                 border: 1.5px solid rgba(255,255,255,.5); border-radius: 50%;
+                 pointer-events: none; z-index: 9998;
+                 transform: translate(-50%, -50%);
+                 transition: width .2s, height .2s, border-color .2s; }
+
+  /* Secciones de demo */
+  .demo { min-height: 100vh; display: grid; place-items: center; padding: 4rem 2rem; }
+  .label { position: absolute; top: 1.5rem; left: 2rem; font-size: .7rem; color: #555;
+           letter-spacing: .12em; text-transform: uppercase; }
+
+  /* ================================================================
+     KINETIC TEXT — las letras se mueven o reaccionan al cursor.
+
+     Técnica: el texto se divide en <span> individuales por letra.
+     En mousemove, se calcula la distancia de cada letra al cursor,
+     y se aplica un transform de repulsión/atracción.
+  ================================================================ */
+
+  /* Modo repulsión: las letras se apartan del cursor */
+  .kinetic-repulse {
+    font-size: clamp(4rem, 12vw, 9rem); font-weight: 900; line-height: 1;
+    text-transform: uppercase; letter-spacing: .05em; position: relative;
+  }
+  .kinetic-repulse .letra {
+    display: inline-block;
+    transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1),
+                color 0.3s ease;
+  }
+
+  /* Modo atracción: las letras se acercan al cursor */
+  .kinetic-atrae {
+    font-size: clamp(2rem, 6vw, 4.5rem); font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  .kinetic-atrae .letra {
+    display: inline-block; color: #333;
+    transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1),
+                color 0.3s ease;
+  }
+  .kinetic-atrae .letra.activo { color: #fff; }
+
+  /* Modo ola: las letras suben en ola al hover sobre cada una */
+  .kinetic-ola { font-size: clamp(2.5rem, 7vw, 5.5rem); font-weight: 800; }
+  .kinetic-ola .letra {
+    display: inline-block; cursor: pointer;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s;
+  }
+  .kinetic-ola .letra:hover {
+    transform: translateY(-0.3em) scaleX(0.85);
+    color: #e07a3f;
+  }
+
+  /* Modo sombra que sigue el cursor */
+  .kinetic-sombra {
+    font-size: clamp(3rem, 9vw, 7rem); font-weight: 900;
+    text-shadow: none; position: relative;
+    transition: text-shadow 0.1s ease;
+    cursor: default;
+  }
+
+  /* Modo ticker: el texto corre horizontalmente y se detiene al hover */
+  .ticker-wrap { overflow: hidden; width: 100%; }
+  .ticker-track {
+    display: flex; width: max-content; gap: 3rem;
+    animation: tickerRun 15s linear infinite;
+    font-size: clamp(2rem, 5vw, 4rem); font-weight: 800; white-space: nowrap;
+  }
+  .ticker-wrap:hover .ticker-track { animation-play-state: paused; }
+  @keyframes tickerRun { to { transform: translateX(-50%); } }
+  .ticker-item { opacity: .15; transition: opacity .3s; }
+  .ticker-item:hover { opacity: 1; color: #e07a3f; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .kinetic-repulse .letra, .kinetic-atrae .letra { transition: none; }
+    .ticker-track { animation: none; }
+  }
+  @media (pointer: coarse) {
+    body { cursor: auto; }
+    .cursor-dot, .cursor-ring { display: none; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="cursor-dot"  id="cursorDot"></div>
+  <div class="cursor-ring" id="cursorRing"></div>
+
+  <!-- Demo 1: Repulsión -->
+  <section class="demo" style="background:#111;position:relative">
+    <div class="label">1 · Repulsión — las letras huyen del cursor</div>
+    <div class="kinetic-repulse" id="repulse" data-text="HOLA">HOLA</div>
+  </section>
+
+  <!-- Demo 2: Atracción / iluminación -->
+  <section class="demo" style="background:#0d0d0d;position:relative">
+    <div class="label">2 · Iluminación — las letras cercanas al cursor se encienden</div>
+    <div class="kinetic-atrae" id="atrae" data-text="EL MEJOR BAR">EL MEJOR BAR</div>
+  </section>
+
+  <!-- Demo 3: Ola al hover letra a letra -->
+  <section class="demo" style="background:#1a1a1a;position:relative">
+    <div class="label">3 · Ola — cada letra reacciona al hover individualmente</div>
+    <div class="kinetic-ola" id="ola" data-text="CA PEPE">CA PEPE</div>
+  </section>
+
+  <!-- Demo 4: Sombra que sigue el cursor (CSS text-shadow dinámico) -->
+  <section class="demo" style="background:#111;position:relative">
+    <div class="label">4 · Sombra direccional — la sombra apunta al cursor</div>
+    <div class="kinetic-sombra" id="sombra">ALMUSSAFES</div>
+  </section>
+
+  <!-- Demo 5: Ticker interactivo -->
+  <section class="demo" style="background:#0d0d0d;position:relative;padding:4rem 0">
+    <div class="label" style="position:static;margin-bottom:2rem">5 · Ticker — texto que corre y se detiene al hover</div>
+    <div class="ticker-wrap">
+      <div class="ticker-track">
+        <span class="ticker-item">Desayunos</span>
+        <span class="ticker-item">Bocadillos</span>
+        <span class="ticker-item">Cervezas</span>
+        <span class="ticker-item">Tapas</span>
+        <span class="ticker-item">Menú del día</span>
+        <span class="ticker-item">Abierto 6:30</span>
+        <!-- duplicado para loop -->
+        <span class="ticker-item">Desayunos</span>
+        <span class="ticker-item">Bocadillos</span>
+        <span class="ticker-item">Cervezas</span>
+        <span class="ticker-item">Tapas</span>
+        <span class="ticker-item">Menú del día</span>
+        <span class="ticker-item">Abierto 6:30</span>
+      </div>
+    </div>
+  </section>
+
+<script>
+  // ─── Cursor ─────────────────────────────────────────────────────────────────
+  const dot  = document.getElementById('cursorDot');
+  const ring = document.getElementById('cursorRing');
+  let mx = 0, my = 0, rx = 0, ry = 0;
+
+  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY;
+    dot.style.left = mx+'px'; dot.style.top = my+'px'; });
+  (function animCursor() {
+    rx += (mx - rx) * 0.12; ry += (my - ry) * 0.12;
+    ring.style.left = rx+'px'; ring.style.top = ry+'px';
+    requestAnimationFrame(animCursor);
+  })();
+
+  // ─── Utilidad: dividir texto en letras ─────────────────────────────────────
+  function dividirEnLetras(el) {
+    const texto = el.dataset.text || el.textContent;
+    el.innerHTML = texto.split('').map(c =>
+      c === ' ' ? '<span class="letra" style="display:inline-block;width:.3em"> </span>'
+                : `<span class="letra">${c}</span>`
+    ).join('');
+    return el.querySelectorAll('.letra');
+  }
+
+  // ─── Demo 1: Repulsión ──────────────────────────────────────────────────────
+  const letrasRep = dividirEnLetras(document.getElementById('repulse'));
+  const RADIO_REP = 120;
+  const FUERZA_REP = 80;
+
+  document.addEventListener('mousemove', e => {
+    letrasRep.forEach(letra => {
+      const rect = letra.getBoundingClientRect();
+      const cx   = rect.left + rect.width  / 2;
+      const cy   = rect.top  + rect.height / 2;
+      const dx   = e.clientX - cx;
+      const dy   = e.clientY - cy;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist < RADIO_REP) {
+        const fuerza = (1 - dist / RADIO_REP) * FUERZA_REP;
+        const ang    = Math.atan2(dy, dx);
+        letra.style.transform = `translate(${-Math.cos(ang)*fuerza}px, ${-Math.sin(ang)*fuerza}px)`;
+        letra.style.color = `hsl(${dist/RADIO_REP * 30 + 15}, 80%, 60%)`;
+      } else {
+        letra.style.transform = '';
+        letra.style.color = '';
+      }
+    });
+  });
+
+  // ─── Demo 2: Iluminación ────────────────────────────────────────────────────
+  const letrasAtr = dividirEnLetras(document.getElementById('atrae'));
+  const RADIO_LUZ = 100;
+
+  document.addEventListener('mousemove', e => {
+    letrasAtr.forEach(letra => {
+      const rect = letra.getBoundingClientRect();
+      const cx   = rect.left + rect.width  / 2;
+      const cy   = rect.top  + rect.height / 2;
+      const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
+      const luminosidad = Math.max(0, 1 - dist / RADIO_LUZ);
+
+      if (luminosidad > 0) {
+        letra.style.color = `rgba(255,255,255,${luminosidad.toFixed(2)})`;
+        letra.classList.add('activo');
+        letra.style.transform = `scale(${1 + luminosidad * 0.15})`;
+      } else {
+        letra.style.color = '';
+        letra.classList.remove('activo');
+        letra.style.transform = '';
+      }
+    });
+  });
+
+  // ─── Demo 3: Ola (solo split, el CSS hace el resto) ────────────────────────
+  dividirEnLetras(document.getElementById('ola'));
+
+  // ─── Demo 4: Sombra direccional ─────────────────────────────────────────────
+  const sombraEl = document.getElementById('sombra');
+  document.addEventListener('mousemove', e => {
+    const rect = sombraEl.getBoundingClientRect();
+    const cx   = rect.left + rect.width  / 2;
+    const cy   = rect.top  + rect.height / 2;
+    const dx   = (e.clientX - cx) / rect.width  * 30;
+    const dy   = (e.clientY - cy) / rect.height * 15;
+    sombraEl.style.textShadow = `${-dx}px ${-dy}px 0 rgba(232,160,32,.7),
+      ${-dx*1.5}px ${-dy*1.5}px 0 rgba(232,160,32,.3)`;
+  });
+  sombraEl.addEventListener('mouseleave', () => sombraEl.style.textShadow = '');
+</script>
+</body>
+</html>

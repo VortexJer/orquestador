@@ -1,0 +1,33 @@
+{
+  "skill": "office-presentation-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Hazme una presentacion corta (unas 6 diapositivas) sobre el trabajo en equipo para una charla interna. Tema generico, ve directo al deck."
+    },
+    {
+      "level": "easy",
+      "task": "Necesito una presentacion de unas 7 diapositivas sobre los beneficios del teletrabajo para una reunion de RRHH. Es un tema generico y conocido, no hace falta investigar nada raro."
+    },
+    {
+      "level": "normal",
+      "task": "Preparame una presentacion para el comite de direccion sobre nuestro plan de reduccion de costes de este ano. Quiero que se vea que hay un problema (los costes de infraestructura subieron), una causa, una propuesta concreta y el impacto esperado. Unas 8-9 diapositivas."
+    },
+    {
+      "level": "normal",
+      "task": "Monta una presentacion comparando dos opciones para el proximo CRM de la empresa: seguir con una herramienta a medida hecha en casa frente a contratar un SaaS externo. Que quede claro el antes/despues y los pros y contras de cada via. Publico: comite tecnico. Unas 8 diapositivas."
+    },
+    {
+      "level": "stress",
+      "task": "Convierte este informe en una presentacion para el consejo. OJO: despues del consejo el deck se envia por correo a los consejeros que no pudieron venir, asi que tiene que entenderse sin nadie que lo presente en vivo.\n\nINFORME:\nDurante el tercer trimestre la retencion de clientes se deterioro de forma notable. La tasa de bajas mensual paso del 4,1% al 6,3%, impulsada sobre todo por el segmento de pequenas empresas, que representa el 58% de nuestra base y donde las bajas se concentraron en los primeros 30 dias tras el alta. El analisis de los tickets de soporte y de las entrevistas de salida apunta a que el proceso de alta es confuso: el 71% de los que se dieron de baja no llegaron a completar la configuracion inicial de su cuenta, y de esos, la mitad ni siquiera conecto una fuente de datos. Los factores identificados fueron: formulario de alta con 14 campos obligatorios, ausencia de asistente guiado, correos de bienvenida que llegan con retraso o a spam, documentacion desactualizada, falta de plantillas de ejemplo, no hay un contacto humano en la primera semana, el panel inicial aparece vacio sin datos de muestra, los mensajes de error del importador son cripticos, no hay app movil para la primera toma de contacto, y el soporte tarda 2 dias en primera respuesta. Proponemos un rediseno del onboarding en dos sprints: sprint 1, formulario reducido a 4 campos y asistente guiado con datos de muestra; sprint 2, secuencia de correos automatizada, plantillas y contacto proactivo del equipo de exito en las primeras 48 horas. Con esto estimamos recuperar unos 8 puntos de retencion a 90 dias y volver a una tasa de bajas en torno al 4%."
+    },
+    {
+      "level": "stress",
+      "task": "Necesito una presentacion para levantar una ronda de inversion (un pitch a inversores). No te voy a dar los datos de la empresa ahora mismo, hazlo tu. Que tenga gancho y termine pidiendo la inversion. Unas 10 diapositivas."
+    },
+    {
+      "level": "stress",
+      "task": "Hazme una presentacion de unas 9 diapositivas sobre el avion Concorde para una charla divulgativa de aviacion. Quiero que lleve las cifras reales que importan (velocidad, alcance, anos de servicio, por que dejo de volar) y un par de fotos buenas. Que no quede plana."
+    }
+  ]
+}

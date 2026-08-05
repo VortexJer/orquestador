@@ -1,0 +1,33 @@
+{
+  "skill": "typescript-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Escribe una funcion en TypeScript que reciba un array de numeros y devuelva su media (promedio). Si el array esta vacio devuelve 0."
+    },
+    {
+      "level": "easy",
+      "task": "Define un tipo TypeScript para un objeto Producto con id (number), nombre (string) y precio (number), y escribe una funcion que reciba un Producto y devuelva su nombre en mayusculas."
+    },
+    {
+      "level": "normal",
+      "task": "Escribe una funcion async fetchTodos(url) en TypeScript que haga fetch a una API que devuelve una lista de tareas (cada tarea tiene id numerico, titulo string y completado boolean) y devuelva un array tipado de tareas. La API es externa y no controlas su forma exacta. Maneja el caso de que la peticion HTTP falle."
+    },
+    {
+      "level": "normal",
+      "task": "Tengo una funcion que procesa el resultado de un pago que puede estar en uno de estos estados: 'pendiente', 'pagado' o 'reembolsado'. Escribe en TypeScript el tipo del estado y una funcion que devuelva un mensaje distinto para cada estado. Quiero que si el dia de manana anado un estado nuevo, el compilador me obligue a tratarlo y no se me olvide ninguno."
+    },
+    {
+      "level": "stress",
+      "task": "Tengo un array de IDs de usuario. Para cada ID hago una peticion a la API que a veces falla (usuario borrado, timeout...). Necesito que se lancen todas, que un fallo NO cancele las demas, y al final saber exactamente cuales IDs tuvieron exito y cuales fallaron. Ademas, por separado, quiero recorrer una lista de registros y guardar cada uno en la base de datos con una funcion async saveRecord(r), y cuando TODOS esten guardados imprimir 'importacion terminada'. Escribelo en TypeScript."
+    },
+    {
+      "level": "stress",
+      "task": "En un proyecto TypeScript tengo los estados de un pedido y necesito pintar un desplegable con una opcion por cada estado, recorriendo el conjunto de estados. Ademas, cuando recibo un pedido que puede venir como null, tras comprobar que no es null quiero programar con setTimeout un aviso que a los 5 segundos loguee el id de ese pedido. Dame el codigo TypeScript de las dos cosas."
+    },
+    {
+      "level": "stress",
+      "task": "En TypeScript leo la configuracion de la app desde localStorage con JSON.parse y la guardo en una variable llamada cfg; luego se la paso a una funcion arrancar(config: AppConfig). AppConfig tiene { host: string; puerto: number; reintentos: number }. Quiero detectar cuanto antes si escribo mal el nombre de una clave (por ejemplo 'puertto'). Ademas arrancar recibe tambien una lista de servidores como readonly Servidor[] (Servidor = { url: string; peso: number }) y necesito garantizar que dentro de arrancar nadie pueda cambiar el peso de un servidor. Escribe el codigo."
+    }
+  ]
+}

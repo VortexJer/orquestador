@@ -1,0 +1,33 @@
+{
+  "skill": "cpp-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Escribe una funcion que reciba un std::vector<int> y un valor, y devuelva cuantas veces aparece ese valor en el vector."
+    },
+    {
+      "level": "easy",
+      "task": "Escribe una pequena clase Rectangulo con ancho y alto (double) y un metodo que calcule su area. Marca const lo que corresponda."
+    },
+    {
+      "level": "normal",
+      "task": "Implementa una pila generica Stack<T> apoyada en std::vector<T>, con push, pop (que devuelva y quite el elemento de arriba), top y empty. Si se hace pop o top sobre una pila vacia debe lanzar una excepcion. Anade un pequeno main que la use con int y con std::string."
+    },
+    {
+      "level": "normal",
+      "task": "Lee un archivo de texto pasado por ruta y devuelve un mapa de palabra a numero de apariciones, tratando las palabras sin distinguir mayusculas de minusculas. Maneja el caso de que el archivo no se pueda abrir."
+    },
+    {
+      "level": "stress",
+      "task": "Tengo un std::vector<int> con lecturas de un sensor. Recorre el vector y, por cada valor negativo que encuentres, anade al final del MISMO vector su valor absoluto (para dejar una version saneada al final). Al terminar devuelve el vector. Que sea eficiente y no reprocese los valores que vayas anadiendo."
+    },
+    {
+      "level": "stress",
+      "task": "Disena una jerarquia de formas geometricas con un metodo de area polimorfico (por ejemplo Circulo y Rectangulo). Escribe ademas una funcion que reciba una coleccion heterogenea de formas, las guarde y devuelva el area total sumada. Quiero poder pasarle cualquier mezcla de formas distintas y que el resultado use el area real de cada una."
+    },
+    {
+      "level": "stress",
+      "task": "Implementa una clase Matriz que reserve su almacenamiento interno (un bloque de double) con new[] en el constructor y lo libere en el destructor. Debe poderse devolver por valor desde una funcion de fabrica y guardarse en un std::vector<Matriz> sin corromper la memoria ni liberar dos veces el mismo bloque."
+    }
+  ]
+}

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Escena compuesta fotorrealista — mesa servida de vinoteca con fondo real desenfocado (15.20)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body { font-family: system-ui, sans-serif; color: #fff; overflow: hidden; background: #16100c; }
+
+  /* ================================================================
+     COMPONER UNA ESCENA FOTORREALISTA — hasta aquí cada demo enseña
+     UN objeto. Este enseña a montar un BODEGÓN combinando varios
+     modelos de modelos/ (mesa + botellas + copas + taburete + barril
+     + planta), como el escaparate de una vinoteca. La misma idea
+     sirve para una cafetería (mesa + tazas + croissant), una
+     barbería (sillón + atrezzo) o una tienda.
+
+     Las CUATRO decisiones que hacen que parezca una FOTO de local y
+     no "objetos flotando":
+
+     1. FONDO = EL PROPIO HDRI DESENFOCADO: warm_restaurant_night no
+        solo ilumina — con { fondo: true, desenfoque: 0.4 } también
+        SE VE detrás, borroso, como el fondo fuera de foco de una
+        foto con poca profundidad de campo. Un restaurante real de
+        fondo, gratis, sin modelar nada. Es el truco número 1 de
+        este archivo.
+     2. ESCALAS REALES: cargar() normaliza todo a ~2 unidades, así
+        que al componer hay que devolver los tamaños relativos con
+        opciones.alto pensando en medidas reales (mesa 100, botella
+        30, copa 15, taburete 90 cm...). Una botella tan alta como
+        la mesa rompe la foto al instante.
+     3. TODO APOYADO: apoyarEnSuelo() + medir la altura del tablero
+        con Box3 (nunca a ojo) para apoyar las botellas EN la mesa.
+     4. SOMBRA DE CONTACTO en el suelo (luzClave + sueloSombra):
+        sin sombra el bodegón "flota" y deja de ser creíble.
+
+     La cámara hace un vaivén lentísimo delante del "frente bueno"
+     del bodegón (no órbita completa: un bodegón se compone para
+     verse desde delante, como un escaparate).
+
+     SERVIDOR LOCAL: .gltf/.hdr locales no cargan con doble clic —
+     Live Server o `python -m http.server` (ver cargador-3d.js).
+  ================================================================ */
+
+  .escena { position: relative; height: 100%; display: grid; place-items: end center; }
+  #escena-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .contenido { position: relative; z-index: 1; padding: 0 1.5rem 3rem; text-align: center; pointer-events: none; }
+  .contenido h1 { font-size: clamp(2rem, 5vw, 3.4rem); font-weight: 900; letter-spacing: -.02em;
+    text-shadow: 0 4px 40px rgba(0,0,0,.85); }
+  .contenido p { margin-top: .6rem; color: #d8c1a8; text-shadow: 0 2px 18px rgba(0,0,0,.8); }
+</style>
+</head>
+<body>
+  <section class="escena">
+    <canvas id="escena-3d"></canvas>
+    <div class="contenido">
+      <h1>Vinos que cuentan de dónde vienen</h1>
+      <p>Catas los jueves — reserva tu sitio en la mesa grande</p>
+    </div>
+  </section>
+
+  <script src="cargador-3d.js"></script>
+  <!-- DEMO ONLY: en producción, import map local (ver hero-objeto-flotante.html) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const canvas = document.getElementById('escena-3d');
+    const THREE = await import('three');
+    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+    const { RGBELoader } = await import('three/addons/loaders/RGBELoader.js');
+    const kit3d = window.crearCargador3D(THREE, GLTFLoader, RGBELoader);
+
+    let renderer = null;
+    try {
+      renderer = kit3d.prepararRenderer(new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }));
+    } catch (e) { canvas.style.display = 'none'; } // FALLBACK: fondo CSS + texto
+
+    if (renderer) {
+      renderer.setSize(innerWidth, innerHeight);
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 60);
+
+      // ── el truco nº 1: el HDRI ilumina Y hace de fondo desenfocado ──
+      try {
+        // intensidadFondo BAJA: el HDRI desenfocado tiende a aclararse
+        // al emborronarse; oscurecerlo devuelve el ambiente de noche
+        await kit3d.aplicarEntorno(renderer, scene, kit3d.ENTORNOS.restaurante,
+          { fondo: true, desenfoque: 0.35, intensidadFondo: 0.3 });
+      } catch (e) {
+        scene.add(new THREE.AmbientLight(0xffe9c9, 0.7)); // sin .hdr: queda el fondo CSS
+      }
+      kit3d.luzClave(scene, { intensidad: 1.1, area: 5 });
+      kit3d.sueloSombra(scene, { radio: 12, opacidad: 0.45 });
+
+      // ── composición ──
+      // colocar(): apoyar en y=0 y repartir por el suelo. Los "alto"
+      // van en proporciones REALES (mesa 100cm de referencia).
+      async function colocar(ruta, alto, x, z, giro) {
+        const m = await kit3d.cargar(ruta, { alto });
+        m.rotation.y = giro || 0;
+        kit3d.apoyarEnSuelo(m);
+        m.position.x = x; m.position.z = z;
+        scene.add(m);
+        return m;
+      }
+      const R = (slug) => kit3d.catalogo.find((m) => m.slug === slug).ruta;
+
+      try {
+        // OJO con `alto`: normaliza la DIMENSIÓN MAYOR del modelo. En
+        // un set en fila (las 4 botellas, las 3 copas) la dimensión
+        // mayor es el ANCHO de la fila, no la altura de una pieza —
+        // por eso sus números parecen "grandes" comparados con la mesa
+        const mesa = await colocar(R('WoodenTable_02'), 1.7, 0.15, 0, 0.15); // mesa alta de bar
+        // altura real del tablero: se MIDE, nunca a ojo
+        const tablero = new THREE.Box3().setFromObject(mesa).max.y;
+
+        async function sobreMesa(ruta, alto, x, z, giro) {
+          const m = await colocar(ruta, alto, x, z, giro);
+          m.position.y += tablero;
+          return m;
+        }
+        await sobreMesa(R('wine_bottles_01'), 0.95, -0.05, -0.08, 0.35); // fila de 4 → botella ~0.5
+        await sobreMesa(R('brass_goblets'), 0.6, 0.42, 0.22, -0.4);      // fila de 3 → copa ~0.27
+
+        await colocar(R('bar_chair_round_01'), 1.45, -1.75, 0.75, 0.55); // taburete al lado
+        await colocar(R('wine_barrel_01'), 1.35, 2.15, -0.8, -0.3);      // barril de atrezzo
+        await colocar(R('potted_plant_01'), 1.6, -3.1, -1.5, 0.2);       // planta que remata
+      } catch (e) {
+        console.warn('Modelos no disponibles (¿abierto sin servidor local?):', e);
+      }
+
+      // ── cámara: vaivén lento delante del frente bueno ──
+      const centro = new THREE.Vector3(0, 1.0, 0);
+      function apuntar(t) {
+        const a = reduce ? 0 : Math.sin(t * 0.14) * 0.16; // ±9°, muy lento
+        camera.position.set(Math.sin(a) * 6.8, 1.8 + Math.sin(t * 0.1) * 0.1, Math.cos(a) * 6.8);
+        camera.lookAt(centro);
+      }
+
+      addEventListener('resize', () => {
+        camera.aspect = innerWidth / innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(innerWidth, innerHeight);
+      });
+
+      const reloj = new THREE.Clock();
+      if (reduce) { apuntar(0); renderer.render(scene, camera); }
+      else (function animar() {
+        requestAnimationFrame(animar);
+        apuntar(reloj.getElapsedTime());
+        renderer.render(scene, camera);
+      })();
+    }
+  </script>
+</body>
+</html>

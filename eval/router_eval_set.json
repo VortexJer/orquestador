@@ -1,0 +1,184 @@
+[
+  {"id": "sec-01", "task": "Revisa esta funcion de login por posible vulnerabilidad de inyeccion SQL.", "expected_domain": "security"},
+  {"id": "sec-02", "task": "Encontre un CVE-2024-1234 relacionado con esta libreria, evalua el riesgo.", "expected_domain": "security"},
+  {"id": "sec-03", "task": "Este endpoint es vulnerable a XSS, hay que revisar el sanitizado de la entrada.", "expected_domain": "security"},
+  {"id": "sec-04", "task": "Hay una contrasena hardcoded password en el archivo de configuracion, hay que sacarla.", "expected_domain": "security"},
+  {"id": "sec-05", "task": "Sospecho un path traversal en el endpoint de descarga de archivos.", "expected_domain": "security"},
+
+  {"id": "iac-01", "task": "Escribe un archivo terraform que cree un bucket S3 con versionado.", "expected_domain": "iac"},
+  {"id": "iac-02", "task": "Necesito un resource \"aws_instance\" para levantar una VM en AWS.", "expected_domain": "iac"},
+  {"id": "iac-03", "task": "Convierte este manifiesto en un kubernetes yaml valido con 3 replicas.", "expected_domain": "iac"},
+  {"id": "iac-04", "task": "Arma un helm chart basico para desplegar este servicio.", "expected_domain": "iac"},
+
+  {"id": "rust-01", "task": "Con cargo, agrega una dependencia de tokio a este proyecto rust.", "expected_domain": "rust"},
+  {"id": "rust-02", "task": "Este fn main en rust no compila, dice error de borrow checker.", "expected_domain": "rust"},
+  {"id": "rust-03", "task": "Necesito resolver un problema de lifetime en esta funcion generica de rust.", "expected_domain": "rust"},
+  {"id": "rust-04", "task": "Uso tokio::spawn para lanzar esta tarea en paralelo, revisame el codigo.", "expected_domain": "rust"},
+
+  {"id": "go-01", "task": "Este package main en Go tiene una goroutine que no cierra bien.", "expected_domain": "go"},
+  {"id": "go-02", "task": "Necesito revisar el go.mod de este modulo, hay un problema de versiones.", "expected_domain": "go"},
+  {"id": "go-03", "task": "Escribe un func NuevoCliente() en Go que inicialice la conexion.", "expected_domain": "go"},
+  {"id": "go-04", "task": "Esta goroutine se lanza dentro de un for y captura mal la variable del loop.", "expected_domain": "go"},
+
+  {"id": "sql-01", "task": "Escribe una query: SELECT id, nombre FROM clientes WHERE pais = 'AR';", "expected_domain": "sql"},
+  {"id": "sql-02", "task": "Necesito un INSERT INTO pedidos con las columnas cliente_id y total.", "expected_domain": "sql"},
+  {"id": "sql-03", "task": "Arma un CREATE TABLE facturas con id, monto y fecha.", "expected_domain": "sql"},
+  {"id": "sql-04", "task": "Esta consulta con LEFT JOIN devuelve filas duplicadas, ayudame a revisarla.", "expected_domain": "sql"},
+
+  {"id": "ts-01", "task": "Tengo una interface Usuario en TypeScript que necesito extender.", "expected_domain": "typescript"},
+  {"id": "ts-02", "task": "Este componente usa useState pero se re-renderiza de mas.", "expected_domain": "typescript"},
+  {"id": "ts-03", "task": "Convierte esta funcion a arrow function: const suma = (a, b) => a + b.", "expected_domain": "typescript"},
+  {"id": "ts-04", "task": "Instala esta libreria con npm install y ajusta el archivo .tsx.", "expected_domain": "typescript"},
+
+  {"id": "test-01", "task": "Escribe los tests unitarios para este modulo de facturacion.", "expected_domain": "testing"},
+  {"id": "test-02", "task": "Necesito mejorar el test coverage de este paquete.", "expected_domain": "testing"},
+  {"id": "test-03", "task": "Falta cubrir varios casos de prueba para la funcion de descuentos.", "expected_domain": "testing"},
+  {"id": "test-04", "task": "Agrega unit tests para validar los limites de esta funcion.", "expected_domain": "testing"},
+
+  {"id": "ref-01", "task": "Refactoriza esta clase para separar responsabilidades.", "expected_domain": "refactor"},
+  {"id": "ref-02", "task": "Limpia el codigo de este archivo, hay logica repetida.", "expected_domain": "refactor"},
+  {"id": "ref-03", "task": "Elimina duplicacion entre estas dos funciones similares.", "expected_domain": "refactor"},
+  {"id": "ref-04", "task": "Hace falta un refactor grande en este modulo, esta muy acoplado.", "expected_domain": "refactor"},
+
+  {"id": "docs-01", "task": "Documenta esta funcion con una descripcion clara de sus parametros.", "expected_domain": "docs"},
+  {"id": "docs-02", "task": "Escribe un readme para este repositorio explicando como instalarlo.", "expected_domain": "docs"},
+  {"id": "docs-03", "task": "Falta el docstring de esta clase, agregalo por favor.", "expected_domain": "docs"},
+  {"id": "docs-04", "task": "Necesito documentacion tecnica del modulo de pagos.", "expected_domain": "docs"},
+
+  {"id": "triv-04", "task": "Resume el texto que sigue en tres bullets para mandarselo a mi jefe.", "expected_domain": "trivial_text"},
+
+  {"id": "office-email-01", "task": "Redacta un correo para avisarle al cliente que el envio se retraso.", "expected_domain": "office_email"},
+  {"id": "office-email-02", "task": "Necesito una carta de presentacion breve para un puesto de soporte.", "expected_domain": "office_email"},
+
+  {"id": "office-word-01", "task": "Genera un Word con el resumen de la reunion de hoy.", "expected_domain": "office_word"},
+  {"id": "office-word-02", "task": "Necesito un documento Word con el informe final adjunto.", "expected_domain": "office_word"},
+
+  {"id": "office-sheet-01", "task": "Arma una hoja de calculo con los gastos del mes.", "expected_domain": "office_spreadsheet"},
+  {"id": "office-sheet-02", "task": "Genera un Excel con las ventas trimestrales.", "expected_domain": "office_spreadsheet"},
+
+  {"id": "office-ppt-01", "task": "Necesito una presentacion para la reunion de mañana.", "expected_domain": "office_presentation"},
+  {"id": "office-ppt-02", "task": "Prepara una presentacion sobre el lanzamiento del producto.", "expected_domain": "office_presentation"},
+
+  {"id": "js-01", "task": "Este require(\"fs\") falla al leer el archivo en mi script .js", "expected_domain": "javascript"},
+  {"id": "js-02", "task": "El document.querySelector no encuentra el elemento en este codigo.", "expected_domain": "javascript"},
+
+  {"id": "java-01", "task": "Este import java.util.List no compila en mi clase.", "expected_domain": "java"},
+  {"id": "java-02", "task": "Tengo un public static void main que no imprime nada con System.out.println.", "expected_domain": "java"},
+
+  {"id": "csharp-01", "task": "Este Console.WriteLine no imprime nada dentro de mi metodo async Task.", "expected_domain": "csharp"},
+  {"id": "csharp-02", "task": "Necesito revisar el namespace MiApp en este archivo .cs", "expected_domain": "csharp"},
+
+  {"id": "cpp-01", "task": "Este codigo con #include <vector> y std::vector no compila.", "expected_domain": "cpp"},
+  {"id": "cpp-02", "task": "Tengo un unique_ptr que hace crash al liberar el recurso en este .cpp", "expected_domain": "cpp"},
+
+  {"id": "php-01", "task": "Este <?php con $this->nombre no funciona bien.", "expected_domain": "php"},
+  {"id": "php-02", "task": "Necesito revisar esta public function en un archivo .php", "expected_domain": "php"},
+
+  {"id": "ruby-01", "task": "Este attr_accessor no expone bien el valor en mi clase.", "expected_domain": "ruby"},
+  {"id": "ruby-02", "task": "Tengo un archivo .rb donde uso puts para debuggear pero no imprime nada.", "expected_domain": "ruby"},
+
+  {"id": "kotlin-01", "task": "Este fun main no arranca bien mi app.", "expected_domain": "kotlin"},
+  {"id": "kotlin-02", "task": "Necesito revisar esta data class en mi archivo .kt", "expected_domain": "kotlin"},
+
+  {"id": "web-01", "task": "Necesito una landing page responsive para mi restaurante, con fotos y horarios.", "expected_domain": "web"},
+  {"id": "web-02", "task": "Este archivo .css no aplica bien el diseño web en movil.", "expected_domain": "web"},
+  {"id": "web-03", "task": "Hazme una web para una carniceria, inventate los datos y guardala en una carpeta.", "expected_domain": "web"},
+  {"id": "web-04", "task": "Necesito una web para mi negocio de reparaciones.", "expected_domain": "web"},
+  {"id": "web-05", "task": "Quiero una web para mi tienda de ropa.", "expected_domain": "web"},
+
+  {"id": "py-01", "task": "Escribe una funcion def calcular_total(items) que sume precios.", "expected_domain": "python"},
+  {"id": "py-02", "task": "Este import pandas as pd falla en la ultima version del proyecto.", "expected_domain": "python"},
+  {"id": "py-03", "task": "En esta clase, self.saldo no se actualiza bien tras un retiro.", "expected_domain": "python"},
+  {"id": "py-04", "task": "Corri pytest y me tira un error en el archivo principal.py.", "expected_domain": "python"},
+
+  {
+    "id": "edge-01-security-vs-sql",
+    "task": "Esta consulta SELECT * FROM usuarios WHERE nombre = '<input>' tiene un problema de inyeccion SQL, arreglala.",
+    "expected_domain": "security",
+    "note": "Colision intencional: matchea patrones de sql y de security a la vez. Security va primero en la prioridad del router porque un problema de seguridad debe tratarse como tal aunque el texto tambien sea SQL valido."
+  },
+  {
+    "id": "edge-02-rust-vs-go",
+    "task": "Compara como se maneja la concurrencia en Go con goroutines versus Rust con tokio::spawn.",
+    "expected_domain": "rust",
+    "note": "Colision intencional: matchea 'goroutine' (go) y 'tokio::' (rust) a la vez. Rust esta antes que go en la prioridad del router heuristico."
+  },
+  {
+    "id": "edge-03-typescript-vs-testing",
+    "task": "Escribe unit tests para este componente que usa useState.",
+    "expected_domain": "typescript",
+    "note": "Colision intencional: matchea 'unit tests' (testing) y 'useState' (typescript) a la vez. Typescript esta antes que testing en la prioridad del router heuristico - limitacion conocida a revisar cuando se active el router LLM."
+  },
+
+  {"id": "cr-01", "task": "Revisame el codigo de este commit antes de mergearlo.", "expected_domain": "code_review"},
+  {"id": "cr-02", "task": "Hazme un code review de estos cambios y dime que mejorarias.", "expected_domain": "code_review"},
+  {"id": "cr-03", "task": "Puedes revisar el diff de este PR y decirme si hay algo mal?", "expected_domain": "code_review"},
+  {"id": "cr-04", "task": "Audita el codigo de este modulo en busca de malas practicas.", "expected_domain": "code_review"},
+  {"id": "cr-05", "task": "Necesito una revision de codigo de esta clase antes de subirla.", "expected_domain": "code_review"},
+
+  {"id": "dbg-01", "task": "Este script no funciona y no se por que, ayudame a depurarlo.", "expected_domain": "debugging"},
+  {"id": "dbg-02", "task": "Me da este error al ejecutar y no entiendo de donde sale.", "expected_domain": "debugging"},
+  {"id": "dbg-03", "task": "Tengo un traceback larguisimo, ayudame a encontrar el origen.", "expected_domain": "debugging"},
+  {"id": "dbg-04", "task": "El programa no anda desde el ultimo cambio, hay que debuggear paso a paso.", "expected_domain": "debugging"},
+  {"id": "dbg-05", "task": "Necesito leer este stacktrace para ver donde revienta todo.", "expected_domain": "debugging"},
+
+  {"id": "a11y-01", "task": "Revisa la accesibilidad de este formulario segun WCAG.", "expected_domain": "accessibility"},
+  {"id": "a11y-02", "task": "Este boton no es accesible para lectores de pantalla, hay que arreglarlo.", "expected_domain": "accessibility"},
+  {"id": "a11y-03", "task": "Agrega atributos aria- a este menu de navegacion.", "expected_domain": "accessibility"},
+  {"id": "a11y-04", "task": "El contraste de color no cumple con a11y, ajustalo.", "expected_domain": "accessibility"},
+  {"id": "a11y-05", "task": "Necesito que esta pagina cumpla WCAG AA para screen readers.", "expected_domain": "accessibility"},
+
+  {"id": "tsname-01", "task": "Tengo un tipo generico en TypeScript que no infiere bien el retorno.", "expected_domain": "typescript"},
+  {"id": "jsname-01", "task": "Ayudame con una promesa en JavaScript que nunca resuelve.", "expected_domain": "javascript"},
+  {"id": "javaname-01", "task": "Necesito ayuda con una herencia en Java que no compila.", "expected_domain": "java"},
+  {"id": "rustname-01", "task": "Tengo un problema de ownership en Rust que no logro resolver.", "expected_domain": "rust"},
+  {"id": "goname-01", "task": "Ayudame con un canal en Golang que se bloquea siempre.", "expected_domain": "go"},
+  {"id": "kotlinname-01", "task": "Necesito convertir esta clase a Kotlin idiomatico.", "expected_domain": "kotlin"},
+  {"id": "csharpname-01", "task": "Tengo un problema con LINQ en C# que devuelve vacio.", "expected_domain": "csharp"},
+  {"id": "cppname-01", "task": "Ayudame con una plantilla en C++ que no instancia.", "expected_domain": "cpp"},
+  {"id": "phpname-01", "task": "Necesito revisar una funcion en PHP que no valida bien.", "expected_domain": "php"},
+  {"id": "rubyname-01", "task": "Tengo un bloque en Ruby que no itera como espero.", "expected_domain": "ruby"},
+  {"id": "sqlname-01", "task": "Necesito una consulta SQL que agrupe ventas por mes.", "expected_domain": "sql"},
+
+  {"id": "sec-06", "task": "Revisa si este formulario es vulnerable a CSRF y como mitigarlo.", "expected_domain": "security"},
+  {"id": "sec-07", "task": "Hay un secreto expuesto en el repositorio, hay que rotarlo y sacarlo del historial.", "expected_domain": "security"},
+
+  {"id": "iac-05", "task": "Necesito un provider \"aws\" configurado con la region de Frankfurt.", "expected_domain": "iac"},
+  {"id": "iac-06", "task": "Convierte esto en un k8s manifest con un service y un deployment.", "expected_domain": "iac"},
+
+  {"id": "test-05", "task": "Escribe los tests de integracion para el flujo de checkout.", "expected_domain": "testing"},
+  {"id": "test-06", "task": "Necesito casos de prueba para cubrir los bordes de esta validacion.", "expected_domain": "testing"},
+
+  {"id": "ref-05", "task": "Refactoriza esta funcion gigante en piezas mas pequeñas.", "expected_domain": "refactor"},
+  {"id": "ref-06", "task": "Elimina duplicacion en estos tres handlers casi identicos.", "expected_domain": "refactor"},
+
+  {"id": "docs-05", "task": "Escribe un readme con ejemplos de uso de esta libreria.", "expected_domain": "docs"},
+  {"id": "docs-06", "task": "Documenta la API publica de este modulo con docstrings.", "expected_domain": "docs"},
+
+  {"id": "web-06", "task": "Hazme una web para mi peluqueria con seccion de reservas.", "expected_domain": "web"},
+  {"id": "web-07", "task": "Necesito una pagina web con un formulario de contacto responsive.", "expected_domain": "web"},
+
+  {"id": "office-email-03", "task": "Redacta un email para pedir presupuesto a un proveedor.", "expected_domain": "office_email"},
+  {"id": "office-word-03", "task": "Genera un documento word con el contrato de servicios.", "expected_domain": "office_word"},
+  {"id": "office-sheet-03", "task": "Crea una planilla de calculo con el inventario y sus totales.", "expected_domain": "office_spreadsheet"},
+  {"id": "office-ppt-03", "task": "Arma una presentacion con diapositivas del plan trimestral.", "expected_domain": "office_presentation"},
+
+  {
+    "id": "edge-04-debug-vs-python",
+    "task": "Corri el script y me da este error, no se por que, ayudame a depurarlo.",
+    "expected_domain": "debugging",
+    "note": "Colision: 'depura' (debugging) podria confundirse con una tarea de lenguaje. La señal fuerte de diagnostico ('da error', 'no se por que', 'depurar') gana: es metodologia de diagnostico, no ayuda de un lenguaje concreto."
+  },
+  {
+    "id": "edge-05-codereview-vs-security",
+    "task": "Revisa el codigo de este PR de login por posibles vulnerabilidades.",
+    "expected_domain": "security",
+    "note": "Colision intencional: 'revisa el codigo' (code_review) + 'vulnerabilidades' (security). Security va primero en la prioridad: un riesgo de seguridad se trata como tal aunque el envoltorio sea una revision de codigo."
+  },
+  {
+    "id": "edge-06-a11y-vs-web",
+    "task": "Mejora la accesibilidad WCAG de esta pagina web existente.",
+    "expected_domain": "accessibility",
+    "note": "Colision: 'pagina web' (web) + 'accesibilidad/WCAG' (accessibility). Web va antes que accessibility en la prioridad del heuristico - caso a vigilar; la etiqueta esperada refleja la INTENCION real (arreglar accesibilidad, no construir un sitio nuevo)."
+  }
+]

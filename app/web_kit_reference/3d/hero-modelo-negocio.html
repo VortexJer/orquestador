@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hero con modelo fotorrealista — el producto del negocio flotando junto al titular (15.19)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body { font-family: system-ui, sans-serif; color: #fff; overflow: hidden; }
+
+  /* ================================================================
+     HERO CON PRODUCTO FOTORREALISTA — la aplicación más directa de
+     la colección modelos/: en vez del TorusKnot abstracto de
+     hero-objeto-flotante.html, el hero muestra EL PRODUCTO del
+     negocio (la tarta de la pastelería, el sillón de la barbería,
+     la cámara del fotógrafo…) con calidad de foto de producto:
+     girando despacio, con sombra de contacto y luz de estudio.
+
+     Una foto no puede hacer esto: el producto REACCIONA (gira, sigue
+     al puntero) y sigue siendo indistinguible de una foto. Ese es el
+     efecto "web cara" que se busca aquí.
+
+     CÓMO ELEGIR EL MODELO: abre catalogo-modelos.html (o la tabla de
+     modelos/LICENCIA.md). Aquí se cambia UNA línea (const MODELO).
+     El selector de arriba a la derecha es SOLO del demo, para
+     probarlos todos — quítalo en producción.
+
+     La receta fotorrealista (HDRI + ACES + sombra) viene entera de
+     cargador-3d.js — leer su cabecera. Dos reglas que aplican aquí:
+     - El fondo CSS se elige A JUEGO con el entorno HDRI (aquí:
+       oscuro cálido neutro). El modelo NO se tiñe con luces de color.
+     - La marca entra por el TEXTO y el CTA (--color-acento), no
+       pintando el producto.
+
+     SERVIDOR LOCAL: los .gltf/.hdr locales no cargan con doble clic
+     (el navegador bloquea fetch de file://) — usa Live Server o
+     `python -m http.server`. Si fallan, este demo cae al fallback
+     honesto: el hero sigue funcionando solo con texto.
+  ================================================================ */
+
+  :root { --color-acento: #e8899e; } /* la paleta del proyecto: SOLO para UI, no tiñe el 3D */
+
+  .hero {
+    position: relative; height: 100%;
+    background: radial-gradient(circle at 70% 48%, #2a2320, #141110 72%);
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+  }
+  #escena-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  .texto { position: relative; z-index: 1; padding: 2rem 3rem 2rem 4rem; pointer-events: none; }
+  .texto .sobre { color: var(--color-acento); font-weight: 700; letter-spacing: .2em;
+    text-transform: uppercase; font-size: .78rem; }
+  .texto h1 { font-size: clamp(2.4rem, 5.5vw, 4.4rem); font-weight: 900; letter-spacing: -.02em;
+    line-height: 1.05; margin-top: .8rem; }
+  .texto p { margin-top: 1.2rem; color: #cdbfb6; max-width: 40ch; line-height: 1.6; }
+  .texto .cta { pointer-events: auto; display: inline-block; margin-top: 1.8rem;
+    background: var(--color-acento); color: #201317; text-decoration: none; font-weight: 800;
+    padding: .9rem 1.7rem; border-radius: 999px; }
+
+  /* selector DEMO ONLY — fuera en producción */
+  .selector { position: fixed; top: 1rem; right: 1rem; z-index: 50; }
+  .selector select { background: #1d1916; color: #e8ddd0; border: 1px solid #3a322b;
+    border-radius: 8px; padding: .45rem .7rem; font-size: .85rem; max-width: 240px; }
+
+  @media (max-width: 760px) {
+    .hero { grid-template-columns: 1fr; align-items: end; }
+    .texto { padding: 0 1.5rem 3rem; text-align: center; }
+    .texto p { margin-inline: auto; }
+  }
+</style>
+</head>
+<body>
+  <section class="hero">
+    <canvas id="escena-3d"></canvas>
+    <div class="texto">
+      <span class="sobre">Obrador artesano</span>
+      <h1>La tarta que se pide con semanas</h1>
+      <p>Chocolate belga, fresas del día y cero atajos. Encarga la tuya o pásate a probar la porción del día.</p>
+      <a class="cta" href="#">Encargar tarta</a>
+    </div>
+  </section>
+
+  <div class="selector">
+    <label style="color:#8d8579;font-size:.75rem;margin-right:.4rem">DEMO — modelo:</label>
+    <select id="cambiar-modelo"></select>
+  </div>
+
+  <script src="cargador-3d.js"></script>
+  <!-- DEMO ONLY: en producción, import map local (ver hero-objeto-flotante.html) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+    const MODELO = 'strawberry_chocolate_cake'; // ← slug del catálogo (catalogo-modelos.html)
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const canvas = document.getElementById('escena-3d');
+    const THREE = await import('three');
+    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+    const { RGBELoader } = await import('three/addons/loaders/RGBELoader.js');
+    const kit3d = window.crearCargador3D(THREE, GLTFLoader, RGBELoader);
+
+    let renderer = null;
+    try {
+      renderer = kit3d.prepararRenderer(new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }));
+    } catch (e) {
+      canvas.style.display = 'none'; // FALLBACK: el hero funciona igual solo con texto
+    }
+
+    if (renderer) {
+      renderer.setSize(innerWidth, innerHeight);
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 100);
+      camera.position.set(0, 0.55, 6.2);
+      camera.lookAt(0, 0, 0);
+
+      // TODA la luz de "foto" sale del HDRI de estudio; la direccional
+      // de kit3d.luzClave existe casi solo para la sombra de contacto
+      try {
+        await kit3d.aplicarEntorno(renderer, scene, kit3d.ENTORNOS.estudio);
+      } catch (e) {
+        scene.add(new THREE.AmbientLight(0xffffff, 0.65)); // sin .hdr: luz de emergencia
+      }
+      kit3d.luzClave(scene);
+
+      // el pivote COLOCA (derecha / arriba en móvil); el modelo solo rota.
+      // El suelo de sombra vive DENTRO del pivote: así la sombra queda
+      // siempre debajo del producto, también al recolocar en móvil
+      const pivote = new THREE.Group();
+      scene.add(pivote);
+      kit3d.sueloSombra(pivote, { radio: 4, y: -1.18, opacidad: 0.4 });
+
+      let objeto = null;
+      async function poner(slug) {
+        const entrada = kit3d.catalogo.find((m) => m.slug === slug);
+        try {
+          const nuevo = await kit3d.cargar(entrada.ruta);
+          if (objeto) pivote.remove(objeto);
+          objeto = nuevo;
+          pivote.add(objeto);
+        } catch (e) {
+          console.warn('Modelo no disponible (¿abierto sin servidor local?):', e);
+        }
+      }
+      await poner(MODELO);
+
+      const esMovil = () => matchMedia('(max-width: 760px)').matches;
+      function colocar() {
+        if (esMovil()) { pivote.position.set(0, 1.0, 0); pivote.scale.setScalar(0.72); }
+        else { pivote.position.set(1.5, 0.15, 0); pivote.scale.setScalar(1.0); }
+      }
+      colocar();
+
+      let targetX = 0, targetY = 0;
+      addEventListener('pointermove', (e) => {
+        targetX = (e.clientX / innerWidth - 0.5) * 2;
+        targetY = (e.clientY / innerHeight - 0.5) * 2;
+      });
+      addEventListener('resize', () => {
+        camera.aspect = innerWidth / innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(innerWidth, innerHeight);
+        colocar();
+      });
+
+      const reloj = new THREE.Clock();
+      function frame() {
+        const t = reloj.getElapsedTime();
+        if (objeto) {
+          // plato giratorio de escaparate + una pizca de "sigue al puntero"
+          objeto.rotation.y = t * 0.28 + targetX * 0.35;
+          objeto.rotation.x = targetY * 0.06;
+        }
+        renderer.render(scene, camera);
+      }
+      if (reduce) frame(); // un solo render, quieto
+      else (function animar() { requestAnimationFrame(animar); frame(); })();
+
+      // ── DEMO ONLY: selector para probar todo el catálogo ──
+      const selector = document.getElementById('cambiar-modelo');
+      for (const m of kit3d.catalogo) {
+        const op = document.createElement('option');
+        op.value = m.slug; op.textContent = m.nombre;
+        if (m.slug === MODELO) op.selected = true;
+        selector.appendChild(op);
+      }
+      selector.addEventListener('change', async () => { await poner(selector.value); if (reduce) frame(); });
+    }
+  </script>
+</body>
+</html>

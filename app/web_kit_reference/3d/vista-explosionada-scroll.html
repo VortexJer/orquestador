@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vista explosionada al scroll — el producto se abre en piezas fotorrealistas mientras bajas (15.22)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; color: #fff; background: #17130f; }
+
+  /* ================================================================
+     VISTA EXPLOSIONADA ("exploded view") — el truco de las páginas
+     de producto de Apple: al hacer scroll, el producto se separa en
+     sus piezas flotando, cada una con su texto. Aquí con el juego de
+     té de modelos/ (tea_set_01: 10 piezas reales separadas — tetera,
+     tazas, platillos, azucarero…).
+
+     CÓMO SE EXPLOTA UN .gltf CUALQUIERA: cargador-3d.js deja en
+     userData.piezas cada malla del modelo con su posición original.
+     La explosión genérica: cada pieza se aleja del centro EN SU
+     PROPIA dirección (posición original normalizada como vector),
+     multiplicada por el progreso del scroll. Sirve para cualquier
+     modelo multi-pieza (un pack de productos, un mueble por módulos,
+     las 4 botellas de wine_bottles_01…). OJO: un .gltf de UNA sola
+     malla soldada no se puede explotar — mira los nodos antes de
+     elegir modelo (tea_set_01 y wine_bottles_01 del kit sí valen).
+
+     El esqueleto scrollytelling (canvas sticky + sección alta +
+     progreso a mano) es el mismo de siempre: 0→1 según cuánta
+     altura "extra" de la sección se ha consumido. Los textos entran
+     cada uno en su tramo de progreso.
+
+     prefers-reduced-motion: sin scroll-animación — se muestra ya
+     semi-explosionado (la vista más informativa), textos visibles.
+
+     SERVIDOR LOCAL para verlo (Live Server) — ver cargador-3d.js.
+  ================================================================ */
+
+  .scrolly { position: relative; height: 400vh; }
+  .pegado { position: sticky; top: 0; height: 100vh; overflow: hidden;
+    background: radial-gradient(circle at 50% 42%, #2a2118, #17130f 75%); }
+  #escena-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  .titulo { position: absolute; top: 7vh; width: 100%; text-align: center; z-index: 1; pointer-events: none; }
+  .titulo h1 { font-size: clamp(1.8rem, 4.5vw, 3rem); font-weight: 900; letter-spacing: -.02em; }
+  .titulo p { color: #b09b7e; margin-top: .4rem; font-size: .95rem; }
+
+  .capas-info { position: absolute; right: clamp(1rem, 6vw, 6rem); top: 50%;
+    transform: translateY(-50%); z-index: 1; display: grid; gap: 1.1rem; max-width: 270px;
+    pointer-events: none; }
+  .capa-info { opacity: 0; transform: translateX(14px); transition: opacity .4s, transform .4s;
+    border-left: 3px solid #c9a227; padding-left: .9rem; }
+  .capa-info.visible { opacity: 1; transform: none; }
+  .capa-info h3 { font-size: 1rem; font-weight: 800; }
+  .capa-info p { font-size: .8rem; color: #b8a68c; line-height: 1.45; margin-top: .15rem; }
+
+  .final { min-height: 60vh; display: grid; place-items: center; text-align: center; padding: 3rem 1.5rem; }
+  .final h2 { font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 900; }
+  .final a { display: inline-block; margin-top: 1.4rem; background: #c9a227; color: #17130f;
+    font-weight: 800; text-decoration: none; padding: .9rem 1.8rem; border-radius: 999px; }
+
+  @media (max-width: 760px) {
+    .capas-info { right: 1rem; left: 1rem; top: auto; bottom: 4vh; transform: none; max-width: none; }
+    .capa-info p { display: none; } /* en móvil, solo el titular: no tapa el 3D */
+  }
+</style>
+</head>
+<body>
+  <section class="scrolly">
+    <div class="pegado">
+      <canvas id="escena-3d"></canvas>
+      <div class="titulo">
+        <h1>El ritual completo</h1>
+        <p>Baja para abrir la merienda para dos</p>
+      </div>
+      <div class="capas-info" id="capas-info">
+        <div class="capa-info"><h3>Tetera de porcelana</h3><p>Una infusión de verdad necesita reposo — por eso sale a la mesa entera.</p></div>
+        <div class="capa-info"><h3>Dos tazas, dos platillos</h3><p>La merienda se pide para compartir. Nunca para uno.</p></div>
+        <div class="capa-info"><h3>Azucarero y bandeja</h3><p>Azúcar de caña, miel o nada: como la quieras.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="final">
+    <div>
+      <h2>Cada pieza en su sitio, cada tarde</h2>
+      <a href="#">Reservar merienda</a>
+    </div>
+  </section>
+
+  <script src="cargador-3d.js"></script>
+  <!-- DEMO ONLY: en producción, import map local (ver hero-objeto-flotante.html) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const canvas = document.getElementById('escena-3d');
+    const THREE = await import('three');
+    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+    const { RGBELoader } = await import('three/addons/loaders/RGBELoader.js');
+    const kit3d = window.crearCargador3D(THREE, GLTFLoader, RGBELoader);
+
+    const fichas = [...document.querySelectorAll('.capa-info')];
+
+    let renderer = null;
+    try {
+      renderer = kit3d.prepararRenderer(new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }));
+    } catch (e) {
+      canvas.style.display = 'none';
+      fichas.forEach(f => f.classList.add('visible')); // FALLBACK: al menos, la info
+    }
+
+    if (renderer) {
+      renderer.setSize(innerWidth, innerHeight);
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 50);
+      camera.position.set(0, 1.5, 6.2);
+      camera.lookAt(0, 0.1, 0);
+
+      try {
+        await kit3d.aplicarEntorno(renderer, scene, kit3d.ENTORNOS.estudio);
+      } catch (e) {
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+      }
+      kit3d.luzClave(scene, { area: 5 });
+      kit3d.sueloSombra(scene, { radio: 8, y: -1.0, opacidad: 0.35 });
+
+      let modelo = null, piezas = [], factorExplosion = 0;
+      const centroPiezas = new THREE.Vector3();
+      try {
+        modelo = await kit3d.cargar(
+          kit3d.catalogo.find((m) => m.slug === 'tea_set_01').ruta, { alto: 3.1 });
+        modelo.position.y = -0.55;
+        // en escritorio, un pelín a la izquierda (las fichas van a la derecha)
+        modelo.position.x = matchMedia('(max-width: 760px)').matches ? 0 : -0.7;
+        scene.add(modelo);
+
+        // las piezas viven en unidades ORIGINALES del archivo, así que
+        // el desplazamiento se mide contra el tamaño original, no a ojo
+        piezas = modelo.userData.piezas;
+        const tam = modelo.userData.tamanoOriginal;
+        factorExplosion = Math.max(tam.x, tam.y, tam.z) * 0.5;
+        piezas.forEach((p) => centroPiezas.add(p.centro)); // centro medio del conjunto
+        centroPiezas.divideScalar(piezas.length || 1);
+      } catch (e) {
+        console.warn('Modelo no disponible (¿abierto sin servidor local?):', e);
+        fichas.forEach(f => f.classList.add('visible'));
+      }
+
+      // ── la explosión genérica: cada pieza huye del centro medio en
+      // SU dirección (centro geométrico de la pieza), con un toque de
+      // elevación alternada que ordena el despiece en vertical ──
+      const dirTmp = new THREE.Vector3();
+      function explotar(progreso) {
+        piezas.forEach((p, i) => {
+          dirTmp.copy(p.centro).sub(centroPiezas);
+          if (dirTmp.lengthSq() < 1e-9) dirTmp.set(0, 1, 0); // pieza justo en el centro
+          dirTmp.normalize();
+          p.malla.position.copy(p.posicionBase)
+            .addScaledVector(dirTmp, progreso * factorExplosion)
+            .add(dirTmp.set(0, progreso * (i % 4) * factorExplosion * 0.18, 0));
+        });
+        fichas.forEach((f, i) => {
+          const inicio = (i + 0.5) / (fichas.length + 1);
+          f.classList.toggle('visible', progreso >= inicio);
+        });
+      }
+
+      const scrolly = document.querySelector('.scrolly');
+      function progresoScroll() {
+        const r = scrolly.getBoundingClientRect();
+        return Math.min(1, Math.max(0, -r.top / (r.height - innerHeight)));
+      }
+
+      addEventListener('resize', () => {
+        camera.aspect = innerWidth / innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(innerWidth, innerHeight);
+      });
+
+      const reloj = new THREE.Clock();
+      if (reduce) {
+        explotar(0.55); // la vista más informativa, fija
+        fichas.forEach(f => f.classList.add('visible'));
+        if (modelo) modelo.rotation.y = 0.5;
+        renderer.render(scene, camera);
+      } else {
+        (function animar() {
+          requestAnimationFrame(animar);
+          explotar(progresoScroll());
+          if (modelo) modelo.rotation.y = reloj.getElapsedTime() * 0.16; // giro lento constante
+          renderer.render(scene, camera);
+        })();
+      }
+    }
+  </script>
+</body>
+</html>

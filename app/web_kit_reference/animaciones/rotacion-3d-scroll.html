@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rotación 3D ligada al scroll — efecto "Higgsfield"</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #0b0b0f; color: #fff; }
+  .label { position: fixed; top: 1rem; left: 1rem; z-index: 10; font-size: .7rem;
+           color: #666; letter-spacing: .15em; text-transform: uppercase; }
+  .espaciador { height: 60vh; display: grid; place-items: center; color: #444; font-size: .9rem; }
+
+  /* ================================================================
+     EFECTO "HIGGSFIELD" — rotación e inclinación 3D ligada al scroll.
+
+     Un elemento (mockup, producto, cifra clave, logo) gira en 3D
+     PROPORCIONALMENTE a cuánto has scrolleado, no con una duración
+     fija. Sensación de "rotar un objeto real" = look de vídeo IA.
+
+     Hay DOS implementaciones, elige una:
+
+     OPCIÓN A (la de este archivo): nativa CSS, CERO JS.
+       animation-timeline: view()  ata la animación al recorrido del
+       propio elemento por el viewport. Chrome/Edge 2024+. En navegadores
+       sin soporte degrada a "sin rotación" — NO rompe nada.
+
+     OPCIÓN B: GSAP ScrollTrigger con scrub:true (ver bloque comentado
+       al final del <body>). Más compatible y control fino. Úsala si ya
+       cargas GSAP autoalojado (ver gsap-scrolltrigger.html).
+
+     CLAVE de profundidad real (no un scaleX aplastado):
+       - contenedor padre  → perspective: 1000px
+       - elemento que gira → transform-style: preserve-3d
+
+     CON PROPÓSITO: el giro debe revelar otro ángulo, simular acercarse
+     a un objeto o dar profundidad a una cifra. Si no aporta narrativa,
+     cuenta como una de las 2-3 animaciones decorativas del límite.
+  ================================================================ */
+
+  /* El contenedor da la perspectiva: cuanto menor el valor, más extremo el 3D */
+  .escena {
+    perspective: 1000px;
+    display: grid; place-items: center;
+    padding: 12vh 1.5rem;
+  }
+
+  .objeto-3d {
+    transform-style: preserve-3d;
+    animation: girar-en-scroll linear both;
+    /* atado al recorrido del propio elemento por el viewport */
+    animation-timeline: view();
+    animation-range: entry 0% cover 90%;
+    will-change: transform;
+  }
+  @keyframes girar-en-scroll {
+    from { transform: perspective(1000px) rotateY(-28deg) rotateX(7deg)  scale(.9); }
+    to   { transform: perspective(1000px) rotateY( 28deg) rotateX(-7deg) scale(1); }
+  }
+
+  /* ---- Variante 1: mockup de producto/dispositivo ---- */
+  .mockup {
+    width: min(420px, 80vw);
+    border-radius: 18px; overflow: hidden;
+    background: linear-gradient(135deg, #1d2740, #0e1424);
+    border: 1px solid rgba(120,150,255,.25);
+    box-shadow: 0 40px 90px rgba(0,0,0,.6);
+  }
+  .mockup .barra { height: 34px; background: #0a0f1c; display: flex; align-items: center; gap: 7px; padding: 0 14px; }
+  .mockup .barra i { width: 10px; height: 10px; border-radius: 50%; background: #2c3650; }
+  .mockup .pantalla { aspect-ratio: 16/10; display: grid; place-items: center;
+    background: radial-gradient(circle at 30% 30%, #2a3c6b, #0e1424); font-size: 3rem; }
+
+  /* ---- Variante 2: cifra clave con profundidad ---- */
+  .cifra {
+    font-size: clamp(5rem, 18vw, 12rem); font-weight: 900; line-height: 1;
+    background: linear-gradient(135deg, #7c5cff, #22d3a8);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-shadow: 0 30px 60px rgba(124,92,255,.25);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .objeto-3d { animation: none; transform: none; }
+  }
+</style>
+</head>
+<body>
+  <p class="label">Haz scroll despacio — el giro sigue tu scroll 1:1</p>
+
+  <div class="espaciador">↓ scroll ↓</div>
+
+  <div class="escena">
+    <div class="objeto-3d mockup">
+      <div class="barra"><i></i><i></i><i></i></div>
+      <div class="pantalla">🖥️</div>
+    </div>
+  </div>
+
+  <div class="espaciador">sigue bajando</div>
+
+  <div class="escena">
+    <div class="objeto-3d cifra">+188</div>
+  </div>
+
+  <div class="espaciador">fin de la demo</div>
+
+<!-- ================================================================
+     OPCIÓN B — GSAP ScrollTrigger con scrub (máxima compatibilidad).
+     Descomenta y carga GSAP autoalojado para usarla en vez de la
+     opción CSS nativa de arriba (quita entonces animation-timeline).
+
+  <script src="assets/js/lib/gsap.min.js"></script>
+  <script src="assets/js/lib/ScrollTrigger.min.js"></script>
+  <script>
+    gsap.registerPlugin(ScrollTrigger);
+    gsap.utils.toArray('.objeto-3d').forEach(el => {
+      gsap.fromTo(el,
+        { rotateY: -28, rotateX: 7, scale: .9 },
+        { rotateY: 28, rotateX: -7, scale: 1, ease: 'none',
+          scrollTrigger: {
+            trigger: el,
+            start: 'top bottom',   // empieza al entrar en viewport
+            end: 'bottom top',     // termina al salir
+            scrub: true            // ligado 1:1 al scroll, no a tiempo
+          }
+        });
+    });
+  </script>
+================================================================ -->
+</body>
+</html>

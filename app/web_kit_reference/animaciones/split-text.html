@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Split text — animación letra a letra</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #0d0d0d; color: #fff;
+         min-height: 100vh; padding: 4rem 2rem; }
+
+  section { min-height: 80vh; display: flex; flex-direction: column;
+            justify-content: center; padding: 2rem 0; border-bottom: 1px solid #222; }
+
+  /* === Split por letras ===
+     JS envuelve cada letra en un <span class="letra">.
+     Cada span arranca invisible y desplazado hacia abajo.
+     Un delay escalonado (i * 40ms) crea el efecto de "caída" una tras otra. */
+  .split-titulo { font-size: clamp(2.5rem, 7vw, 6rem); font-weight: 800; line-height: 1.1;
+                  overflow: hidden; }
+  .split-titulo .letra {
+    display: inline-block;
+    opacity: 0; transform: translateY(110%);
+    transition: opacity .5s ease, transform .5s cubic-bezier(.22,1,.36,1);
+  }
+  .split-titulo.visible .letra { opacity: 1; transform: translateY(0); }
+
+  /* === Split por palabras ===
+     Más sutil, cada palabra entra como bloque. */
+  .split-parrafo { font-size: clamp(1.1rem, 2.5vw, 1.6rem); color: #aaa;
+                   margin-top: 1.5rem; max-width: 640px; }
+  .split-parrafo .palabra {
+    display: inline-block;
+    opacity: 0; transform: translateY(24px);
+    transition: opacity .4s ease, transform .4s ease;
+  }
+  .split-parrafo.visible .palabra { opacity: 1; transform: translateY(0); }
+
+  /* === Slide desde abajo (línea completa) === */
+  .slide-up { overflow: hidden; }
+  .slide-up .linea-wrap { overflow: hidden; }
+  .slide-up .linea {
+    display: block; transform: translateY(100%);
+    transition: transform .7s cubic-bezier(.22,1,.36,1);
+  }
+  .slide-up.visible .linea { transform: translateY(0); }
+
+  .label { font-size: .75rem; letter-spacing: .15em; text-transform: uppercase;
+           color: #555; margin-bottom: 1.5rem; }
+</style>
+</head>
+<body>
+
+  <section>
+    <p class="label">Split por letras</p>
+    <h2 class="split-titulo" data-split="letras">Diseño con alma.</h2>
+    <p class="split-parrafo" data-split="palabras">
+      Cada palabra entra con un leve retraso escalonado que da la sensación de que el texto se escribe solo.
+    </p>
+  </section>
+
+  <section>
+    <p class="label">Split por letras — segunda línea</p>
+    <h2 class="split-titulo" data-split="letras">Creatividad sin límites</h2>
+  </section>
+
+  <section>
+    <p class="label">Slide de línea completa (más elegante para titulares largos)</p>
+    <div class="slide-up" data-split="slide">
+      <div class="linea-wrap"><span class="linea" style="font-size: clamp(2rem,5vw,4rem); font-weight: 700;">La primera línea</span></div>
+      <div class="linea-wrap"><span class="linea" style="font-size: clamp(2rem,5vw,4rem); font-weight: 700; color: #666;">emerge desde abajo.</span></div>
+    </div>
+  </section>
+
+<script>
+  // ── Utilidades de split ─────────────────────────────────────────────────────
+
+  function splitEnLetras(el) {
+    const texto = el.textContent;
+    el.innerHTML = '';
+    texto.split('').forEach((char, i) => {
+      const span = document.createElement('span');
+      span.className = 'letra';
+      span.textContent = char === ' ' ? ' ' : char; // preserva espacios
+      span.style.transitionDelay = (i * 40) + 'ms';
+      el.appendChild(span);
+    });
+  }
+
+  function splitEnPalabras(el) {
+    const palabras = el.textContent.trim().split(/\s+/);
+    el.innerHTML = '';
+    palabras.forEach((word, i) => {
+      const span = document.createElement('span');
+      span.className = 'palabra';
+      span.textContent = word;
+      span.style.transitionDelay = (i * 60) + 'ms';
+      el.appendChild(span);
+      if (i < palabras.length - 1) el.appendChild(document.createTextNode(' '));
+    });
+  }
+
+  // Preparar los elementos según su data-split
+  document.querySelectorAll('[data-split="letras"]').forEach(splitEnLetras);
+  document.querySelectorAll('[data-split="palabras"]').forEach(splitEnPalabras);
+
+  // ── IntersectionObserver ────────────────────────────────────────────────────
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        obs.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.2 });
+
+  document.querySelectorAll('.split-titulo, .split-parrafo, .slide-up').forEach(el => obs.observe(el));
+
+  // Respetar prefers-reduced-motion
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.querySelectorAll('.letra, .palabra, .linea').forEach(el => {
+      el.style.transition = 'none';
+      el.style.opacity = '1';
+      el.style.transform = 'none';
+    });
+  }
+</script>
+</body>
+</html>

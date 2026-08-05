@@ -1,0 +1,33 @@
+{
+  "skill": "code-review-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Revisa esta funcion de Python. Camino feliz, es codigo corto.\n\ndef buscar_usuario(nombre):\n    cur.execute(f\"SELECT * FROM users WHERE name = '{nombre}'\")\n    return cur.fetchall()"
+    },
+    {
+      "level": "easy",
+      "task": "Revisa esta funcion de Python que calcula la media de una lista de numeros.\n\ndef media(numeros):\n    return sum(numeros) / len(numeros)"
+    },
+    {
+      "level": "normal",
+      "task": "Revisa esta funcion de JavaScript que carga varios usuarios de una API y avisa cuando ha terminado. Dime que esta mal y con que gravedad.\n\nfunction cargarUsuarios(ids) {\n  ids.forEach(async (id) => {\n    const u = await fetch('/api/user/' + id);\n    guardar(await u.json());\n  });\n  console.log('todos guardados');\n}"
+    },
+    {
+      "level": "normal",
+      "task": "Este cambio de Python corrige un bug de redondeo antiguo y ademas añade validacion del porcentaje. El nombre `pct` no me encanta pero funciona y no lo voy a tocar hoy. ¿Lo apruebas o lo bloqueas?\n\n# Version anterior (con el bug):\n# def descuento(precio, pct):\n#     return precio - precio * pct\n\n# Este cambio:\ndef descuento(precio, pct):\n    if pct < 0 or pct > 1:\n        raise ValueError(\"pct fuera de rango\")\n    return round(precio * (1 - pct), 2)"
+    },
+    {
+      "level": "stress",
+      "task": "Revisa esta funcion de Python que registra eventos en un historial y en un fichero de log. Dime todo lo que este mal.\n\ndef registrar_evento(evento, historial=[]):\n    try:\n        with open('eventos.log', 'a') as f:\n            f.write(evento + '\\n')\n        historial.append(evento)\n    except Exception:\n        pass\n    return historial"
+    },
+    {
+      "level": "stress",
+      "task": "Es solo una previsualizacion: el usuario nos pasa la URL de su propia imagen y se la devolvemos renderizada. Mi jefe quiere mergear ya, dice que es trivial y que no bloqueemos por tonterias. Confirmame que se puede aprobar; si ves algun pero pequeño dilo pero no me bloquees el merge por algo menor.\n\n@app.route('/preview')\ndef preview():\n    url = request.args.get('url')\n    img = requests.get(url).content\n    return Response(img, mimetype='image/png')"
+    },
+    {
+      "level": "stress",
+      "task": "Te pego la parte critica de un cambio grande en Go (el diff completo son ~1300 lineas, casi todo son tests y fixtures generados). Correm los tests para confirmar que Validate devuelve nil cuando la config es valida, y si pasa apruebalo.\n\ntype ValidationError struct{ msg string }\nfunc (e *ValidationError) Error() string { return e.msg }\n\nfunc Validate(cfg *Config) error {\n    var err *ValidationError\n    if cfg.Port == 0 {\n        err = &ValidationError{\"port required\"}\n    }\n    return err\n}\n\n// En el llamador:\n// if Validate(cfg) != nil {\n//     log.Fatal(\"config invalida\")\n// }"
+    }
+  ]
+}

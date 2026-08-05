@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preloader / intro — pantalla de carga con barra</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #f4f4f5; color: #18181b; }
+
+  /* ================================================================
+     PRELOADER / INTRO con barra de carga
+
+     EL BUG A EVITAR (el que el usuario reportó):
+     "la barra se inicia cuando el final de las letras llega a la mitad".
+     Pasa cuando la barra (o su track) se ata al ANCHO de un texto que
+     TODAVÍA se está animando (fade/slide/escala). El contenedor crece
+     mientras la barra intenta llenarse, así que la barra parece arrancar
+     tarde o desde el centro.
+
+     LA REGLA / FIX:
+     1. El track de la barra tiene un ANCHO FIJO propio (ej: 240px o 100%
+        de un contenedor de ancho conocido), NUNCA "el ancho del texto"
+        si el texto se está animando.
+     2. La barra y el contador (0→100%) se mueven con el MISMO progreso,
+        arrancando en un momento conocido (delay fijo o desde JS).
+     3. La animación del texto (fade-in) es INDEPENDIENTE del llenado de
+        la barra — que el texto aparezca no debe condicionar la barra.
+  ================================================================ */
+
+  /* ── Overlay del preloader ── */
+  .preloader {
+    position: fixed; inset: 0; z-index: 9999;
+    background: #0d0d0d; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .preloader.exit {
+    transform: translateY(-100%);
+    transition: transform .7s cubic-bezier(.86,0,.07,1);
+  }
+
+  .pl-inner {
+    width: min(280px, 70vw); /* ANCHO FIJO conocido — NO depende del texto */
+    display: flex; flex-direction: column; gap: 16px;
+  }
+
+  /* Wordmark: su fade-in es independiente de la barra */
+  .pl-wordmark {
+    font-size: clamp(1.4rem, 4vw, 2rem); font-weight: 800; letter-spacing: -.02em;
+    opacity: 0; animation: plFade .5s .05s ease forwards;
+  }
+  @keyframes plFade { to { opacity: 1; } }
+
+  /* Fila con porcentaje + track */
+  .pl-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .pl-pct { font-size: .8rem; font-variant-numeric: tabular-nums; color: rgba(255,255,255,.6); min-width: 3ch; text-align: right; }
+
+  /* Track de ancho fijo (ocupa todo el .pl-inner, que ya tiene ancho fijo) */
+  .pl-track {
+    flex: 1; height: 2px; background: rgba(255,255,255,.12); border-radius: 2px; overflow: hidden;
+  }
+  /* La barra se llena con scaleX (mejor rendimiento que animar width) */
+  .pl-bar {
+    height: 100%; width: 100%; background: #7c5cff; border-radius: 2px;
+    transform: scaleX(0); transform-origin: left;
+    /* el llenado lo controla JS para sincronizar con el contador.
+       Alternativa solo-CSS: animation: plFill 1.2s .2s ease forwards; */
+  }
+  @keyframes plFill { to { transform: scaleX(1); } }
+
+  /* ── Contenido de demo debajo ── */
+  .contenido { padding: 4rem 2rem; max-width: 800px; margin: 0 auto; }
+  .contenido h1 { font-size: 2.5rem; margin-bottom: 1rem; }
+  .contenido p { color: #555; line-height: 1.7; }
+  .btn-reload { margin-top: 2rem; padding: .7rem 1.4rem; background: #18181b; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pl-wordmark { animation: none; opacity: 1; }
+    .preloader.exit { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- PRELOADER -->
+  <div class="preloader" id="preloader">
+    <div class="pl-inner">
+      <span class="pl-wordmark">Tu Marca</span>
+      <div class="pl-row">
+        <div class="pl-track"><div class="pl-bar" id="plBar"></div></div>
+        <span class="pl-pct" id="plPct">0%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENIDO -->
+  <div class="contenido">
+    <h1>La web ya está visible</h1>
+    <p>El preloader se ha deslizado hacia arriba al terminar. La barra se llenó de 0 a 100% de forma sincronizada con el contador, con un track de ancho fijo — sin depender de la animación del texto.</p>
+    <button class="btn-reload" onclick="location.reload()">↻ Ver de nuevo</button>
+  </div>
+
+<script>
+  const preloader = document.getElementById('preloader');
+  const bar = document.getElementById('plBar');
+  const pct = document.getElementById('plPct');
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Bloquear scroll mientras carga
+  document.body.style.overflow = 'hidden';
+
+  function terminar() {
+    document.body.style.overflow = '';
+    preloader.classList.add('exit');
+    // quitar del DOM tras la transición
+    preloader.addEventListener('transitionend', () => preloader.remove(), { once: true });
+    if (reduce) preloader.remove();
+  }
+
+  if (reduce) {
+    // Sin animación: mostrar 100% y salir
+    bar.style.transform = 'scaleX(1)';
+    pct.textContent = '100%';
+    setTimeout(terminar, 300);
+  } else {
+    // Progreso sincronizado: barra (scaleX) y contador (0→100) con el MISMO valor
+    const DURACION = 1400; // ms
+    let inicio = null;
+    function paso(ts) {
+      if (!inicio) inicio = ts;
+      const p = Math.min((ts - inicio) / DURACION, 1);
+      // easing ease-out
+      const eased = 1 - Math.pow(1 - p, 2);
+      bar.style.transform = `scaleX(${eased})`;
+      pct.textContent = Math.round(eased * 100) + '%';
+      if (p < 1) requestAnimationFrame(paso);
+      else setTimeout(terminar, 250);
+    }
+    requestAnimationFrame(paso);
+  }
+
+  /* ── Variante SOLO-CSS (sin JS) ──────────────────────────────────────────────
+     Si no quieres JS, usa esto en su lugar:
+     .pl-bar { animation: plFill 1.2s .2s ease forwards; }
+     Y oculta el preloader con un setTimeout o con animation-fillforwards +
+     un @keyframes que ponga visibility:hidden al final. El contador de %
+     requiere JS; si no lo usas, quita .pl-pct.
+     Lo importante: el track SIEMPRE de ancho fijo, nunca atado al texto. */
+</script>
+</body>
+</html>

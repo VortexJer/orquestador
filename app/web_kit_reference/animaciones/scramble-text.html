@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scramble text — texto que se decodifica</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #0d0d0d; color: #fff;
+         min-height: 100vh; padding: 4rem 2rem; display: flex; flex-direction: column; gap: 4rem; }
+  .label { font-size: .7rem; color: #555; letter-spacing: .15em; text-transform: uppercase; }
+
+  /* El texto puede tener cualquier estilo — el efecto es puro JS */
+  .scramble { cursor: default; }
+
+  /* Demo 1: Titular hero */
+  .hero-demo h1 {
+    font-size: clamp(3rem, 8vw, 6rem); font-weight: 800; letter-spacing: -.02em;
+    font-family: 'Arial Black', sans-serif;
+  }
+  .hero-demo h1 span { color: #e07a3f; }
+
+  /* Demo 2: Palabras clave que rotan */
+  .palabras-demo {
+    font-size: clamp(2rem, 5vw, 4rem); font-weight: 700;
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  }
+  .palabra-fija { color: #888; }
+  .palabra-rotatoria { color: #e07a3f; min-width: 6ch; }
+
+  /* Demo 3: Nav links que scramble al hover */
+  .nav-demo { display: flex; gap: 2rem; }
+  .nav-demo a {
+    font-size: 1.1rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .12em; color: #888; cursor: pointer;
+    transition: color .2s;
+  }
+  .nav-demo a:hover { color: #fff; }
+
+  .btn-demo {
+    margin-top: 1.5rem; padding: .7rem 1.4rem; background: #222; color: #fff;
+    border: 1px solid #333; border-radius: 6px; cursor: pointer; font-size: .9rem;
+  }
+  .btn-demo:hover { background: #333; }
+</style>
+</head>
+<body>
+
+  <div class="label">Scramble text — el texto "se decodifica" aleatoriamente antes de revelar el real</div>
+
+  <!-- Demo 1: Titular con scramble al cargar -->
+  <div class="hero-demo">
+    <h1>
+      <span class="scramble" data-text="Bienvenidos">Bienvenidos</span><br>
+      <span class="scramble" data-text="al futuro." style="color:#e07a3f">al futuro.</span>
+    </h1>
+    <button class="btn-demo" onclick="lanzarTodos()">▶ Reproducir</button>
+  </div>
+
+  <!-- Demo 2: Palabra que cambia continuamente (rotación de conceptos) -->
+  <div>
+    <div class="palabras-demo">
+      <span class="palabra-fija">Somos</span>
+      <span class="palabra-rotatoria scramble" id="palabraRotatoria">creativos</span>
+    </div>
+    <button class="btn-demo" onclick="iniciarRotacion()">▶ Iniciar rotación</button>
+  </div>
+
+  <!-- Demo 3: Links de nav que scramble al hover -->
+  <div>
+    <p class="label" style="margin-bottom:1rem">Links de nav con scramble al hover</p>
+    <nav class="nav-demo">
+      <a class="scramble-hover" data-text="Inicio">Inicio</a>
+      <a class="scramble-hover" data-text="Carta">Carta</a>
+      <a class="scramble-hover" data-text="Nosotros">Nosotros</a>
+      <a class="scramble-hover" data-text="Contacto">Contacto</a>
+    </nav>
+  </div>
+
+<script>
+  // Caracteres para el scramble — puedes usar solo letras, o mezclar con símbolos
+  const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&!?';
+
+  // ─── Función principal de scramble ─────────────────────────────────────────
+  // el: elemento DOM
+  // finalText: texto final a mostrar
+  // velocidad: frames entre cada "paso" (más bajo = más rápido)
+  // onComplete: callback al terminar (opcional)
+  //
+  // SMOOTHNESS — EVITAR EL REFLOW (importante en titulares):
+  // Las fuentes proporcionales dan a cada letra aleatoria un ancho distinto, así
+  // que el texto "salta" de tamaño o de línea mientras se scramblea. Para un
+  // texto FIJO (un titular que revela su valor final), bloquea las dimensiones
+  // del elemento antes de empezar y restáuralas al terminar:
+  //
+  //   const r = el.getBoundingClientRect();
+  //   el.style.cssText += `display:inline-block;width:${r.width}px;height:${r.height}px;white-space:nowrap;overflow:hidden;text-align:left`;
+  //   // ...scramble...
+  //   // al terminar: limpiar esos estilos inline y poner el texto final
+  //
+  // (Para el modo rotación de palabras NO se bloquea, porque el ancho cambia a
+  // propósito en cada palabra.)
+  function scramble(el, finalText, velocidad = 1, onComplete = null) {
+    let iteration = 0;
+    let frame = 0;
+    const totalChars = finalText.length;
+
+    clearInterval(el._scrambleInterval);
+
+    el._scrambleInterval = setInterval(() => {
+      el.textContent = finalText.split('').map((char, i) => {
+        if (char === ' ') return ' '; // preserva espacios
+        if (i < iteration) return finalText[i]; // ya revelado
+        // Carácter aleatorio para los que aún no se revelan
+        return CHARS[Math.floor(Math.random() * CHARS.length)];
+      }).join('');
+
+      frame++;
+      if (frame % (3 / velocidad) === 0) iteration += 1; // revelado progresivo
+
+      if (iteration > totalChars) {
+        clearInterval(el._scrambleInterval);
+        el.textContent = finalText; // asegurar texto final correcto
+        if (onComplete) onComplete();
+      }
+    }, 30);
+  }
+
+  // ─── Demo 1: scramble al cargar ────────────────────────────────────────────
+  function lanzarTodos() {
+    const elementos = document.querySelectorAll('.hero-demo .scramble');
+    elementos.forEach((el, i) => {
+      setTimeout(() => scramble(el, el.dataset.text, 1.5), i * 200);
+    });
+  }
+  // Autoejecutar al cargar
+  setTimeout(lanzarTodos, 500);
+
+  // ─── Demo 2: rotación de palabras ──────────────────────────────────────────
+  const palabras = ['creativos', 'rápidos', 'honestos', 'distintos', 'locales'];
+  let idxPalabra = 0;
+  let rotInterval = null;
+
+  function iniciarRotacion() {
+    const el = document.getElementById('palabraRotatoria');
+    if (rotInterval) clearInterval(rotInterval);
+    rotInterval = setInterval(() => {
+      idxPalabra = (idxPalabra + 1) % palabras.length;
+      scramble(el, palabras[idxPalabra], 2);
+    }, 2200);
+  }
+
+  // ─── Demo 3: scramble al hover ─────────────────────────────────────────────
+  document.querySelectorAll('.scramble-hover').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      scramble(el, el.dataset.text, 3);
+    });
+  });
+
+  // ─── IntersectionObserver para uso en producción ───────────────────────────
+  // Descomentar para activar automáticamente al hacer scroll:
+  //
+  // const obs = new IntersectionObserver(entries => {
+  //   entries.forEach(e => {
+  //     if (e.isIntersecting) {
+  //       scramble(e.target, e.target.dataset.text);
+  //       obs.unobserve(e.target);
+  //     }
+  //   });
+  // }, { threshold: 0.5 });
+  // document.querySelectorAll('[data-text]').forEach(el => obs.observe(el));
+</script>
+</body>
+</html>

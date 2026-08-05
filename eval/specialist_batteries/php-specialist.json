@@ -1,0 +1,33 @@
+{
+  "skill": "php-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Escribe una funcion PHP que reciba un array de importes (float) y devuelva el total con un 21% de IVA aplicado. Devuelve el total como float."
+    },
+    {
+      "level": "easy",
+      "task": "Escribe una clase PHP Rectangulo con ancho y alto (float) y un metodo area() que devuelva el area. El ancho y el alto no deben poder cambiar despues de crear el objeto."
+    },
+    {
+      "level": "normal",
+      "task": "Tengo un formulario de contacto con los campos nombre, email y mensaje que llegan por POST. Escribe una funcion que reciba $_POST y valide esos tres campos: el nombre obligatorio y de como mucho 80 caracteres, el email valido, y el mensaje obligatorio de como mucho 1000 caracteres. Si algo falla, avisa de TODOS los errores a la vez, no solo del primero. Devuelve los datos listos para guardar en base de datos."
+    },
+    {
+      "level": "normal",
+      "task": "Escribe un repositorio PHP que busque un usuario por su email en una tabla users (columnas id, email, nombre, password_hash, created_at) usando PDO, y devuelva sus datos. La clase la usaran otras partes de la app para leer usuarios."
+    },
+    {
+      "level": "stress",
+      "task": "Escribe el handler PHP que procesa el POST de un formulario de login. Recibe email y password, busca al usuario en la tabla users por email con PDO, comprueba la contrasena y, si es correcta, guarda el id del usuario en la sesion. Si el login falla, vuelve a mostrar el formulario con un mensaje de error que incluya el email que escribio el usuario para que no tenga que teclearlo otra vez. El registro guardo la contrasena en su dia; encajala como corresponda."
+    },
+    {
+      "level": "stress",
+      "task": "Tengo un array de cantidades numericas de un pedido. Necesito una funcion que primero aplique un descuento del 10% a cada cantidad modificando el array en sitio, y despues, sobre ese mismo array ya rebajado, genere el HTML de una lista <ul> con una linea por cantidad para mostrarla en la pagina. Devuelve el HTML. Las cantidades las mete el usuario en un formulario."
+    },
+    {
+      "level": "stress",
+      "task": "Escribe una clase Carrito para una tienda. Cada carrito guarda sus lineas. Al anadir un producto recibe el id que viene por $_GET, y solo debe aceptarlo si ese id esta en la lista de ids de productos permitidos ([10, 20, 30, 42]); si no esta permitido, lo rechaza. Ademas cada carrito debe llevar la cuenta de cuantos productos lleva anadidos, de forma independiente de los demas carritos. Escribe tambien un par de lineas que creen dos carritos distintos y demuestren que sus contadores no se pisan."
+    }
+  ]
+}

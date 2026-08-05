@@ -1,0 +1,79 @@
+[
+  {
+    "id": "ruby-frozen-string-literal-mutation-error",
+    "language_or_domain": "ruby",
+    "tags": ["strings", "ruby"],
+    "problem_description": "Con el magic comment # frozen_string_literal: true (habitual en proyectos modernos y en el default futuro de Ruby), todos los literales de string del archivo quedan congelados. Llamar a un metodo mutador sobre ellos (<<, gsub!, upcase!, concat) lanza FrozenError en RUNTIME, no en tiempo de parseo, asi que el error solo aparece cuando esa linea especifica se ejecuta.",
+    "why_small_models_fail": "El modelo genera codigo que muta strings in-place (patron muy comun y valido en Ruby sin el magic comment) sin verificar si el archivo objetivo ya declaro frozen_string_literal, que cambia la mutabilidad de TODOS los literales de ese archivo.",
+    "correct_approach": "Si el archivo tiene frozen_string_literal activo, construir un string nuevo con metodos no-mutadores (+, gsub, upcase) o llamar a .dup explicitamente sobre el literal antes de mutarlo.",
+    "bad_example": "# frozen_string_literal: true\nsaludo = \"hola\"\nsaludo << \" mundo\" // FrozenError: can't modify frozen String",
+    "good_example": "# frozen_string_literal: true\nsaludo = \"hola\"\nsaludo = saludo + \" mundo\" // crea un string nuevo, no muta el literal congelado",
+    "source": "Ruby docs - String#frozen?, magic comment frozen_string_literal"
+  },
+  {
+    "id": "ruby-proc-return-vs-lambda-return",
+    "language_or_domain": "ruby",
+    "tags": ["procs-lambdas", "ruby"],
+    "problem_description": "Un return dentro de un Proc (o un bloque convertido a Proc con &block) retorna del METODO que lo encierra, no solo del proc - y si ese metodo ya termino de ejecutarse (ej. el proc se guardo y se invoca despues), lanza LocalJumpError. Un lambda, en cambio, con la misma sintaxis de return, solo retorna del lambda mismo, comportandose como una funcion normal.",
+    "why_small_models_fail": "El modelo trata Proc.new y lambda como sinonimos intercambiables (ambos 'crean una funcion anonima'), sin modelar la diferencia critica en la semantica de return entre ambos.",
+    "correct_approach": "Usar lambda (o -> (args) { ... }) cuando se necesita que return se comporte como en una funcion normal; reservar Proc.new/blocks solo cuando se entiende y se quiere el comportamiento de retorno no-local.",
+    "bad_example": "def crear_proc\n  Proc.new { return 42 }\nend\nmi_proc = crear_proc\nmi_proc.call // LocalJumpError: unexpected return, el metodo crear_proc ya termino",
+    "good_example": "def crear_lambda\n  lambda { return 42 }\nend\nmi_lambda = crear_lambda\nmi_lambda.call // 42, el return solo sale del lambda mismo",
+    "source": "Ruby docs - Proc vs Lambda, 'return' semantics"
+  },
+  {
+    "id": "ruby-each-returns-original-not-mapped",
+    "language_or_domain": "ruby",
+    "tags": ["enumerable", "ruby"],
+    "problem_description": "array.each { |x| x * 2 } NO devuelve un array con los valores transformados - each siempre devuelve el receptor ORIGINAL sin modificar, ignorando el valor de retorno del bloque. Es un error comun esperar que each 'mapee' como lo hace map.",
+    "why_small_models_fail": "El modelo confunde each y map porque sintacticamente son casi identicos (misma forma de bloque) y en muchos otros lenguajes 'iterar y devolver una transformacion' es el patron por defecto de la funcion de iteracion principal.",
+    "correct_approach": "Usar map (o collect) cuando se necesita un array nuevo con los valores transformados; reservar each solo para efectos secundarios (imprimir, acumular en una variable externa) donde no importa el valor de retorno del bloque.",
+    "bad_example": "duplicados = [1, 2, 3].each { |n| n * 2 }\n// duplicados es [1, 2, 3], NO [2, 4, 6]",
+    "good_example": "duplicados = [1, 2, 3].map { |n| n * 2 }\n// duplicados es [2, 4, 6]",
+    "source": "Ruby docs - Enumerable#each vs Enumerable#map"
+  },
+  {
+    "id": "ruby-symbol-vs-string-hash-key-mismatch",
+    "language_or_domain": "ruby",
+    "tags": ["hashes", "symbols", "ruby"],
+    "problem_description": "En un Hash, la clave simbolo :nombre y la clave string \"nombre\" son claves DISTINTAS y no equivalentes entre si (:nombre == \"nombre\" es false). Es muy comun mezclar hashes con claves string (tipicos al parsear JSON con JSON.parse sin symbolize_names) con codigo que asume claves simbolo (el estilo mas comun al construir hashes a mano en Ruby), resultando en hash[:clave] devolviendo nil silenciosamente sobre un hash que en realidad tiene esa informacion bajo la clave string.",
+    "why_small_models_fail": "El modelo usa el estilo de clave que le resulta mas idiomatico (simbolos) sin verificar de donde vino realmente el hash (ej. un JSON.parse trae claves string por defecto), generando un mismatch silencioso que no lanza excepcion, solo devuelve nil.",
+    "correct_approach": "Ser explicito y consistente: si el hash viene de JSON.parse, usar JSON.parse(texto, symbolize_names: true) para normalizar a simbolos, o acceder siempre con el mismo tipo de clave que se sabe que tiene el hash.",
+    "bad_example": "datos = JSON.parse('{\"nombre\": \"Ana\"}') // {\"nombre\"=>\"Ana\"}, claves STRING\nputs datos[:nombre] // nil, silenciosamente - la clave real es \"nombre\", no :nombre",
+    "good_example": "datos = JSON.parse('{\"nombre\": \"Ana\"}', symbolize_names: true) // {nombre: \"Ana\"}\nputs datos[:nombre] // \"Ana\", correcto",
+    "source": "Ruby docs - Hash, Symbol#==; JSON.parse symbolize_names option"
+  },
+  {
+    "id": "ruby-eql-vs-double-equal-vs-equal",
+    "language_or_domain": "ruby",
+    "tags": ["equality", "ruby"],
+    "problem_description": "Ruby tiene tres nociones de igualdad con semantica distinta: == es igualdad de valor (redefinible por clase), equal? es identidad de objeto (mismo object_id, nunca redefinible), y eql? es la que usa Hash internamente para comparar claves - es mas estricta que == respecto al TIPO: 1 == 1.0 es true, pero 1.eql?(1.0) es false porque Integer y Float son tipos distintos.",
+    "why_small_models_fail": "El modelo generaliza == como 'la' igualdad y no distingue cuando el contexto realmente necesita eql? (definir hash/eql? en una clase custom para que funcione correctamente como clave de Hash) o equal? (verificar que son literalmente el mismo objeto en memoria).",
+    "correct_approach": "Usar == para comparaciones de valor generales, equal? solo cuando se necesita verificar identidad de objeto explicitamente, y sobrescribir tanto eql? como hash (juntos, igual que el contrato equals/hashCode de Java) si una clase propia se va a usar como clave de Hash.",
+    "bad_example": "class Punto\n  attr_reader :x, :y\n  def initialize(x, y); @x = x; @y = y; end\n  def ==(otro); x == otro.x && y == otro.y; end\n  # sin eql? ni hash: dos Puntos \"iguales\" no se encuentran como la misma clave en un Hash\nend",
+    "good_example": "class Punto\n  attr_reader :x, :y\n  def initialize(x, y); @x = x; @y = y; end\n  def ==(otro); otro.is_a?(Punto) && x == otro.x && y == otro.y; end\n  alias eql? ==\n  def hash; [x, y].hash; end\nend",
+    "source": "Ruby docs - Object#eql?, Object#equal?, Object#=="
+  },
+  {
+    "id": "ruby-instance-variable-typo-silently-nil",
+    "language_or_domain": "ruby",
+    "tags": ["instance-variables", "ruby"],
+    "problem_description": "Ruby no requiere declarar variables de instancia por adelantado. Un typo al leer una (@nmae en vez de @name) no lanza NameError ni ningun warning por defecto: simplemente evalua a nil, silenciosamente, porque para Ruby es una variable de instancia valida que todavia no fue asignada.",
+    "why_small_models_fail": "El modelo asume que un typo en un identificador siempre produce un error detectable (como pasaria con una variable local no declarada, o en lenguajes con variables de instancia declaradas explicitamente), sin modelar que las variables de instancia de Ruby son implicitas y silenciosas por diseño.",
+    "correct_approach": "Usar attr_reader/attr_accessor para exponer las variables de instancia como metodos (un typo en un nombre de metodo si lanza NoMethodError), y en desarrollo activar warnings (-w) que si señalan el acceso a una variable de instancia no inicializada.",
+    "bad_example": "class Usuario\n  def initialize(name)\n    @nmae = name # typo\n  end\n  def name\n    @name # typo distinto: siempre nil, sin error\n  end\nend",
+    "good_example": "class Usuario\n  attr_reader :name\n  def initialize(name)\n    @name = name\n  end\nend",
+    "source": "Ruby docs - Instance Variables, comportamiento con variables no inicializadas"
+  },
+  {
+    "id": "ruby-monkey-patching-global-side-effects",
+    "language_or_domain": "ruby",
+    "tags": ["metaprogramming", "ruby"],
+    "problem_description": "Reabrir una clase core (String, Array, Hash, etc.) para agregar o sobrescribir un metodo (monkey patching) afecta a TODO el proceso, incluyendo el codigo de gems de terceros que tambien usan esa clase - un patch pensado como una conveniencia local puede romper silenciosamente comportamiento de una libreria externa que dependia del metodo original.",
+    "why_small_models_fail": "El modelo trata la reapertura de una clase como si tuviera scope local al archivo/modulo actual (como una extension o categoria en otros lenguajes con scoping explicito), sin modelar que en Ruby el monkey patching es siempre global al proceso.",
+    "correct_approach": "Preferir un metodo de utilidad separado, un modulo mixin aplicado solo donde se necesita, o (si Ruby >= 2.0 y realmente hace falta el monkey patch) usar refinements, que si tienen scope limitado al archivo que las activa explicitamente.",
+    "bad_example": "class String\n  def to_slug\n    downcase.gsub(/\\s+/, \"-\")\n  end\nend\n// ahora TODO string en el proceso tiene to_slug, incluidos los de gems que no lo esperan",
+    "good_example": "module Sluggable\n  refine String do\n    def to_slug\n      downcase.gsub(/\\s+/, \"-\")\n    end\n  end\nend\n// using Sluggable activa to_slug solo en el archivo/scope que lo pide explicitamente",
+    "source": "Ruby docs - Refinements; 'Monkey Patching Is Destroying Ruby' (discusion comunitaria clasica)"
+  }
+]

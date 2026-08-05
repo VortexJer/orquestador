@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modal accesible</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #f8fafc; color: #0f172a;
+         display: grid; place-items: center; min-height: 100vh; margin: 0; }
+  button { font: inherit; cursor: pointer; }
+  .abrir { padding: .8rem 1.6rem; border: none; border-radius: 8px; background: #0ea5e9; color: #fff; font-size: 1rem; }
+
+  /* fondo oscuro */
+  .overlay { position: fixed; inset: 0; background: rgba(15,23,42,.6);
+    display: flex; align-items: center; justify-content: center; padding: 1rem;
+    opacity: 0; visibility: hidden; transition: opacity .25s ease, visibility .25s; z-index: 100; }
+  .overlay.abierto { opacity: 1; visibility: visible; }
+
+  .modal { background: #fff; border-radius: 16px; padding: 2rem; max-width: 440px; width: 100%;
+    transform: scale(.92); transition: transform .25s ease; box-shadow: 0 20px 50px rgba(0,0,0,.2); }
+  .overlay.abierto .modal { transform: scale(1); }
+  .modal h2 { margin-top: 0; }
+  .modal-cerrar { position: absolute; top: 1rem; right: 1rem; background: none; border: none;
+    font-size: 1.5rem; line-height: 1; color: #64748b; width: 36px; height: 36px; border-radius: 8px; }
+  .modal-cerrar:hover { background: #f1f5f9; }
+  .modal-wrap { position: relative; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .overlay, .modal { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <button class="abrir" id="abrirModal">Abrir modal</button>
+
+  <!-- role="dialog" + aria-modal para lectores de pantalla -->
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
+    <div class="modal-wrap modal">
+      <button class="modal-cerrar" id="cerrarModal" aria-label="Cerrar">&times;</button>
+      <h2 id="modalTitulo">Soy un modal</h2>
+      <p>Se cierra con el botón ×, pulsando Escape, o haciendo clic fuera. El foco
+         se gestiona para que sea accesible con teclado.</p>
+    </div>
+  </div>
+
+<script>
+  const overlay = document.getElementById('overlay');
+  const abrir = document.getElementById('abrirModal');
+  const cerrar = document.getElementById('cerrarModal');
+  let ultimoFoco = null;
+
+  function abrirModal() {
+    ultimoFoco = document.activeElement;      // recuerda dónde estaba el foco
+    overlay.classList.add('abierto');
+    cerrar.focus();                            // mueve el foco al modal
+    document.body.style.overflow = 'hidden';   // bloquea el scroll de fondo
+  }
+  function cerrarModal() {
+    overlay.classList.remove('abierto');
+    document.body.style.overflow = '';
+    if (ultimoFoco) ultimoFoco.focus();        // devuelve el foco a su sitio
+  }
+
+  abrir.addEventListener('click', abrirModal);
+  cerrar.addEventListener('click', cerrarModal);
+  // clic en el fondo (no en el modal) cierra
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) cerrarModal(); });
+  // tecla Escape cierra
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay.classList.contains('abierto')) cerrarModal(); });
+</script>
+</body>
+</html>

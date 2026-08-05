@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smooth scroll con inercia — scroll momentum</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+
+  /* ================================================================
+     SMOOTH SCROLL CON INERCIA (momentum scroll)
+
+     Cómo funciona:
+     1. El body tiene height:100vh y overflow:hidden — el scroll nativo se desactiva.
+     2. Un contenedor .smooth-container tiene position:fixed y se mueve
+        verticalmente con transform:translateY() en vez de scroll real.
+     3. JS captura el evento wheel, acumula deltaY en targetY,
+        y en cada frame hace lerp(currentY, targetY, 0.08) para que
+        el scroll "llegue" al destino suavemente con inercia.
+     4. Un div .scroll-height tiene la altura real del contenido,
+        para que el navegador muestre el scrollbar correcto.
+
+     Resultado: el scroll parece "flotar" — muy premium.
+
+     IMPORTANTE: deshabilitar en móvil (táctil ya tiene momentum nativo).
+     IMPORTANTE: añadir scroll-snap si se quiere snap a secciones.
+  ================================================================ */
+
+  html, body {
+    height: 100%;
+    /* overflow: hidden; */ /* Activar en producción */
+  }
+  body { font-family: system-ui, sans-serif; background: #0d0d0d; color: #fff; }
+
+  /* Contenedor que se mueve con JS */
+  .smooth-container {
+    position: fixed; top: 0; left: 0; width: 100%;
+    will-change: transform;
+    /* La altura la da el contenido — el JS la mide */
+  }
+
+  /* Div fantasma para mantener el scroll del navegador */
+  .scroll-height {
+    /* JS le asigna la altura del .smooth-container */
+    pointer-events: none;
+  }
+
+  /* Secciones de demo */
+  .seccion {
+    min-height: 100vh; display: flex; flex-direction: column; justify-content: center;
+    padding: 6rem 4rem; border-bottom: 1px solid #1a1a1a; position: relative;
+  }
+  .s1 { background: #111; }
+  .s2 { background: #1a1a1a; }
+  .s3 { background: linear-gradient(135deg, #1c2535, #0f1629); }
+  .s4 { background: radial-gradient(circle at 30% 70%, #2c1f14 0%, #111 70%); }
+  .s5 { background: linear-height: #0d0d0d; }
+
+  h1 { font-size: clamp(3rem, 7vw, 6rem); font-weight: 800; margin-bottom: 1.5rem; }
+  h2 { font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 700; margin-bottom: 1rem; }
+  p  { color: #888; max-width: 500px; line-height: 1.7; font-size: 1.1rem; }
+
+  /* Indicador de scroll progress */
+  .progress-bar {
+    position: fixed; top: 0; left: 0; height: 3px;
+    background: #e07a3f; width: 0%;
+    z-index: 100; transition: width 0.05s linear;
+  }
+
+  /* Nav de secciones (puntos laterales) */
+  .nav-puntos {
+    position: fixed; right: 2rem; top: 50%; transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: 1rem; z-index: 100;
+  }
+  .punto {
+    width: 8px; height: 8px; border-radius: 50%; background: #333;
+    cursor: pointer; transition: background .3s, transform .3s;
+  }
+  .punto.activo { background: #e07a3f; transform: scale(1.4); }
+
+  .label { position: absolute; top: 1.5rem; left: 2rem; font-size: .7rem; color: #555;
+           letter-spacing: .12em; text-transform: uppercase; }
+
+  /* Desactivar en móvil */
+  @media (max-width: 768px) {
+    html, body { height: auto; overflow: auto; }
+    .smooth-container { position: static; transform: none !important; }
+    .scroll-height { display: none; }
+    .nav-puntos { display: none; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="progress-bar" id="progressBar"></div>
+
+  <nav class="nav-puntos" aria-label="Navegación de secciones" id="navPuntos">
+    <button class="punto" data-target="0" aria-label="Ir a sección 1"></button>
+    <button class="punto" data-target="1" aria-label="Ir a sección 2"></button>
+    <button class="punto" data-target="2" aria-label="Ir a sección 3"></button>
+    <button class="punto" data-target="3" aria-label="Ir a sección 4"></button>
+    <button class="punto" data-target="4" aria-label="Ir a sección 5"></button>
+  </nav>
+
+  <!-- El div con la altura real para el scroll del navegador -->
+  <div class="scroll-height" id="scrollHeight"></div>
+
+  <!-- Contenedor que se mueve -->
+  <div class="smooth-container" id="smoothContainer">
+
+    <section class="seccion s1" data-seccion="0">
+      <div class="label">1 · Haz scroll para sentir la inercia</div>
+      <h1>Smooth<br>scroll.</h1>
+      <p>El contenido se mueve con lerp — llega al destino gradualmente, como si flotara. Mucho más premium que el scroll nativo.</p>
+    </section>
+
+    <section class="seccion s2" data-seccion="1">
+      <div class="label">2 · La barra de progreso sigue el scroll</div>
+      <h2>La carta</h2>
+      <p>Arròs negre, fideuà, suquet de peix. Cada plato llega a la mesa como este scroll: con calma y con intención.</p>
+    </section>
+
+    <section class="seccion s3" data-seccion="2">
+      <div class="label">3 · Los puntos laterales muestran la sección activa</div>
+      <h2>Nosotros</h2>
+      <p>Los puntos de la derecha se actualizan en tiempo real. Pulsa uno para navegar directamente a esa sección.</p>
+    </section>
+
+    <section class="seccion s4" data-seccion="3">
+      <div class="label">4 · Efecto parallax compatible</div>
+      <h2>Horario</h2>
+      <p>Al combinar smooth scroll con parallax (ver parallax.html), el efecto de profundidad es mucho más realista que con scroll nativo.</p>
+    </section>
+
+    <section class="seccion s5" data-seccion="4">
+      <div class="label">5 · Última sección</div>
+      <h2>Contacto</h2>
+      <p>En móvil, el smooth scroll se desactiva automáticamente — el scroll nativo ya tiene inercia en iOS/Android.</p>
+    </section>
+
+  </div>
+
+<script>
+  // ─── Detección de dispositivo ──────────────────────────────────────────────
+  const esMobil = window.matchMedia('(max-width: 768px)').matches ||
+                  window.matchMedia('(pointer: coarse)').matches;
+
+  if (!esMobil) activarSmoothScroll();
+
+  function activarSmoothScroll() {
+    const container  = document.getElementById('smoothContainer');
+    const scrollH    = document.getElementById('scrollHeight');
+    const progressBar= document.getElementById('progressBar');
+    const secciones  = document.querySelectorAll('[data-seccion]');
+    const puntos     = document.querySelectorAll('.punto');
+
+    // Ocultar scroll nativo del body y dar altura al div fantasma
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    let currentY = 0; // posición actual (lo que se ve)
+    let targetY  = 0; // posición destino (a donde va)
+    const EASE   = 0.08; // factor lerp: 0.05 = muy suave, 0.15 = rápido
+
+    // Ajustar la altura del div fantasma para que el scrollbar sea correcto
+    function ajustarAltura() {
+      scrollH.style.height = container.offsetHeight + 'px';
+    }
+    ajustarAltura();
+    new ResizeObserver(ajustarAltura).observe(container);
+
+    // Capturar scroll real del navegador (desde el div fantasma)
+    window.addEventListener('scroll', () => {
+      targetY = window.scrollY;
+    }, { passive: true });
+
+    // También capturar wheel directamente para mayor responsividad
+    window.addEventListener('wheel', e => {
+      targetY = Math.max(0, Math.min(
+        targetY + e.deltaY,
+        container.offsetHeight - window.innerHeight
+      ));
+      window.scrollTo(0, targetY); // sincronizar scrollbar
+    }, { passive: true });
+
+    // Loop de animación
+    function frame() {
+      // Lerp: currentY se acerca a targetY cada frame
+      currentY += (targetY - currentY) * EASE;
+
+      // Parar si la diferencia es < 0.1px (evitar loop infinito)
+      if (Math.abs(targetY - currentY) < 0.1) currentY = targetY;
+
+      container.style.transform = `translateY(${-currentY}px)`;
+
+      // Barra de progreso
+      const maxScroll = container.offsetHeight - window.innerHeight;
+      const progreso  = maxScroll > 0 ? (currentY / maxScroll) * 100 : 0;
+      progressBar.style.width = progreso + '%';
+
+      // Actualizar puntos de navegación
+      const alturaVentana = window.innerHeight;
+      secciones.forEach((sec, i) => {
+        const rect = sec.getBoundingClientRect();
+        const visible = rect.top < alturaVentana * 0.5 && rect.bottom > alturaVentana * 0.5;
+        // Ajustar por el offset del smooth scroll
+        const topReal = sec.offsetTop - currentY;
+        const enPantalla = topReal < alturaVentana * 0.5 && topReal + sec.offsetHeight > alturaVentana * 0.5;
+        puntos[i]?.classList.toggle('activo', enPantalla);
+      });
+
+      requestAnimationFrame(frame);
+    }
+    frame();
+
+    // Navegar al pulsar un punto
+    puntos.forEach((punto, i) => {
+      punto.addEventListener('click', () => {
+        const sec = secciones[i];
+        if (sec) {
+          targetY = sec.offsetTop;
+          window.scrollTo(0, targetY);
+        }
+      });
+    });
+  }
+</script>
+</body>
+</html>

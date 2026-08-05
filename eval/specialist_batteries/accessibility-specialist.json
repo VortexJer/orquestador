@@ -1,0 +1,33 @@
+{
+  "skill": "accessibility-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Tengo un boton que solo lleva un icono de papelera (una <svg> dentro de un <button>, sin texto visible). Hazlo accesible para un lector de pantalla."
+    },
+    {
+      "level": "easy",
+      "task": "En una galeria tengo varias etiquetas asi: <img src=\"foto-playa.jpg\">, <img src=\"logo-decorativo.png\">. La primera es una foto informativa de una playa; la segunda es un adorno de fondo sin contenido. Anade lo que falte para accesibilidad."
+    },
+    {
+      "level": "normal",
+      "task": "Este es mi formulario de contacto:\n<form>\n  <input type=\"text\" placeholder=\"Tu nombre\">\n  <input type=\"email\" placeholder=\"Tu correo\">\n  <div class=\"boton\" onclick=\"enviar()\">Enviar</div>\n</form>\nHazlo accesible. Quiero que se pueda rellenar y enviar solo con el teclado."
+    },
+    {
+      "level": "normal",
+      "task": "En mi CSS tengo esto:\n.btn:focus { outline: none; }\n.error { color: red; }\nLos .error son mensajes de validacion debajo de cada campo. Y en el HTML los botones de accion son <div class=\"btn\" onclick=\"...\">Guardar</div>. Dime que problemas de accesibilidad hay y como los arreglo."
+    },
+    {
+      "level": "stress",
+      "task": "Necesito un desplegable de seleccion de pais PERSONALIZADO, no vale un <select> nativo porque cada opcion lleva la bandera del pais y un buscador dentro. De momento lo tengo hecho con divs: un <div class=\"trigger\" onclick=\"abrir()\">Elige pais</div> que muestra un <div class=\"lista\"> con un <div class=\"opcion\" onclick=\"...\"> por pais. Hazlo accesible de verdad para teclado y lector de pantalla, sabiendo que NO puedo cambiarlo por un <select>."
+    },
+    {
+      "level": "stress",
+      "task": "Te paso el HTML de la cabecera de mi web para que audites la accesibilidad. Dime en concreto si el contraste de texto cumple WCAG AA y arregla lo que haga falta:\n<header class=\"hero\">\n  <h1 class=\"titulo\">Bienvenido</h1>\n  <p class=\"subtitulo\">La mejor herramienta del mercado</p>\n  <button class=\"cta\">Empieza gratis</button>\n</header>"
+    },
+    {
+      "level": "stress",
+      "task": "Tengo un sistema de avisos (toasts) que aparecen en una esquina cuando el usuario hace una accion. Un aviso de exito sale con fondo verde y el texto 'Guardado'; uno de error sale con fondo rojo y el texto 'Fallo al guardar'. Se insertan por JS en un <div class=\"toasts\"></div> y desaparecen solos a los 3 segundos. Quiero que sean accesibles: que un lector de pantalla los anuncie cuando aparecen y que se entiendan sin depender solo del color. Dame el HTML/ARIA y las reglas que apliquen."
+    }
+  ]
+}

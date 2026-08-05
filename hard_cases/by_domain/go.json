@@ -1,0 +1,79 @@
+[
+  {
+    "id": "go-loop-variable-capture-goroutine",
+    "language_or_domain": "go",
+    "tags": ["concurrency", "closures", "go"],
+    "problem_description": "En versiones de Go anteriores a la 1.22, la variable de un for _, v := range items se reutiliza en cada iteracion; goroutines lanzadas dentro del loop que capturan v por closure pueden ver todas el mismo valor final en vez del valor de su propia iteracion.",
+    "why_small_models_fail": "El comportamiento cambio entre versiones del lenguaje (fijado en Go 1.22); el modelo mezcla ejemplos de ambas eras del corpus sin saber que version de toolchain asume el proyecto del usuario.",
+    "correct_approach": "Si el go.mod del proyecto declara <1.22, pasar la variable como parametro de la goroutine o re-declararla dentro del loop (v := v) antes de capturarla.",
+    "bad_example": "for _, v := range items {\n    go func() { process(v) }()\n}",
+    "good_example": "for _, v := range items {\n    v := v\n    go func() { process(v) }()\n}",
+    "source": "Go 1.22 release notes - for loop semantics"
+  },
+  {
+    "id": "go-nil-interface-not-equal-nil",
+    "language_or_domain": "go",
+    "tags": ["interfaces", "nil", "go"],
+    "problem_description": "Un puntero nil asignado a una variable de tipo interface NO es == nil, porque el valor interface interno tiene dos partes (tipo, valor) y el tipo queda seteado aunque el valor sea nil. Es tipico devolver un *MiError nil desde una funcion cuya firma es 'error', y que el caller reciba un valor 'no nil' al comparar con ==.",
+    "why_small_models_fail": "El modelo trata 'nil' como un unico valor universal comparable siempre igual a si mismo, sin modelar la representacion interna de dos campos (tipo dinamico + valor) de las interfaces de Go.",
+    "correct_approach": "Devolver directamente nil literal (no una variable de tipo puntero que resulta ser nil) cuando la funcion declara un tipo interface como error, o chequear explicitamente el valor subyacente con reflection si es inevitable.",
+    "bad_example": "func hacer() error {\n    var err *MiError = nil\n    if huboProblema {\n        err = &MiError{}\n    }\n    return err // si huboProblema es false, esto NO es == nil para el caller\n}",
+    "good_example": "func hacer() error {\n    if huboProblema {\n        return &MiError{}\n    }\n    return nil // nil literal, sin tipo dinamico adjunto\n}",
+    "source": "Go FAQ - 'Why is my nil error value not equal to nil?'"
+  },
+  {
+    "id": "go-map-iteration-order-randomized",
+    "language_or_domain": "go",
+    "tags": ["maps", "go"],
+    "problem_description": "Iterar un map con for k, v := range m produce un orden ALEATORIO en cada ejecucion, a proposito (la especificacion de Go lo garantiza no-determinista para evitar que el codigo dependa accidentalmente de un orden de implementacion). Codigo que asume orden de insercion o algun orden estable va a fallar de forma intermitente en produccion.",
+    "why_small_models_fail": "El modelo puede haber visto ejemplos donde el orden 'parecio' consistente durante pruebas rapidas (el runtime no siempre randomiza igual de agresivo en programas muy cortos), reforzando una falsa sensacion de estabilidad.",
+    "correct_approach": "Si se necesita un orden especifico, extraer las claves a un slice, ordenarlo explicitamente (sort.Strings, sort.Slice), y iterar sobre ese slice ordenado.",
+    "bad_example": "for k, v := range configMap {\n    fmt.Println(k, v) // orden distinto en cada corrida\n}",
+    "good_example": "keys := make([]string, 0, len(configMap))\nfor k := range configMap {\n    keys = append(keys, k)\n}\nsort.Strings(keys)\nfor _, k := range keys {\n    fmt.Println(k, configMap[k]) // orden estable y reproducible\n}",
+    "source": "Go Language Specification - 'For statements with range clause', order note; Go blog - maps"
+  },
+  {
+    "id": "go-defer-in-loop-delays-until-function-return",
+    "language_or_domain": "go",
+    "tags": ["defer", "resource-management", "go"],
+    "problem_description": "defer solo se ejecuta cuando la funcion CONTENEDORA retorna, no al final del bloque o iteracion donde aparece. Poner defer file.Close() dentro de un for que abre muchos archivos acumula todos los Close() hasta el final de la funcion, pudiendo agotar el limite de file descriptors del proceso antes de que la funcion termine.",
+    "why_small_models_fail": "El modelo asocia defer con 'liberar al final del bloque logico actual' (como un finally de bloque en otros lenguajes), sin modelar que en Go el scope de defer es siempre la funcion completa, nunca un bloque interno.",
+    "correct_approach": "Extraer el cuerpo del loop a una funcion separada (donde el defer si se ejecuta al final de cada llamada), o cerrar explicitamente el recurso al final de cada iteracion en vez de usar defer dentro del loop.",
+    "bad_example": "func procesarTodos(rutas []string) error {\n    for _, ruta := range rutas {\n        f, err := os.Open(ruta)\n        if err != nil { return err }\n        defer f.Close() // se acumulan TODOS hasta que procesarTodos retorna\n        procesar(f)\n    }\n    return nil\n}",
+    "good_example": "func procesarUno(ruta string) error {\n    f, err := os.Open(ruta)\n    if err != nil { return err }\n    defer f.Close() // se ejecuta al terminar ESTA llamada\n    return procesar(f)\n}\n\nfunc procesarTodos(rutas []string) error {\n    for _, ruta := range rutas {\n        if err := procesarUno(ruta); err != nil { return err }\n    }\n    return nil\n}",
+    "source": "Effective Go - 'Defer', scope note"
+  },
+  {
+    "id": "go-slice-append-shares-backing-array",
+    "language_or_domain": "go",
+    "tags": ["slices", "go"],
+    "problem_description": "Un slice obtenido de otro (ej. sub := original[2:4]) comparte el mismo array subyacente. Si sub todavia tiene capacidad libre y se le hace append, la escritura puede sobreescribir posiciones del array que 'original' (u otro slice derivado de el) sigue viendo, sin que ninguno de los dos slices haya cambiado de longitud de forma obvia para quien lee el codigo.",
+    "why_small_models_fail": "El modelo trata a los slices como si fueran independientes entre si tras el slicing (como copias), sin modelar que un slice es solo una vista (puntero + longitud + capacidad) sobre un array compartido.",
+    "correct_approach": "Si se necesita un slice independiente, copiarlo explicitamente con copy() o append a un slice nil/vacio (append([]T{}, original...)); usar full slice expressions (s[low:high:max]) para limitar la capacidad compartida cuando se quiere prevenir el append accidental sobre el array original.",
+    "bad_example": "original := []int{1, 2, 3, 4, 5}\nsub := original[1:3] // [2,3], cap compartida con original\nsub = append(sub, 99) // puede sobreescribir original[3] silenciosamente",
+    "good_example": "original := []int{1, 2, 3, 4, 5}\nsub := make([]int, 2)\ncopy(sub, original[1:3]) // copia independiente, sin array compartido\nsub = append(sub, 99)   // no afecta a original",
+    "source": "Go Blog - 'Arrays, slices (and strings): The mechanics of append'"
+  },
+  {
+    "id": "go-error-wrapping-without-percent-w",
+    "language_or_domain": "go",
+    "tags": ["errors", "go"],
+    "problem_description": "Envolver un error con fmt.Errorf usando %v (en vez de %w) produce un mensaje de texto identico pero PIERDE la cadena de wrapping: errors.Is() y errors.As() del caller ya no pueden encontrar el error original, porque %v no implementa la interfaz Unwrap() que esas funciones recorren.",
+    "why_small_models_fail": "El modelo trata %v y %w como intercambiables porque el texto impreso es identico en ambos casos; la diferencia solo se manifiesta cuando otro codigo intenta inspeccionar programaticamente el error, algo que no aparece en un test simple de 'el mensaje de error es correcto'.",
+    "correct_approach": "Usar %w especificamente cuando el error envuelto necesita seguir siendo identificable via errors.Is/errors.As por el codigo que lo consume mas arriba en la pila de llamadas.",
+    "bad_example": "if err != nil {\n    return fmt.Errorf(\"guardando usuario: %v\", err) // errors.Is(err, sql.ErrNoRows) ya no funciona arriba\n}",
+    "good_example": "if err != nil {\n    return fmt.Errorf(\"guardando usuario: %w\", err) // preserva la cadena para errors.Is/errors.As\n}",
+    "source": "Go 1.13 release notes - error wrapping with %w; pkg errors docs"
+  },
+  {
+    "id": "go-goroutine-leak-unbuffered-channel-no-receiver",
+    "language_or_domain": "go",
+    "tags": ["concurrency", "channels", "go"],
+    "problem_description": "Enviar sobre un channel sin buffer (ch <- valor) bloquea hasta que otra goroutine este lista para recibir. Si esa goroutine receptora nunca aparece (porque termino antes, o el path de codigo que la creaba cambio), la goroutine que envia queda bloqueada para siempre - un leak de goroutine que no aparece como crash, solo como memoria/goroutines que crecen sin limite con el tiempo.",
+    "why_small_models_fail": "El modelo escribe el envio y la recepcion como si el emparejamiento estuviera siempre garantizado por la logica del programa, sin considerar los caminos de error/cancelacion donde el receptor puede no llegar a ejecutarse nunca.",
+    "correct_approach": "Usar un channel con buffer del tamaño esperado cuando el receptor puede no estar listo a tiempo, o usar select con un context.Context (o un canal 'done') para poder abortar el envio si el receptor ya no va a aparecer.",
+    "bad_example": "func trabajar(ch chan int) {\n    resultado := calcular()\n    ch <- resultado // si nadie mas recibe (ej. el caller ya retorno por timeout), esta goroutine queda bloqueada para siempre\n}",
+    "good_example": "func trabajar(ctx context.Context, ch chan int) {\n    resultado := calcular()\n    select {\n    case ch <- resultado:\n    case <-ctx.Done():\n        return // no se bloquea para siempre si el contexto se cancelo\n    }\n}",
+    "source": "Go docs - context package; 'Concurrency in Go' (Katherine Cox-Buday), cap. sobre goroutine leaks"
+  }
+]

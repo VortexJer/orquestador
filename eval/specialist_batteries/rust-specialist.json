@@ -1,0 +1,33 @@
+{
+  "skill": "rust-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Escribe una funcion en Rust que lea un archivo de texto entero y devuelva cuantas lineas tiene. Recibe la ruta como parametro."
+    },
+    {
+      "level": "easy",
+      "task": "Escribe una funcion en Rust que reciba un texto de solo lectura y devuelva cuantas palabras tiene (separadas por espacios). El llamador no deberia tener que construir un String para llamarte."
+    },
+    {
+      "level": "normal",
+      "task": "Escribe una funcion en Rust que lea un archivo de configuracion (formato clave=valor, una por linea) y devuelva un HashMap<String, String>. Si el archivo no existe o una linea esta mal formada, el llamador tiene que poder distinguir cual de los dos fallo. Es codigo de una libreria, no un script descartable."
+    },
+    {
+      "level": "normal",
+      "task": "Escribe un iterador en Rust que genere la secuencia de Fibonacci. Cada llamada a next() devuelve el siguiente termino. Que sea usable en un for y que no explote al llegar a numeros grandes."
+    },
+    {
+      "level": "stress",
+      "task": "Escribe una funcion async (tokio) que reparta una lista de trabajos entre 4 tareas concurrentes. Cada tarea procesa su parte y va acumulando un total compartido entre todas. Al final la funcion devuelve el total sumado. Tiene que compilar y no bloquear el ejecutor de tokio bajo ninguna circunstancia."
+    },
+    {
+      "level": "stress",
+      "task": "Tengo una estructura Contador con un contador entero protegido para uso concurrente. Escribe un metodo incrementar() que le sume 1 y que, para auditoria, llame a un metodo interno registrar() que lee el valor actual del mismo contador y lo imprime por pantalla. Tiene que ser seguro ante muchos hilos incrementando a la vez y no quedarse colgado nunca, aunque el contador reciba muchisimos incrementos a lo largo del tiempo."
+    },
+    {
+      "level": "stress",
+      "task": "Escribe una funcion que reciba una lista de comentarios de usuarios y genere un preview de cada uno cortado a los primeros 10 caracteres (si es mas corto, el comentario entero). Los comentarios vienen de usuarios reales: llevan tildes, ny y a veces emojis. Devuelve la lista de previews sin consumir ni copiar la lista original completa mas de lo necesario."
+    }
+  ]
+}

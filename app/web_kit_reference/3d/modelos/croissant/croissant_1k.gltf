@@ -1,0 +1,156 @@
+{
+  "asset": {
+    "generator": "Khronos glTF Blender I/O v1.8.19",
+    "version": "2.0"
+  },
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "mesh": 0,
+      "name": "croissant"
+    }
+  ],
+  "materials": [
+    {
+      "doubleSided": true,
+      "name": "croissant",
+      "normalTexture": {
+        "index": 0
+      },
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 1
+        },
+        "metallicFactor": 0,
+        "metallicRoughnessTexture": {
+          "index": 2
+        }
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "Croissant_croissant_10M_textured.001",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 0,
+            "NORMAL": 1,
+            "TEXCOORD_0": 2
+          },
+          "indices": 3,
+          "material": 0
+        }
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "sampler": 0,
+      "source": 0
+    },
+    {
+      "sampler": 0,
+      "source": 1
+    },
+    {
+      "sampler": 0,
+      "source": 2
+    }
+  ],
+  "images": [
+    {
+      "mimeType": "image/jpeg",
+      "name": "croissant_nor_gl",
+      "uri": "textures/croissant_nor_gl_1k.jpg"
+    },
+    {
+      "mimeType": "image/jpeg",
+      "name": "croissant_diff",
+      "uri": "textures/croissant_diff_1k.jpg"
+    },
+    {
+      "mimeType": "image/jpeg",
+      "name": "croissant_rough",
+      "uri": "textures/croissant_arm_1k.jpg"
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "componentType": 5126,
+      "count": 1031,
+      "max": [
+        0.09791653603315353,
+        0.060962047427892685,
+        0.04321061819791794
+      ],
+      "min": [
+        -0.1020834669470787,
+        -0.001033622189424932,
+        -0.03230090066790581
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 1031,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "componentType": 5126,
+      "count": 1031,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5123,
+      "count": 5970,
+      "type": "SCALAR"
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteLength": 12372,
+      "byteOffset": 0
+    },
+    {
+      "buffer": 0,
+      "byteLength": 12372,
+      "byteOffset": 12372
+    },
+    {
+      "buffer": 0,
+      "byteLength": 8248,
+      "byteOffset": 24744
+    },
+    {
+      "buffer": 0,
+      "byteLength": 11940,
+      "byteOffset": 32992
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 44932,
+      "uri": "croissant.bin"
+    }
+  ]
+}

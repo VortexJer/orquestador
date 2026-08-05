@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scroll reveal</title>
+<style>
+  :root { --dur: 0.7s; }
+  * { margin: 0; box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; background: #faf9f6; color: #222; }
+  .intro { min-height: 60vh; display: grid; place-items: center; text-align: center; padding: 2rem; }
+  .intro p { color: #666; margin-top: .5rem; }
+  section { min-height: 80vh; display: grid; place-items: center; padding: 2rem; }
+  .caja {
+    max-width: 480px; background: #fff; border: 1px solid #e5e3dc;
+    border-radius: 16px; padding: 2.5rem; box-shadow: 0 4px 20px rgba(0,0,0,.05);
+  }
+
+  /* === El mecanismo del reveal ===
+     1. El elemento empieza invisible y desplazado (.reveal).
+     2. JS le añade la clase .visible cuando entra en pantalla.
+     3. La transición hace el resto. */
+  .reveal {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity var(--dur) ease, transform var(--dur) ease;
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* variantes: cambia la dirección de entrada */
+  .reveal.desde-izq { transform: translateX(-60px); }
+  .reveal.desde-izq.visible { transform: translateX(0); }
+  .reveal.zoom { transform: scale(.9); }
+  .reveal.zoom.visible { transform: scale(1); }
+
+  /* respeta a quien pide menos movimiento */
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { transition: opacity .3s ease; transform: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="intro">
+    <div>
+      <h1>Haz scroll hacia abajo ↓</h1>
+      <p>Cada tarjeta aparece al entrar en la pantalla.</p>
+    </div>
+  </div>
+
+  <section><div class="caja reveal"><h2>Aparece desde abajo</h2><p>La animación por defecto: sube y se hace visible.</p></div></section>
+  <section><div class="caja reveal desde-izq"><h2>Aparece desde la izquierda</h2><p>Misma idea, otra dirección de entrada.</p></div></section>
+  <section><div class="caja reveal zoom"><h2>Aparece con zoom</h2><p>Escala de 0.9 a 1 mientras se hace visible.</p></div></section>
+
+<script>
+  // IntersectionObserver: avisa cuando un elemento entra/sale del viewport.
+  // Es la forma moderna y eficiente de hacer animaciones al scroll
+  // (mucho mejor que escuchar el evento 'scroll' a mano).
+  const observador = new IntersectionObserver((entradas) => {
+    entradas.forEach((entrada) => {
+      if (entrada.isIntersecting) {
+        entrada.target.classList.add('visible');
+        observador.unobserve(entrada.target); // anima una sola vez
+      }
+    });
+  }, {
+    threshold: 0.2 // dispara cuando el 20% del elemento es visible
+  });
+
+  document.querySelectorAll('.reveal').forEach((el) => observador.observe(el));
+</script>
+</body>
+</html>

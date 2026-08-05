@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tipografía 3D extruida — el titular como objeto real con profundidad (15.11)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body { font-family: system-ui, sans-serif; color: #fff; overflow: hidden; }
+
+  /* ================================================================
+     TITULAR 3D EXTRUIDO — el h1 deja de ser texto plano y pasa a ser
+     un OBJETO 3D real (con grosor, bisel y luz) que gira suavemente.
+     Es la pieza más "wow" de toda la carpeta 3d/ para un hero — úsala
+     con moderación, un titular extruido ya es el protagonista total
+     de la sección, no lo combines con más elementos compitiendo.
+
+     Requiere DOS addons de Three.js (no vienen en el core):
+     FontLoader + TextGeometry, y un archivo de fuente en formato JSON
+     propio de three.js (NO es un .ttf/.woff normal - es una fuente ya
+     convertida a contornos, ver "AUTOALOJAR" abajo).
+
+     AUTOALOJAR (además del three.module.min.js de siempre, ver
+     hero-objeto-flotante.html):
+       1. Copia examples/jsm/loaders/FontLoader.js y
+          examples/jsm/geometries/TextGeometry.js del paquete `three`
+          a assets/js/lib/addons/.
+       2. Copia examples/fonts/helvetiker_bold.typeface.json (o genera
+          la tuya propia con la herramienta oficial facetype.js a
+          partir de un .ttf con licencia de uso) a assets/fonts/.
+       3. Import map local:
+            { "imports": {
+                "three": "./assets/js/lib/three.module.min.js",
+                "three/addons/": "./assets/js/lib/addons/"
+            }}
+       4. Cambia FONT_URL más abajo por tu ruta local a assets/fonts/.
+
+     Si la fuente no carga (sin red, ruta mal puesta, o el navegador no
+     tiene WebGL), cae a un <h1> normal en HTML/CSS - la página sigue
+     siendo legible y accesible sin JS ni 3D.
+  ================================================================ */
+
+  .seccion-titular {
+    position: relative; height: 100%;
+    background: radial-gradient(circle at 50% 45%, #1c1f2e, #0b0d14);
+    display: grid; place-items: center; text-align: center;
+  }
+  #titular-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  /* FALLBACK: h1 normal, visible desde el principio y oculto solo si el 3D carga bien */
+  #titular-fallback { position: relative; z-index: 1; font-size: clamp(2.5rem, 9vw, 6rem);
+    font-weight: 900; letter-spacing: -.02em; padding: 0 1.5rem; }
+</style>
+</head>
+<body>
+  <section class="seccion-titular">
+    <canvas id="titular-3d"></canvas>
+    <h1 id="titular-fallback">TU MARCA</h1>
+  </section>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+    const TEXTO = 'TU MARCA';           // ← el titular real del proyecto
+    const FONT_URL = 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/fonts/helvetiker_bold.typeface.json';
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const canvas = document.getElementById('titular-3d');
+    const fallback = document.getElementById('titular-fallback');
+
+    if (reduce) {
+      canvas.style.display = 'none'; // FALLBACK: se queda el <h1> normal
+    } else {
+      try {
+        const THREE = await import('three');
+        const { FontLoader } = await import('three/addons/loaders/FontLoader.js');
+        const { TextGeometry } = await import('three/addons/geometries/TextGeometry.js');
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 100);
+        camera.position.set(0, 0, 8);
+
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+        renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+        renderer.setSize(innerWidth, innerHeight);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+        const luzClave = new THREE.DirectionalLight(0xffffff, 1.3);
+        luzClave.position.set(3, 4, 5);
+        scene.add(luzClave);
+        const luzAcento = new THREE.PointLight(0x8b6cff, 8, 25); // ← --color-acento
+        luzAcento.position.set(-4, -1, 3);
+        scene.add(luzAcento);
+
+        const font = await new FontLoader().loadAsync(FONT_URL);
+
+        const geometria = new TextGeometry(TEXTO, {
+          font,
+          size: 1.4,
+          height: 0.35,        // el grosor del extruido - la clave de la profundidad real
+          curveSegments: 8,
+          bevelEnabled: true,
+          bevelThickness: 0.04,
+          bevelSize: 0.03,
+          bevelSegments: 4,
+        });
+        geometria.center(); // centra el pivote en el propio texto, no en el origen
+
+        const material = new THREE.MeshStandardMaterial({
+          color: 0xf4f4f4, metalness: 0.35, roughness: 0.3,
+        });
+        const mesh = new THREE.Mesh(geometria, material);
+        scene.add(mesh);
+
+        fallback.style.display = 'none'; // el 3D cargo bien, ya no hace falta el fallback
+
+        let targetY = 0;
+        addEventListener('pointermove', (e) => { targetY = (e.clientX / innerWidth - 0.5) * 2; });
+        addEventListener('resize', () => {
+          camera.aspect = innerWidth / innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(innerWidth, innerHeight);
+        });
+
+        const reloj = new THREE.Clock();
+        (function animar() {
+          requestAnimationFrame(animar);
+          const t = reloj.getElapsedTime();
+          mesh.rotation.y += (targetY * 0.35 - mesh.rotation.y) * 0.04;
+          mesh.rotation.y += Math.sin(t * 0.15) * 0.0015; // deriva propia lentísima
+          renderer.render(scene, camera);
+        })();
+      } catch (e) {
+        // FALLBACK: fuente/red/WebGL fallaron - se queda el <h1> normal, la pagina sigue intacta
+        canvas.style.display = 'none';
+        console.warn('Titular 3D no disponible, usando fallback HTML:', e);
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+{
+  "skill": "ruby-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Escribe un metodo `total_con_iva(precios, tipo)` que reciba un array de precios (numeros) y un tipo de IVA en tanto por uno (ej. 0.21) y devuelva la suma de todos los precios con el IVA aplicado. Camino feliz, sin validaciones raras."
+    },
+    {
+      "level": "easy",
+      "task": "Escribe un metodo `mayores_de_edad(personas)` que reciba un array de personas y devuelva solo las que tienen 18 anos o mas. Cada persona responde a `.edad`."
+    },
+    {
+      "level": "normal",
+      "task": "Tengo una lista de pedidos y quiero un resumen: cuantos pedidos hay por cada estado y el importe total por estado. Cada pedido responde a `.estado` (un simbolo) y a `.importe` (un numero). Devuelve una estructura que para cada estado tenga el numero de pedidos y la suma de importes. Escribe el metodo y un ejemplo de uso."
+    },
+    {
+      "level": "normal",
+      "task": "Modela un rango de fechas de una reserva de hotel con fecha de entrada y de salida. Necesito poder preguntar cuantas noches dura y si dos reservas se solapan. Elige el contenedor de datos adecuado y expon el estado de forma idiomatica. Incluye un par de tests, uno de ellos con un caso limite (reservas que se tocan justo en el borde)."
+    },
+    {
+      "level": "stress",
+      "task": "Estoy leyendo un fichero de configuracion en JSON con la pinta {\"features\": [{\"name\": \"beta\", \"enabled\": true}, {\"name\": \"legacy\", \"enabled\": false}]}. Escribe un metodo `features_activas(json_texto)` que reciba ese texto JSON, lo parsee, y devuelva un array con los nombres de las features que estan activadas. Muestra el codigo y un ejemplo de uso completo que se pueda ejecutar tal cual y que imprima el resultado."
+    },
+    {
+      "level": "stress",
+      "task": "Estoy montando un pequeno motor de reglas. Quiero registrar validaciones con nombre en un registro, guardarlas, y ejecutarlas mas tarde sobre un pedido (cuando llega). Cada validacion recibe el pedido y debe poder cortar en seco devolviendo un motivo de rechazo si el pedido no cumple; si cumple, no devuelve motivo. Por ejemplo una regla 'importe_minimo' que rechaza si el importe es menor de 10. Escribe la clase `RegistroReglas` con `registrar(nombre, &bloque)` y `ejecutar(pedido)` que devuelva el primer motivo de rechazo o nil si todas pasan, y un ejemplo de uso donde se registran dos reglas y se ejecutan sobre un pedido concreto que falla una."
+    },
+    {
+      "level": "stress",
+      "task": "Necesito usar coordenadas de rejilla como claves de un diccionario para cachear el coste de cada celda de un mapa. Una coordenada es una pareja (fila, columna). Quiero poder hacer `cache[Coord.new(2, 3)] = 5` y que luego `cache[Coord.new(2, 3)]` me devuelva 5 aunque sea otra instancia distinta con los mismos valores. Ademas necesito una funcion que convierta el nombre de una celda a un identificador url-safe (minusculas y espacios a guiones) para exportar el mapa; el fichero donde va esto empieza con `# frozen_string_literal: true`. Escribe la clase `Coord`, la funcion de identificador, y un ejemplo que demuestre que dos coordenadas iguales encuentran el mismo valor en el cache."
+    }
+  ]
+}

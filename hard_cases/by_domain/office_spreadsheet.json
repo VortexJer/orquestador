@@ -1,0 +1,57 @@
+[
+  {
+    "id": "office-spreadsheet-hardcoded-value-instead-of-formula",
+    "language_or_domain": "office_spreadsheet",
+    "tags": ["excel", "formulas"],
+    "problem_description": "Escribir un total calculado como un numero literal en vez de una formula (=SUM(...)) hace que ese valor quede 'congelado': si los datos de origen cambian despues, el total no se actualiza y queda silenciosamente desactualizado, sin ninguna señal visual de que esta desincronizado.",
+    "why_small_models_fail": "Al generar el archivo programaticamente, calcular el valor en el momento de generacion y escribirlo como numero es mas simple que insertar una formula real - el resultado 'se ve' identico al abrir el archivo por primera vez, asi que el problema no aparece hasta que alguien edita los datos de origen.",
+    "correct_approach": "Escribir formulas reales (SUM, AVERAGE, etc.) para cualquier valor derivado de otras celdas, nunca el resultado precalculado como numero estatico.",
+    "bad_example": "Celda B10 contiene el numero 4520 (calculado externamente al momento de generar el archivo)",
+    "good_example": "Celda B10 contiene la formula =SUM(B2:B9) - se recalcula automaticamente si cambian los datos de B2:B9",
+    "source": "Buenas practicas de modelado de hojas de calculo - evitar valores 'quemados'"
+  },
+  {
+    "id": "office-spreadsheet-missing-clear-header-row",
+    "language_or_domain": "office_spreadsheet",
+    "tags": ["excel", "structure"],
+    "problem_description": "Un rango de datos sin una fila de encabezados clara en la primera fila (o con encabezados en una posicion distinta a la esperada) rompe funcionalidades que asumen esa posicion fija: convertir el rango en Tabla de Excel, aplicar filtros, o referenciar columnas por nombre en formulas/formulas estructuradas.",
+    "why_small_models_fail": "El generador vuelca los datos empezando en la primera fila disponible sin reservar explicitamente una fila de encabezado, o mezcla un titulo del reporte y los encabezados de columna en la misma zona sin distinguirlos.",
+    "correct_approach": "Reservar siempre la fila 1 (o la primera fila del rango de datos, despues de cualquier titulo separado claramente) exclusivamente para los nombres de columna, y convertir el rango en una Tabla real de Excel cuando sea posible.",
+    "bad_example": "Fila 1: 'Reporte de Ventas Q3' (titulo)\nFila 2: datos ya empiezan aca, sin fila de encabezados de columna",
+    "good_example": "Fila 1: 'Reporte de Ventas Q3' (titulo, en su propia fila separada)\nFila 2: encabezados de columna (Cliente, Fecha, Monto)\nFila 3+: datos",
+    "source": "Microsoft docs - 'Overview of Excel tables', requisitos de estructura"
+  },
+  {
+    "id": "office-spreadsheet-merged-cells-break-sorting",
+    "language_or_domain": "office_spreadsheet",
+    "tags": ["excel", "formatting"],
+    "problem_description": "Combinar celdas dentro del area de una tabla de datos (por estetica, para 'centrar' un titulo que abarca varias columnas) rompe el ordenamiento, el filtrado, y cualquier formula que referencie celdas individuales de esa fila/columna - Excel no puede ordenar filas que contienen celdas combinadas de forma consistente.",
+    "why_small_models_fail": "El generador combina celdas para lograr una apariencia visual especifica (un titulo centrado sobre varias columnas) sin considerar que esa misma area vaya a necesitar comportarse como datos tabulares ordenables/filtrables despues.",
+    "correct_approach": "No combinar celdas dentro del rango de datos tabulares; si se necesita un titulo centrado visualmente sobre varias columnas, usarlo en una fila separada FUERA del rango de datos, o usar 'centrar en la seleccion' (formato) en vez de combinar celdas de verdad.",
+    "bad_example": "Fila de encabezado con A1:C1 combinadas en una sola celda 'Datos de Ventas' - al intentar ordenar la tabla por columna, Excel no puede resolver el orden de esa fila.",
+    "good_example": "Titulo 'Datos de Ventas' en una fila separada arriba de la tabla real; la tabla de datos en si no tiene ninguna celda combinada.",
+    "source": "Microsoft docs - limitaciones conocidas de celdas combinadas con Ordenar/Filtrar"
+  },
+  {
+    "id": "office-spreadsheet-floating-point-precision-financial",
+    "language_or_domain": "office_spreadsheet",
+    "tags": ["excel", "numerics", "finance"],
+    "problem_description": "Los calculos con numeros de punto flotante (la representacion interna estandar de Excel/hojas de calculo) pueden acumular pequeños errores de redondeo en sumas largas de valores monetarios, produciendo diferencias de centavos entre el total calculado y la suma 'esperada' - un problema real en reportes financieros donde los totales deben reconciliar exactamente.",
+    "why_small_models_fail": "El generador usa aritmetica de punto flotante estandar sin considerar que, para reportes financieros especificamente, la practica esperada es redondear explicitamente en cada paso intermedio o usar formatos/funciones que controlen la precision, no solo confiar en el redondeo de presentacion final.",
+    "correct_approach": "Redondear explicitamente (ROUND()) los valores monetarios en cada celda intermedia que participe en sumas posteriores, no solo aplicar formato de moneda a la presentacion final de un valor sin redondear internamente.",
+    "bad_example": "Columna de precios unitarios con muchos decimales sin redondear, sumados directamente - el total puede diferir en centavos del total 'esperado' a simple vista.",
+    "good_example": "Cada celda de precio unitario usa =ROUND(calculo, 2) antes de que el total la sume - el total reconcilia exactamente con la suma visible de los valores redondeados.",
+    "source": "Buenas practicas de modelado financiero en hojas de calculo - control explicito de redondeo"
+  },
+  {
+    "id": "office-spreadsheet-date-stored-as-text",
+    "language_or_domain": "office_spreadsheet",
+    "tags": ["excel", "dates"],
+    "problem_description": "Escribir una fecha como texto plano (ej. la cadena '01/02/2024') en vez de como un valor de fecha real hace que el ordenamiento sea LEXICOGRAFICO en vez de cronologico (ej. '2/1/2024' ordena antes que '10/1/2024' como texto), y que cualquier formula de aritmetica de fechas (diferencia de dias, EOMONTH, etc.) falle o de un resultado incorrecto sobre esa celda.",
+    "why_small_models_fail": "El generador escribe la fecha como string formateado porque es la forma mas directa de producir el texto 'correcto' que un humano leeria, sin usar el tipo de dato fecha nativo de la libreria/formato subyacente.",
+    "correct_approach": "Escribir siempre valores de fecha reales (datetime.date/datetime en la libreria de generacion, ej. openpyxl acepta objetos date directamente en una celda) y aplicar el formato de visualizacion despues, en vez de escribir el texto ya formateado.",
+    "bad_example": "Celda con el valor de texto '01/02/2024' (string) - ordena y calcula como texto, no como fecha.",
+    "good_example": "Celda con un objeto date(2024, 2, 1) real, con formato de numero 'DD/MM/YYYY' aplicado para la visualizacion - ordena y calcula correctamente como fecha.",
+    "source": "openpyxl docs - Working with dates and times; Excel docs - 'Text dates vs real dates'"
+  }
+]

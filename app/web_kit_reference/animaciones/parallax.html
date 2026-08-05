@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parallax</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #0d0d0d; color: #fff; overflow-x: hidden; }
+
+  /* === Hero con parallax de fondo ===
+     El fondo se mueve más lento que el scroll → sensación de profundidad. */
+  .hero-parallax {
+    height: 100vh; position: relative; overflow: hidden;
+    display: grid; place-items: center; text-align: center;
+  }
+  .parallax-bg {
+    position: absolute; inset: -20%; /* más grande que el viewport para dar margen al desplazamiento */
+    background: linear-gradient(160deg, #1a0a2e 0%, #0d1629 50%, #0a1a0a 100%);
+    /* En producción, aquí va una imagen: background-image: url('...'); background-size: cover; */
+    will-change: transform; /* optimización GPU */
+  }
+  /* Grilla decorativa encima del fondo */
+  .parallax-bg::after {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+  .hero-parallax .contenido {
+    position: relative; z-index: 1;
+  }
+  .hero-parallax h1 { font-size: clamp(2.5rem, 7vw, 6rem); font-weight: 800; line-height: 1.1; }
+  .hero-parallax p  { color: rgba(255,255,255,.6); margin-top: 1rem; font-size: 1.2rem; }
+
+  /* === Elementos flotantes con parallax de velocidad distinta ===
+     Usa data-parallax-speed para controlar qué tan rápido se mueve cada elemento. */
+  .flotante {
+    position: absolute; border-radius: 50%; opacity: .15;
+    will-change: transform;
+  }
+  .f1 { width: 300px; height: 300px; background: #7c3aed; top: 10%; left: 5%; }
+  .f2 { width: 200px; height: 200px; background: #2563eb; top: 60%; right: 10%; }
+  .f3 { width: 150px; height: 150px; background: #059669; bottom: 15%; left: 30%; }
+
+  /* === Sección de contenido debajo del hero === */
+  .seccion { min-height: 60vh; padding: 6rem 2rem; max-width: 800px; margin: 0 auto; }
+  .seccion h2 { font-size: 2.5rem; margin-bottom: 1.5rem; }
+  .seccion p  { color: #888; line-height: 1.8; }
+
+  /* === Imagen con parallax interno (la imagen se mueve más lento que el contenedor) === */
+  .img-parallax-wrap {
+    height: 500px; overflow: hidden; border-radius: 20px; margin: 6rem 2rem;
+  }
+  .img-parallax-inner {
+    height: 140%; width: 100%;
+    background: linear-gradient(135deg, #1e1b4b, #312e81);
+    /* En producción: background-image: url('...'); background-size: cover; */
+    will-change: transform;
+    display: grid; place-items: center; font-size: 5rem; color: rgba(255,255,255,.1);
+  }
+</style>
+</head>
+<body>
+
+  <section class="hero-parallax">
+    <div class="parallax-bg" data-parallax-speed="0.4"></div>
+    <div class="flotante f1" data-parallax-speed="0.2"></div>
+    <div class="flotante f2" data-parallax-speed="0.6"></div>
+    <div class="flotante f3" data-parallax-speed="0.3"></div>
+    <div class="contenido">
+      <h1>Profundidad<br>en movimiento</h1>
+      <p>Haz scroll para ver el efecto parallax.</p>
+    </div>
+  </section>
+
+  <div class="seccion">
+    <h2>Contenido normal</h2>
+    <p>El parallax ocurre en el fondo y en los elementos flotantes. El contenido de primer plano se mueve al ritmo normal del scroll.</p>
+  </div>
+
+  <div class="img-parallax-wrap">
+    <div class="img-parallax-inner" data-parallax-img>✦</div>
+  </div>
+
+  <div class="seccion">
+    <h2>La imagen también</h2>
+    <p>El contenedor tiene overflow:hidden y la imagen (o div) dentro es más alta. Al hacer scroll, la imagen se desplaza más lento que el contenedor, creando el efecto.</p>
+  </div>
+
+<script>
+  // Parallax de fondo del hero y elementos flotantes
+  const parallaxEls = document.querySelectorAll('[data-parallax-speed]');
+
+  // Parallax de imagen interna
+  const imgParallax = document.querySelector('[data-parallax-img]');
+
+  function actualizarParallax() {
+    const scroll = window.scrollY;
+
+    parallaxEls.forEach(el => {
+      const speed = parseFloat(el.dataset.parallaxSpeed) || 0.5;
+      el.style.transform = `translateY(${scroll * speed}px)`;
+    });
+
+    if (imgParallax) {
+      const wrap = imgParallax.parentElement;
+      const rect = wrap.getBoundingClientRect();
+      // Solo calcular cuando el elemento está cerca del viewport
+      if (rect.bottom > 0 && rect.top < window.innerHeight) {
+        const relScroll = (window.innerHeight - rect.top) / (window.innerHeight + rect.height);
+        const desplazamiento = (relScroll - 0.5) * 100; // -50 a +50px
+        imgParallax.style.transform = `translateY(${desplazamiento}px)`;
+      }
+    }
+  }
+
+  // requestAnimationFrame para no bloquear el hilo principal
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      requestAnimationFrame(() => {
+        actualizarParallax();
+        ticking = false;
+      });
+      ticking = true;
+    }
+  }, { passive: true });
+
+  actualizarParallax(); // llamada inicial
+
+  // No animar si el usuario prefiere menos movimiento
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    parallaxEls.forEach(el => el.removeAttribute('data-parallax-speed'));
+    if (imgParallax) imgParallax.removeAttribute('data-parallax-img');
+  }
+</script>
+</body>
+</html>

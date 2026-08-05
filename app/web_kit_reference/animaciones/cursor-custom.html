@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cursor personalizado</title>
+<style>
+  * { box-sizing: border-box; margin: 0; cursor: none; }
+  body { font-family: system-ui, sans-serif; background: #0d0d0d; color: #eee;
+         min-height: 200vh; padding: 4rem 2rem; }
+
+  /* === El cursor tiene dos capas:
+     1. punto central (pequeño, sigue al ratón sin delay)
+     2. anillo exterior (grande, sigue con suavidad via lerp en JS) */
+  .cursor-dot {
+    width: 8px; height: 8px; background: #fff; border-radius: 50%;
+    position: fixed; top: 0; left: 0; pointer-events: none; z-index: 9999;
+    transform: translate(-50%, -50%);
+  }
+  .cursor-ring {
+    width: 36px; height: 36px; border: 1.5px solid rgba(255,255,255,.5);
+    border-radius: 50%; position: fixed; top: 0; left: 0; pointer-events: none;
+    z-index: 9998; transform: translate(-50%, -50%);
+    transition: width .2s ease, height .2s ease, border-color .2s ease, background .2s ease;
+  }
+
+  /* Estado expandido cuando el ratón está sobre un elemento interactivo */
+  .cursor-ring.expandido {
+    width: 56px; height: 56px; background: rgba(255,255,255,.08);
+    border-color: rgba(255,255,255,.8);
+  }
+
+  /* Estado "texto": el anillo crece y muestra "Ver" */
+  .cursor-ring.texto {
+    width: 64px; height: 64px; background: #fff; border-color: #fff;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .cursor-ring.texto::after {
+    content: 'Ver'; color: #000; font-size: .65rem; font-weight: 700;
+    letter-spacing: .05em; position: absolute;
+  }
+
+  /* Demo */
+  h1 { font-size: 2.5rem; margin-bottom: 3rem; }
+  .demo-grid { display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  .tarjeta {
+    background: #1a1a1a; border-radius: 16px; padding: 2rem;
+    width: 220px; border: 1px solid #333;
+    data-cursor="expandir";
+  }
+  .tarjeta h3 { margin-bottom: .5rem; }
+  .tarjeta p { color: #888; font-size: .9rem; }
+  .btn-demo {
+    margin-top: 3rem; display: inline-block; padding: 1rem 2rem;
+    background: #fff; color: #000; border-radius: 8px; font-weight: 700;
+    border: none; font-size: 1rem;
+  }
+  .zona-ver {
+    margin-top: 3rem; width: 100%; height: 300px; background: #1a1a1a;
+    border-radius: 20px; display: grid; place-items: center; color: #444;
+    font-size: 1.2rem;
+  }
+</style>
+</head>
+<body>
+  <div class="cursor-dot" id="dot"></div>
+  <div class="cursor-ring" id="ring"></div>
+
+  <h1>Cursor personalizado</h1>
+
+  <div class="demo-grid">
+    <div class="tarjeta" data-cursor="expandir">
+      <h3>Tarjeta A</h3><p>Hover → el anillo se expande.</p>
+    </div>
+    <div class="tarjeta" data-cursor="expandir">
+      <h3>Tarjeta B</h3><p>Señal visual de que es interactivo.</p>
+    </div>
+    <div class="tarjeta" data-cursor="expandir">
+      <h3>Tarjeta C</h3><p>Sin cursor nativo visible.</p>
+    </div>
+  </div>
+
+  <button class="btn-demo" data-cursor="expandir">Botón</button>
+
+  <div class="zona-ver" data-cursor="ver">
+    ← pasa el ratón por aquí (cursor "Ver")
+  </div>
+
+<script>
+  const dot  = document.getElementById('dot');
+  const ring = document.getElementById('ring');
+
+  // Posición real del ratón
+  let mx = 0, my = 0;
+  // Posición suavizada del anillo
+  let rx = 0, ry = 0;
+
+  document.addEventListener('mousemove', e => {
+    mx = e.clientX; my = e.clientY;
+    // El punto sigue sin delay
+    dot.style.left = mx + 'px';
+    dot.style.top  = my + 'px';
+  });
+
+  // Suavizado del anillo con lerp (linear interpolation)
+  function animar() {
+    rx += (mx - rx) * 0.12;
+    ry += (my - ry) * 0.12;
+    ring.style.left = rx + 'px';
+    ring.style.top  = ry + 'px';
+    requestAnimationFrame(animar);
+  }
+  animar();
+
+  // Expandir/contraer el anillo según data-cursor del elemento bajo el ratón
+  document.querySelectorAll('[data-cursor]').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      const tipo = el.dataset.cursor;
+      ring.classList.remove('expandido', 'texto');
+      if (tipo === 'expandir') ring.classList.add('expandido');
+      if (tipo === 'ver')      ring.classList.add('texto');
+    });
+    el.addEventListener('mouseleave', () => {
+      ring.classList.remove('expandido', 'texto');
+    });
+  });
+
+  // Ocultar cuando el ratón sale de la ventana
+  document.addEventListener('mouseleave', () => {
+    dot.style.opacity = '0'; ring.style.opacity = '0';
+  });
+  document.addEventListener('mouseenter', () => {
+    dot.style.opacity = '1'; ring.style.opacity = '1';
+  });
+
+  // No mostrar en táctil (donde no hay cursor)
+  if (window.matchMedia('(pointer: coarse)').matches) {
+    dot.style.display = 'none'; ring.style.display = 'none';
+    document.body.style.cursor = 'auto';
+    document.querySelectorAll('*').forEach(el => el.style.cursor = '');
+  }
+</script>
+</body>
+</html>

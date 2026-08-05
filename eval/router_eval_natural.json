@@ -1,0 +1,42 @@
+[
+  {"id": "nat-sec-01", "task": "Un usuario podria colar comandos raros por este campo de busqueda y hacer algo malo?", "expected_domain": "security"},
+  {"id": "nat-sec-02", "task": "Esto guarda la clave del usuario tal cual, sin cifrar. Es un problema serio?", "expected_domain": "security"},
+
+  {"id": "nat-test-01", "task": "Quiero asegurarme de que esta funcion no se rompa cuando le pasan una lista vacia.", "expected_domain": "testing"},
+  {"id": "nat-test-02", "task": "Como compruebo automaticamente que mi calculo de descuento aguanta valores negativos?", "expected_domain": "testing"},
+
+  {"id": "nat-ref-01", "task": "Esta funcion hace demasiadas cosas, habria que partirla en piezas mas manejables sin cambiar lo que hace.", "expected_domain": "refactor"},
+  {"id": "nat-ref-02", "task": "Hay logica repetida en varios sitios de este archivo, se podria unificar en un solo lugar?", "expected_domain": "refactor"},
+
+  {"id": "nat-dbg-01", "task": "Esto tendria que devolver 5 pero me devuelve 3 y no consigo entender el motivo.", "expected_domain": "debugging"},
+  {"id": "nat-dbg-02", "task": "Se queda colgado a la mitad y no tira ningun mensaje, como rastreo donde se atasca?", "expected_domain": "debugging"},
+
+  {"id": "nat-py-01", "task": "Leeme un csv y sacame la media de la columna precio agrupando por ciudad.", "expected_domain": "python"},
+  {"id": "nat-py-02", "task": "Ordename esta lista de diccionarios por la fecha, de mas nuevo a mas viejo.", "expected_domain": "python"},
+
+  {"id": "nat-web-01", "task": "Quiero algo online donde la gente vea mis servicios y pueda contactarme.", "expected_domain": "web"},
+  {"id": "nat-web-02", "task": "Necesito una presencia en internet para mi taller mecanico, con fotos, precios y ubicacion.", "expected_domain": "web"},
+
+  {"id": "nat-sheet-01", "task": "Necesito llevar la cuenta de ingresos y gastos del mes con sus totales y un balance.", "expected_domain": "office_spreadsheet"},
+
+  {"id": "nat-email-01", "task": "Escribeme algo para contestarle al cliente que esta molesto por el retraso del pedido.", "expected_domain": "office_email"},
+
+  {"id": "nat-ppt-01", "task": "Prepara unas diapositivas para exponer los resultados del trimestre en la reunion.", "expected_domain": "office_presentation"},
+
+  {"id": "nat-a11y-01", "task": "Personas con baja vision no consiguen leer bien este formulario, hay que mejorarlo para ellas.", "expected_domain": "accessibility"},
+
+  {"id": "nat-cr-01", "task": "Mira estos cambios que voy a subir y dime si meto la pata en algo antes de integrarlos.", "expected_domain": "code_review"},
+
+  {"id": "nat-iac-01", "task": "Quiero poder levantar y tirar la infraestructura de mi app en la nube de forma reproducible.", "expected_domain": "iac"},
+
+  {"id": "nat-docs-01", "task": "Deja explicado en el proyecto como se instala y se arranca, para el que llegue nuevo.", "expected_domain": "docs"},
+
+  {"id": "nat-triv-01", "task": "Hazme una nota corta para acordarme de llamar al banco mañana por la mañana.", "expected_domain": "trivial_text"},
+
+  {"id": "nat-pyfile-01", "task": "Generame un archivo txt con la lista de la compra y guardalo en el escritorio.", "expected_domain": "python",
+   "note": "Nuance del gloss trivial_text: si pide GUARDAR un archivo real (aunque el contenido sea trivial), va a python, que tiene herramientas para escribir archivos - no a trivial_text, que solo devuelve texto."},
+
+  {"id": "nat-rustname-01", "task": "El compilador de Rust se queja de que estoy usando un valor despues de moverlo.", "expected_domain": "rust"},
+  {"id": "nat-goname-01", "task": "En mi servicio de Go dos rutinas tocan el mismo mapa a la vez y peta de vez en cuando.", "expected_domain": "go"},
+  {"id": "nat-ts-01", "task": "En mi proyecto de TypeScript el tipo que declaro no cuadra con lo que devuelve la funcion.", "expected_domain": "typescript"}
+]

@@ -1,0 +1,33 @@
+{
+  "skill": "generalist-tiny",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Escribe un correo breve avisando a un compañero, Luis, de que la reunion de mañana se mueve de las 10:00 a las 11:00."
+    },
+    {
+      "level": "easy",
+      "task": "Resume en una sola frase: El equipo decidio posponer el lanzamiento dos semanas porque las pruebas de carga revelaron caidas del servidor con mas de mil usuarios simultaneos."
+    },
+    {
+      "level": "normal",
+      "task": "Reescribe esto en tono formal para un correo de trabajo, que quede corto: oye q el informe no esta listo todavia, perdon, es q me lio un cliente y no llegue."
+    },
+    {
+      "level": "normal",
+      "task": "Resume este mensaje en tres bullets: El viernes cerramos la oficina de Sevilla por reformas hasta el 15 de marzo. Mientras tanto todo el equipo trabaja en remoto y las reuniones presenciales se trasladan a la sede de Madrid. Recursos Humanos enviara el lunes las instrucciones para reservar sala en Madrid."
+    },
+    {
+      "level": "stress",
+      "task": "Para mi jefe: convierte 2,5 libras a onzas y dame tambien el total en gramos, y ademas dejame una frase corta que le pueda mandar por Slack resumiendo el dato."
+    },
+    {
+      "level": "stress",
+      "task": "Redacta un correo para un cliente disculpandote por el retraso de su pedido."
+    },
+    {
+      "level": "stress",
+      "task": "Escribeme un correo para pedirle a Marta, del equipo de diseño, que revise el mockup y me de su feedback; es para la reunion con el cliente."
+    }
+  ]
+}

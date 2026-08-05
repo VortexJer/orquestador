@@ -1,0 +1,33 @@
+{
+  "skill": "refactor-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Renombra las variables de esta funcion a algo legible y aplana el bucle a una comprension de lista sin cambiar lo que hace:\n\ndef p(d):\n    r = []\n    for k in d:\n        if d[k] > 0:\n            r.append(k)\n    return r"
+    },
+    {
+      "level": "easy",
+      "task": "En esta funcion hay un numero magico repetido. Sustituyelo por una constante con nombre sin cambiar el comportamiento:\n\ndef precio_con_iva(base):\n    return base + base * 0.21\n\ndef desglose_iva(base):\n    return base * 0.21"
+    },
+    {
+      "level": "normal",
+      "task": "Este bloque que calcula el area de un circulo y la formatea aparece identico en tres sitios del modulo (en resumen_pieza, en informe y en exportar_csv). Extraelo a una funcion reutilizable y deja los tres sitios llamandola. El comportamiento debe ser identico. Incluye un test con pytest.\n\nEl bloque repetido es:\n    area = 3.14159 * radio * radio\n    texto = f\"{area:.2f} cm2\""
+    },
+    {
+      "level": "normal",
+      "task": "Reduce el anidamiento de esta funcion con salidas tempranas, conservando exactamente el mismo comportamiento (incluidos los valores devueltos en cada caso):\n\ndef procesar(usuario):\n    if usuario is not None:\n        if usuario.activo:\n            if usuario.saldo > 0:\n                return cobrar(usuario)\n            else:\n                return \"sin saldo\"\n        else:\n            return \"inactivo\"\n    else:\n        return \"no existe\""
+    },
+    {
+      "level": "stress",
+      "task": "Limpia esta funcion y hazla mas idiomatica y corta. Es codigo viejo lleno de comparaciones verbosas; modernizalo:\n\ndef filtrar(registros, config):\n    salida = []\n    for r in registros:\n        if r.get(\"habilitado\") == True and config.get(\"modo\") != None:\n            porcentaje = r[\"puntos\"] / r[\"total\"] * 100\n            if r.get(\"visible\") == 1:\n                salida.append((r[\"id\"], porcentaje))\n    return salida\n\nDevuelve la version limpia."
+    },
+    {
+      "level": "stress",
+      "task": "Tengo esta logica de construccion de manejadores duplicada en dos endpoints casi identicos. Extraela a una unica funcion compartida `construir_manejadores(nombres)` y usala en los dos sitios, sin cambiar el comportamiento observable. Este es el bloque que se repite en ambos:\n\n    manejadores = []\n    for i in range(len(nombres)):\n        def manejar(evento):\n            return f\"{nombres[i]}: {evento}\"\n        manejadores.append(manejar)\n\nDespues de extraerlo, `manejadores[0](\"x\")` debe seguir devolviendo lo mismo que devuelve hoy el codigo original. Muestra la funcion extraida."
+    },
+    {
+      "level": "stress",
+      "task": "Este modulo de utilidades esta hecho un desastre y es enorme (unas 900 lineas). Quiero que lo dejes limpio: elimina el codigo muerto, moderniza lo que veas anticuado y de paso corrige lo que este mal. Entre otras cosas hay una funcion `_validar_legacy` que no veo llamada desde ningun sitio del modulo, y una funcion `parsear_fecha` que devuelve el mes y el dia cambiados de orden (un bug antiguo). Ordename el modulo entero de una vez. Dime como lo harias y empieza."
+    }
+  ]
+}

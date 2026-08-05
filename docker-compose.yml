@@ -1,0 +1,79 @@
+# Uso en desarrollo (sin GPU): docker-compose up
+#   -> levanta api + qdrant. INFERENCE_MODE=mock por defecto (.env).
+#
+# Uso en el servidor GPU (ver DEPLOY_PROMPT.txt): docker-compose --profile gpu up
+#   -> ademas levanta vllm-router y vllm-coder sobre la L4.
+#   Si el despliegue real es RunPod Serverless / Modal, estos dos
+#   servicios probablemente se reemplacen por el mecanismo de endpoint
+#   propio de esa plataforma en vez de correr como containers de este
+#   compose - quedan aca como referencia de los flags de vLLM correctos,
+#   no como el unico camino de despliegue valido.
+
+services:
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      QDRANT_MODE: remote
+      QDRANT_URL: http://qdrant:6333
+    depends_on:
+      - qdrant
+    volumes:
+      - ./config:/srv/config:ro
+      - ./skills:/srv/skills:ro
+      - ./hard_cases:/srv/hard_cases:ro
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.4
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  vllm-router:
+    image: vllm/vllm-openai:latest
+    profiles: ["gpu"]
+    command: >
+      --model Qwen/Qwen2.5-1.5B-Instruct
+      --port 8000
+      --max-model-len 32768
+      --gpu-memory-utilization 0.10
+    ports:
+      - "8000:8000"
+    volumes:
+      - model_weights:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  vllm-coder:
+    image: vllm/vllm-openai:latest
+    profiles: ["gpu"]
+    command: >
+      --model Qwen/Qwen2.5-Coder-14B-Instruct-AWQ
+      --quantization awq
+      --port 8001
+      --max-model-len 32768
+      --gpu-memory-utilization 0.75
+    ports:
+      - "8001:8001"
+    volumes:
+      - model_weights:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  qdrant_data:
+  model_weights:

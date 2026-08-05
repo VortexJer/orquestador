@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Efectos hover</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; background: #1a1a1a; color: #eee;
+         display: flex; flex-wrap: wrap; gap: 2rem; padding: 3rem; }
+  .demo { background: #262626; border-radius: 14px; padding: 2rem; width: 220px;
+          text-align: center; }
+  .demo h3 { font-size: .9rem; color: #888; margin: 0 0 1.2rem; font-weight: 500; }
+  .btn { display: inline-block; padding: .7rem 1.4rem; border-radius: 8px;
+         background: #e07a3f; color: #fff; border: none; cursor: pointer;
+         font-size: 1rem; text-decoration: none; }
+
+  /* 1. Levantar al pasar el ratón */
+  .lift { transition: transform .2s ease, box-shadow .2s ease; }
+  .lift:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(224,122,63,.4); }
+
+  /* 2. Subrayado que crece desde el centro */
+  .underline { position: relative; color: #e07a3f; text-decoration: none; padding-bottom: 3px; }
+  .underline::after { content: ''; position: absolute; left: 50%; bottom: 0;
+    width: 0; height: 2px; background: #e07a3f; transition: width .25s ease, left .25s ease; }
+  .underline:hover::after { width: 100%; left: 0; }
+
+  /* 3. Relleno deslizante */
+  .fill { position: relative; overflow: hidden; background: transparent;
+          border: 2px solid #e07a3f; color: #e07a3f; z-index: 0; }
+  .fill::before { content: ''; position: absolute; inset: 0; background: #e07a3f;
+    transform: translateX(-100%); transition: transform .3s ease; z-index: -1; }
+  .fill:hover { color: #fff; }
+  .fill:hover::before { transform: translateX(0); }
+
+  /* 4. Tarjeta que gira ligeramente (tilt) */
+  .tilt { transition: transform .3s ease; }
+  .tilt:hover { transform: perspective(600px) rotateX(6deg) rotateY(-6deg) scale(1.03); }
+
+  /* 5. Brillo que cruza el botón */
+  .shine { position: relative; overflow: hidden; }
+  .shine::after { content: ''; position: absolute; top: 0; left: -75%; width: 50%;
+    height: 100%; background: linear-gradient(120deg, transparent, rgba(255,255,255,.5), transparent);
+    transform: skewX(-20deg); }
+  .shine:hover::after { animation: brillo .8s; }
+  @keyframes brillo { to { left: 125%; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="demo"><h3>Levantar</h3><button class="btn lift">Pásame el ratón</button></div>
+  <div class="demo"><h3>Subrayado central</h3><a class="underline" href="#">Un enlace</a></div>
+  <div class="demo"><h3>Relleno deslizante</h3><button class="btn fill">Hover</button></div>
+  <div class="demo tilt"><h3>Tarjeta 3D</h3><p style="color:#ccc">Toda la tarjeta se inclina.</p></div>
+  <div class="demo"><h3>Brillo al cruzar</h3><button class="btn shine">Hover</button></div>
+</body>
+</html>

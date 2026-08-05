@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Catálogo de modelos 3D fotorrealistas — todos los objetos de negocio del kit (15.18)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #101114; color: #fff; }
+
+  /* ================================================================
+     CATÁLOGO DE MODELOS FOTORREALISTAS — este archivo hace dos cosas:
+
+     1. Es el ESCAPARATE de modelos/ (fotorrealistas reales, CC0,
+        ver modelos/LICENCIA.md): se ven TODOS girando, cada uno con
+        su nombre y los negocios donde encaja. Para elegir modelo
+        para un proyecto se mira aquí.
+
+        OJO: hace falta un SERVIDOR LOCAL (VS Code Live Server o
+        `python -m http.server`) — con doble clic el navegador
+        bloquea el fetch de los .gltf locales y las celdas enseñarán
+        el aviso de carga. Es limitación del navegador, no un bug.
+
+     2. Demuestra el patrón MULTI-VIEWPORT con UN solo renderer: el
+        navegador limita los contextos WebGL (~8-16), así que 16
+        <canvas> separados NO funcionarían. Solución estándar: UN
+        canvas fijo a pantalla completa y, por frame, cada celda
+        visible se renderiza recortada a su rectángulo con
+        renderer.setScissor(). Además el HDRI de entorno se carga UNA
+        vez y se comparte entre las 16 escenas.
+
+     La receta fotorrealista completa (entorno HDRI + ACES + carga
+     normalizada) vive en cargador-3d.js — leer su cabecera.
+  ================================================================ */
+
+  header { padding: 2.2rem 2rem 0.6rem; max-width: 1200px; margin: 0 auto; }
+  header h1 { font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 900; letter-spacing: -.02em; }
+  header p { color: #9aa3b5; margin-top: .5rem; max-width: 70ch; line-height: 1.5; }
+  header code { background: #1c1e26; padding: .1em .4em; border-radius: 4px; font-size: .9em; color: #ffd9a0; }
+
+  #lienzo-3d { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; display: block; }
+  .grid, header { position: relative; z-index: 1; pointer-events: none; }
+
+  .grid {
+    max-width: 1200px; margin: 0 auto; padding: 1.2rem 2rem 3rem;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 1.1rem;
+  }
+  .celda { border: 1px solid #23252e; border-radius: 14px; overflow: hidden; background: rgba(255,255,255,.02); }
+  .celda .visor { height: 200px; display: grid; place-items: center; }
+  .celda .visor span { font-size: .72rem; color: #6f7686; padding: 0 1rem; text-align: center; }
+  .celda .info { padding: .7rem .9rem .9rem; background: #16171c; }
+  .celda h3 { font-size: .95rem; font-weight: 700; }
+  .celda p { font-size: .74rem; color: #8d96a8; margin-top: .25rem; line-height: 1.45; }
+</style>
+</head>
+<body>
+  <canvas id="lienzo-3d"></canvas>
+
+  <header>
+    <h1>Catálogo de modelos 3D fotorrealistas</h1>
+    <p>Modelos reales con texturas PBR (CC0 — uso comercial libre, <code>modelos/LICENCIA.md</code>).
+      Cargar uno: <code>kit3d.cargar(ruta)</code> con la receta de <code>cargador-3d.js</code>.
+      Si las celdas no cargan, abre esto con un servidor local (Live Server).</p>
+  </header>
+
+  <div class="grid" id="grid"></div>
+
+  <!-- la librería es un script CLÁSICO: carga bien también desde file:// -->
+  <script src="cargador-3d.js"></script>
+
+  <!-- DEMO ONLY: en producción, import map local (ver hero-objeto-flotante.html) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+    const THREE = await import('three');
+    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+    const { RGBELoader } = await import('three/addons/loaders/RGBELoader.js');
+    const kit3d = window.crearCargador3D(THREE, GLTFLoader, RGBELoader);
+
+    const grid = document.getElementById('grid');
+    const canvas = document.getElementById('lienzo-3d');
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    let renderer = null;
+    try {
+      renderer = kit3d.prepararRenderer(new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }));
+    } catch (e) { canvas.style.display = 'none'; }
+
+    // las tarjetas existen desde el principio (con su aviso de carga);
+    // el 3D va apareciendo encima según se descarga cada modelo
+    const celdas = kit3d.catalogo.map((entrada) => {
+      const tarjeta = document.createElement('div');
+      tarjeta.className = 'celda';
+      tarjeta.innerHTML = '<div class="visor"><span>cargando ' + entrada.slug + '…</span></div>' +
+        '<div class="info"><h3>' + entrada.nombre + '</h3><p>' + entrada.negocios + '</p></div>';
+      grid.appendChild(tarjeta);
+      return { entrada, visor: tarjeta.querySelector('.visor'), scene: null, camera: null, modelo: null };
+    });
+
+    if (renderer) {
+      renderer.setScissorTest(true); // clave del multi-viewport
+
+      // el entorno HDRI se carga UNA vez y lo comparten las 16 escenas
+      let entorno = null;
+      try {
+        entorno = await new RGBELoader().loadAsync(kit3d.ENTORNOS.estudio);
+        entorno.mapping = THREE.EquirectangularReflectionMapping;
+      } catch (e) { /* sin entorno (p.ej. file:// sin servidor): se avisa por celda */ }
+
+      for (const c of celdas) {
+        try {
+          c.modelo = await kit3d.cargar(c.entrada.ruta);
+        } catch (e) {
+          c.visor.firstChild.textContent = 'No se pudo cargar — abre el catálogo con un servidor local (Live Server)';
+          continue;
+        }
+        c.visor.firstChild.textContent = '';
+        c.scene = new THREE.Scene();
+        c.scene.environment = entorno; // TODA la luz sale del HDRI compartido
+        if (!entorno) { // plan B si el .hdr no cargó: al menos que se vea algo
+          c.scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+          const luz = new THREE.DirectionalLight(0xffffff, 2.2);
+          luz.position.set(2.5, 3.5, 4);
+          c.scene.add(luz);
+        }
+        c.scene.add(c.modelo);
+        c.modelo.rotation.x = 0.1;
+        c.fase = Math.random() * Math.PI * 2;
+        c.camera = new THREE.PerspectiveCamera(35, 1, 0.1, 50);
+        c.camera.position.set(0, 0.5, 3.7);
+        c.camera.lookAt(0, 0, 0);
+      }
+
+      function pintar(t) {
+        const alturaTotal = renderer.domElement.clientHeight;
+        renderer.setClearColor(0x000000, 0);
+        renderer.clear();
+        for (const c of celdas) {
+          if (!c.scene) continue;
+          const r = c.visor.getBoundingClientRect();
+          if (r.bottom < 0 || r.top > innerHeight) continue; // fuera de pantalla: no se pinta
+          const abajo = alturaTotal - r.bottom;
+          renderer.setViewport(r.left, abajo, r.width, r.height);
+          renderer.setScissor(r.left, abajo, r.width, r.height);
+          c.camera.aspect = r.width / r.height;
+          c.camera.updateProjectionMatrix();
+          c.modelo.rotation.y = reduce ? 0.5 : t * 0.00042 + c.fase;
+          renderer.render(c.scene, c.camera);
+        }
+      }
+
+      function ajustar() { renderer.setSize(innerWidth, innerHeight); if (reduce) pintar(0); }
+      addEventListener('resize', ajustar);
+      ajustar();
+
+      if (reduce) {
+        pintar(0);
+        addEventListener('scroll', () => pintar(0), { passive: true });
+      } else {
+        (function animar(t) { requestAnimationFrame(animar); pintar(t || 0); })();
+      }
+    }
+  </script>
+</body>
+</html>

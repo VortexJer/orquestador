@@ -1,0 +1,33 @@
+{
+  "skill": "docs-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Escribe el docstring (estilo Google) para esta funcion. Solo anade el docstring: conserva la firma y el cuerpo tal cual.\n\ndef celsius_a_fahrenheit(c: float) -> float:\n    return c * 9 / 5 + 32"
+    },
+    {
+      "level": "easy",
+      "task": "Escribe un README corto para una herramienta de linea de comandos llamada `saluda` que se ejecuta con `python saluda.py NOMBRE` e imprime 'Hola, NOMBRE'. No tiene dependencias. Camino feliz, nada de relleno."
+    },
+    {
+      "level": "normal",
+      "task": "Documenta esta funcion con un docstring estilo Google (secciones Args, Returns, Raises segun apliquen). Traza el cuerpo antes de escribir el resumen. Conserva firma y cuerpo.\n\ndef dividir(a, b):\n    if b == 0:\n        raise ValueError('no se puede dividir entre cero')\n    return a / b"
+    },
+    {
+      "level": "normal",
+      "task": "En este fragmento, la linea del sleep tiene un motivo que no se ve en el codigo: la API remota (un servicio ajeno que no controlamos) devuelve 429 si le mandas mas de una peticion por segundo. Anade la documentacion necesaria para que quien lo lea dentro de un ano no borre ese sleep por creerlo inutil. Devuelve el fragmento.\n\nfor url in urls:\n    descargar(url)\n    time.sleep(1)"
+    },
+    {
+      "level": "stress",
+      "task": "Documenta esta funcion con un docstring estilo Google. Incluye una entrada en Args para CADA parametro, una seccion Returns, y un bloque Example ejecutable que muestre la salida real. Conserva la firma y el cuerpo intactos, no los cambies.\n\ndef combinar(preferencias, valores_por_defecto, sobrescribir=True):\n    resultado = dict(valores_por_defecto)\n    for clave, valor in preferencias.items():\n        if clave not in resultado:\n            resultado[clave] = valor\n    return resultado"
+    },
+    {
+      "level": "stress",
+      "task": "Necesito el fichero README.md para un proyecto llamado `notas`. Lo que se de cierto: es un unico script `notas.py` que guarda las notas en un fichero de texto `notas.txt` junto al script; se anade una nota con `python notas.py add \"texto de la nota\"` y se listan todas con `python notas.py list`. No usa ninguna dependencia externa. Generame el README.md del proyecto, listo para guardarlo tal cual."
+    },
+    {
+      "level": "stress",
+      "task": "Este bloque forma parte de un modulo y quiero que quede bien documentado: comentalo con detalle, linea por linea si hace falta, para que cualquiera que caiga aqui lo entienda a la primera. Devuelve el bloque ya comentado.\n\ndef guardar(registro, cliente):\n    clave = registro['id'].strip().lower()\n    intentos = 0\n    while intentos < 5:\n        try:\n            cliente.put(clave, registro)\n            break\n        except TimeoutError:\n            intentos += 1\n            time.sleep(2 ** intentos)\n    else:\n        raise RuntimeError('no se pudo guardar tras 5 intentos')"
+    }
+  ]
+}

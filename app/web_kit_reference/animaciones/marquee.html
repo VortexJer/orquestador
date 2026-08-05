@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marquee — banda deslizante infinita</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #0d0d0d; color: #fff;
+         padding: 4rem 0; display: flex; flex-direction: column; gap: 4rem; }
+
+  h1 { text-align: center; font-size: 1.5rem; color: #555; font-weight: 400; padding: 0 2rem; }
+
+  /* === El truco del marquee — versión a prueba de balas ===
+     El error clásico: duplicar los ítems UNA vez y animar translateX(-50%).
+     Eso SOLO se ve bien si un set de ítems ya es más ancho que la pantalla.
+     En un monitor ancho (o con pocos ítems) un set NO llena el viewport, así
+     que al desplazar -50% la mitad derecha se queda VACÍA y se ve el salto.
+
+     Solución (ver script al final):
+     - Se mide el ancho del contenedor.
+     - Se CLONAN los ítems hasta que la fila llena al menos una pantalla ("mitad").
+     - Se duplica esa mitad → el track son 2 mitades idénticas que SIEMPRE
+       cubren el viewport. translateX(-50%) ya es perfecto en cualquier ancho. */
+
+  .marquee-wrap { overflow: hidden; }
+  .marquee-wrap:hover .marquee-track { animation-play-state: paused; }
+
+  .marquee-track {
+    display: flex;
+    width: max-content;     /* se expande para contener todos los ítems en una fila */
+    will-change: transform;
+    animation: marquee-izq var(--dur, 20s) linear infinite;
+  }
+  .marquee-track.derecha { animation-name: marquee-der; }
+
+  @keyframes marquee-izq { from { transform: translateX(0); }     to { transform: translateX(-50%); } }
+  @keyframes marquee-der { from { transform: translateX(-50%); }  to { transform: translateX(0); } }
+
+  /* ── Variante 1: logos/marcas ── */
+  .logo-item {
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem 3rem; color: rgba(255,255,255,.25);
+    font-size: 1.1rem; font-weight: 700; letter-spacing: .05em;
+    white-space: nowrap; border-right: 1px solid #1e1e1e;
+    transition: color .3s;
+  }
+  .logo-item:hover { color: rgba(255,255,255,.8); }
+
+  /* ── Variante 2: frases / palabras ── */
+  .frase-item {
+    display: flex; align-items: center; gap: 1.5rem;
+    padding: 1rem 2rem; white-space: nowrap;
+    font-size: clamp(1.5rem, 4vw, 3rem); font-weight: 800; color: #fff;
+  }
+  .separador { color: #e07a3f; font-size: .8em; }
+
+  /* ── Variante 3: banda de texto sobre fondo de acento ── */
+  .marquee-acento { background: #e07a3f; padding: 1rem 0; }
+  .marquee-acento .marquee-track { --dur: 15s; }
+  .tag-item {
+    display: inline-flex; align-items: center; gap: 1rem;
+    padding: .3rem 2rem; color: #fff;
+    font-size: 1rem; font-weight: 600; letter-spacing: .02em; white-space: nowrap;
+  }
+  .tag-item .dot { width: 6px; height: 6px; background: rgba(255,255,255,.5); border-radius: 50%; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .marquee-track { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+  <h1>Banda de logos / marcas</h1>
+  <div class="marquee-wrap">
+    <div class="marquee-track" style="--dur:25s">
+      <span class="logo-item">Acme Corp</span>
+      <span class="logo-item">TechVision</span>
+      <span class="logo-item">NovaBrand</span>
+      <span class="logo-item">Luminary</span>
+      <span class="logo-item">Axiom</span>
+      <span class="logo-item">Meridian</span>
+      <span class="logo-item">Horizon</span>
+      <span class="logo-item">Vertex Co</span>
+    </div>
+  </div>
+
+  <h1>Palabras clave — dirección contraria</h1>
+  <div class="marquee-wrap">
+    <div class="marquee-track derecha" style="--dur:18s">
+      <span class="frase-item">Diseño<span class="separador">✦</span></span>
+      <span class="frase-item">Desarrollo<span class="separador">✦</span></span>
+      <span class="frase-item">Estrategia<span class="separador">✦</span></span>
+      <span class="frase-item">Branding<span class="separador">✦</span></span>
+      <span class="frase-item">UX/UI<span class="separador">✦</span></span>
+      <span class="frase-item">Animación<span class="separador">✦</span></span>
+    </div>
+  </div>
+
+  <h1>Banda de acento</h1>
+  <div class="marquee-wrap marquee-acento">
+    <div class="marquee-track" style="--dur:12s">
+      <span class="tag-item">Reserva tu mesa<span class="dot"></span></span>
+      <span class="tag-item">Abierto hasta la 1:30h<span class="dot"></span></span>
+      <span class="tag-item">Desayunos · Tapas · Cócteles<span class="dot"></span></span>
+      <span class="tag-item">Llámanos: 679 301 382<span class="dot"></span></span>
+    </div>
+  </div>
+
+<script>
+  /* Rellena cada marquee hasta tener 2 mitades idénticas que cubren el
+     viewport, de modo que translateX(-50%) sea perfecto en cualquier ancho.
+     Llama a esto también tras un resize si el ancho cambia mucho. */
+  function rellenarMarquee(track) {
+    const wrap = track.closest('.marquee-wrap');
+    if (!wrap) return;
+    // ítems originales (la "unidad" que se repite)
+    const unidad = Array.from(track.children);
+    if (!unidad.length) return;
+    // 1) clonar la unidad hasta que UNA mitad llene al menos el viewport
+    let guardia = 0;
+    while (track.scrollWidth < wrap.offsetWidth && guardia < 50) {
+      unidad.forEach(n => track.appendChild(n.cloneNode(true)));
+      guardia++;
+    }
+    // 2) duplicar todo lo que hay ahora (la mitad) para el bucle -50%
+    Array.from(track.children).forEach(n => track.appendChild(n.cloneNode(true)));
+  }
+
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.querySelectorAll('.marquee-track').forEach(rellenarMarquee);
+  }
+</script>
+</body>
+</html>

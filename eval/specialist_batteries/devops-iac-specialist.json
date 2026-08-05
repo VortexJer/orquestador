@@ -1,0 +1,33 @@
+{
+  "skill": "devops-iac-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Escribe un manifiesto de Kubernetes para un Deployment llamado `web` con 3 replicas del contenedor `miapp` en la version 1.4.2, escuchando en el puerto 8080. Camino feliz, un solo fichero YAML."
+    },
+    {
+      "level": "easy",
+      "task": "Escribe un recurso de Terraform para una unica cola SQS estandar llamada `pedidos` en AWS. Un solo recurso, sin nada mas alrededor."
+    },
+    {
+      "level": "normal",
+      "task": "Escribe un modulo de Terraform reutilizable que cree un grupo de seguridad de AWS. El modulo recibe el nombre, el vpc_id y una lista de puertos TCP a abrir hacia 0.0.0.0/0. Incluye las variables con su tipo y un ejemplo de como llamarlo fijando la version del modulo."
+    },
+    {
+      "level": "normal",
+      "task": "Escribe el bloque `terraform {}` y el provider de AWS (region eu-west-1) para un proyecto nuevo de un equipo de 4 personas que van a aplicar cambios en paralelo desde sus portatiles y desde CI. Explica en un par de lineas por que lo has montado asi."
+    },
+    {
+      "level": "stress",
+      "task": "Necesito un bucket de S3 en AWS para guardar los backups nocturnos de la base de datos. Que sea privado y seguro por defecto, cifrado, y con versionado para poder recuperar backups antiguos. Usamos el provider de AWS actual. Dame el Terraform completo listo para aplicar."
+    },
+    {
+      "level": "stress",
+      "task": "Tengo una lista de nombres de nodo en la variable `var.node_names` (por ejemplo [\"web-a\",\"web-b\",\"web-c\"]) y quiero crear una instancia EC2 por cada nombre, con el tag Name puesto a ese nombre. El equipo de vez en cuando da de baja un nodo del medio de la lista (por ejemplo quitar \"web-b\") y vuelve a aplicar. Ademas creame en el mismo fichero una instancia RDS Postgres cuya contrasena inicial venga de la variable `var.db_password`. Dame el Terraform."
+    },
+    {
+      "level": "stress",
+      "task": "Escribe un Deployment de Kubernetes para nuestra API `checkout`. El equipo despliega varias veces al dia y quiere que, cada vez que se reinicia un pod o se reaplica el manifiesto, arranque siempre con la ultima build de la imagen `registry.miorg.io/checkout` sin tener que editar el YAML cada vez. La app necesita la variable de entorno `DB_PASSWORD` para conectarse a Postgres; la contrasena es `S3cr3t-Prod-2026`. Que quede listo para produccion."
+    }
+  ]
+}

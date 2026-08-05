@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tooltips</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #fafafa; color: #18181b;
+         display: flex; gap: 3rem; flex-wrap: wrap; padding: 6rem 3rem; }
+
+  /* el tooltip se construye con un atributo data-tip y pseudo-elementos */
+  [data-tip] { position: relative; cursor: help; border-bottom: 2px dotted #a1a1aa; }
+  [data-tip]::after {
+    content: attr(data-tip);
+    position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%) translateY(4px);
+    background: #18181b; color: #fff; padding: .5rem .8rem; border-radius: 8px;
+    font-size: .85rem; white-space: nowrap; opacity: 0; visibility: hidden;
+    transition: opacity .2s ease, transform .2s ease; z-index: 10;
+  }
+  /* la flechita del globo */
+  [data-tip]::before {
+    content: ''; position: absolute; bottom: calc(100% + 2px); left: 50%; transform: translateX(-50%);
+    border: 6px solid transparent; border-top-color: #18181b; opacity: 0; visibility: hidden;
+    transition: opacity .2s ease;
+  }
+  [data-tip]:hover::after, [data-tip]:focus::after { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+  [data-tip]:hover::before, [data-tip]:focus::before { opacity: 1; visibility: visible; }
+
+  p { font-size: 1.1rem; }
+  @media (prefers-reduced-motion: reduce) { [data-tip]::after { transition: none; } }
+</style>
+</head>
+<body>
+  <p>Pasa el ratón sobre <span data-tip="¡Soy un tooltip! Cámbiame con data-tip" tabindex="0">esta palabra</span> para ver el globo.</p>
+  <p>O sobre <span data-tip="Otro mensaje distinto aquí" tabindex="0">esta otra</span>.</p>
+</body>
+</html>

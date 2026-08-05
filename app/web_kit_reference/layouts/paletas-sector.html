@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Web-Kit — Paletas por sector</title>
+  <style>
+    /* === Paleta de referencia: Restaurante / Café artesanal === */
+    .tema-cafe {
+      --color-fondo:        #faf7f2;
+      --color-fondo-alt:    #f0e9dc;
+      --color-fondo-oscuro: #2c1f14;
+      --color-texto:        #1e140a;
+      --color-texto-inv:    #f5ede0;
+      --color-acento:       #c8622a;
+      --color-acento-hover: #a84e20;
+      --color-borde:        #ddd0bc;
+    }
+
+    /* === Paleta de referencia: Salud / Bienestar === */
+    .tema-salud {
+      --color-fondo:        #f4f9f6;
+      --color-fondo-alt:    #e8f5ee;
+      --color-fondo-oscuro: #1a3328;
+      --color-texto:        #0d2218;
+      --color-texto-inv:    #e8f5ee;
+      --color-acento:       #2e8b57;
+      --color-acento-hover: #246b44;
+      --color-borde:        #c5e0ce;
+    }
+
+    /* === Paleta de referencia: Tecnología / SaaS === */
+    .tema-tech {
+      --color-fondo:        #f5f7fa;
+      --color-fondo-alt:    #eef1f7;
+      --color-fondo-oscuro: #0f1629;
+      --color-texto:        #111827;
+      --color-texto-inv:    #e8edf8;
+      --color-acento:       #3b6ef5;
+      --color-acento-hover: #2a58d4;
+      --color-borde:        #d0d9ef;
+    }
+
+    /* === Paleta de referencia: Moda / Lifestyle === */
+    .tema-moda {
+      --color-fondo:        #fdf8f5;
+      --color-fondo-alt:    #f5ede6;
+      --color-fondo-oscuro: #1c1410;
+      --color-texto:        #1a110a;
+      --color-texto-inv:    #f5ede6;
+      --color-acento:       #c9a87c;
+      --color-acento-hover: #b08d60;
+      --color-borde:        #e8d8ca;
+    }
+
+    /* === Paleta de referencia: Fitness / Deporte === */
+    .tema-fitness {
+      --color-fondo:        #f2f4f7;
+      --color-fondo-alt:    #e8edf5;
+      --color-fondo-oscuro: #0d1117;
+      --color-texto:        #0f1923;
+      --color-texto-inv:    #e8edf5;
+      --color-acento:       #e53e3e;
+      --color-acento-hover: #c53030;
+      --color-borde:        #cdd4e0;
+    }
+
+    /* === Paleta de referencia: Educación === */
+    .tema-edu {
+      --color-fondo:        #fafbfc;
+      --color-fondo-alt:    #eef3fb;
+      --color-fondo-oscuro: #1a2540;
+      --color-texto:        #0f1e38;
+      --color-texto-inv:    #eef3fb;
+      --color-acento:       #4a6cf7;
+      --color-acento-hover: #3655d5;
+      --color-borde:        #cdd8f0;
+    }
+
+    /* === Paleta de referencia: Eventos / Creatividad === */
+    .tema-eventos {
+      --color-fondo:        #fdf4ff;
+      --color-fondo-alt:    #f3e8ff;
+      --color-fondo-oscuro: #1a0d2e;
+      --color-texto:        #180c2a;
+      --color-texto-inv:    #f3e8ff;
+      --color-acento:       #9333ea;
+      --color-acento-hover: #7928c7;
+      --color-borde:        #ddc6f5;
+    }
+
+    /* === Paleta de referencia: Inmobiliaria === */
+    .tema-inmo {
+      --color-fondo:        #f7f6f4;
+      --color-fondo-alt:    #ede9e2;
+      --color-fondo-oscuro: #1e1b18;
+      --color-texto:        #1a1713;
+      --color-texto-inv:    #ede9e2;
+      --color-acento:       #8b7355;
+      --color-acento-hover: #72603f;
+      --color-borde:        #d6cfc4;
+    }
+
+    /* -------------------------------------------------------
+       PATRÓN DE ALTERNANCIA DE FONDOS (aplícalo en tu web)
+       -------------------------------------------------------
+       section:nth-child(odd)  → background: var(--color-fondo)
+       section:nth-child(even) → background: var(--color-fondo-alt)
+       .cta-section            → background: var(--color-fondo-oscuro); color: var(--color-texto-inv)
+       footer                  → background: var(--color-fondo-oscuro); color: var(--color-texto-inv)
+    */
+
+    /* -------------------------------------------------------
+       DEMO VISUAL — borra esto, solo es para ver las paletas
+    ------------------------------------------------------- */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; }
+    .demo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; padding: 2rem; background: #111; }
+    .demo-card { border-radius: 12px; overflow: hidden; font-size: 0.85rem; }
+    .demo-card .band { padding: 1rem 1.5rem; font-weight: 600; }
+    .demo-card .band-main  { background: var(--color-fondo); color: var(--color-texto); }
+    .demo-card .band-alt   { background: var(--color-fondo-alt); color: var(--color-texto); }
+    .demo-card .band-dark  { background: var(--color-fondo-oscuro); color: var(--color-texto-inv); }
+    .demo-card .band-btn   { background: var(--color-acento); color: #fff; }
+    .demo-label { padding: 0.25rem 1rem; font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; background: #222; color: #aaa; }
+  </style>
+</head>
+<body>
+  <div class="demo-grid">
+    <div class="demo-card tema-cafe">
+      <div class="demo-label">Restaurante / Café artesanal</div>
+      <div class="band band-main">Fondo principal #faf7f2</div>
+      <div class="band band-alt">Fondo alternativo #f0e9dc</div>
+      <div class="band band-dark">Fondo oscuro #2c1f14</div>
+      <div class="band band-btn">Acento #c8622a</div>
+    </div>
+    <div class="demo-card tema-salud">
+      <div class="demo-label">Salud / Bienestar</div>
+      <div class="band band-main">Fondo principal #f4f9f6</div>
+      <div class="band band-alt">Fondo alternativo #e8f5ee</div>
+      <div class="band band-dark">Fondo oscuro #1a3328</div>
+      <div class="band band-btn">Acento #2e8b57</div>
+    </div>
+    <div class="demo-card tema-tech">
+      <div class="demo-label">Tecnología / SaaS</div>
+      <div class="band band-main">Fondo principal #f5f7fa</div>
+      <div class="band band-alt">Fondo alternativo #eef1f7</div>
+      <div class="band band-dark">Fondo oscuro #0f1629</div>
+      <div class="band band-btn">Acento #3b6ef5</div>
+    </div>
+    <div class="demo-card tema-moda">
+      <div class="demo-label">Moda / Lifestyle</div>
+      <div class="band band-main">Fondo principal #fdf8f5</div>
+      <div class="band band-alt">Fondo alternativo #f5ede6</div>
+      <div class="band band-dark">Fondo oscuro #1c1410</div>
+      <div class="band band-btn">Acento #c9a87c</div>
+    </div>
+    <div class="demo-card tema-fitness">
+      <div class="demo-label">Fitness / Deporte</div>
+      <div class="band band-main">Fondo principal #f2f4f7</div>
+      <div class="band band-alt">Fondo alternativo #e8edf5</div>
+      <div class="band band-dark">Fondo oscuro #0d1117</div>
+      <div class="band band-btn">Acento #e53e3e</div>
+    </div>
+    <div class="demo-card tema-edu">
+      <div class="demo-label">Educación</div>
+      <div class="band band-main">Fondo principal #fafbfc</div>
+      <div class="band band-alt">Fondo alternativo #eef3fb</div>
+      <div class="band band-dark">Fondo oscuro #1a2540</div>
+      <div class="band band-btn">Acento #4a6cf7</div>
+    </div>
+    <div class="demo-card tema-eventos">
+      <div class="demo-label">Eventos / Creatividad</div>
+      <div class="band band-main">Fondo principal #fdf4ff</div>
+      <div class="band band-alt">Fondo alternativo #f3e8ff</div>
+      <div class="band band-dark">Fondo oscuro #1a0d2e</div>
+      <div class="band band-btn">Acento #9333ea</div>
+    </div>
+    <div class="demo-card tema-inmo">
+      <div class="demo-label">Inmobiliaria</div>
+      <div class="band band-main">Fondo principal #f7f6f4</div>
+      <div class="band band-alt">Fondo alternativo #ede9e2</div>
+      <div class="band band-dark">Fondo oscuro #1e1b18</div>
+      <div class="band band-btn">Acento #8b7355</div>
+    </div>
+  </div>
+</body>
+</html>

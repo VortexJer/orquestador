@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Escaparate con travelling de cámara — el scroll te lleva de un producto fotorrealista al siguiente (15.24)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; color: #fff; background: #16130f; }
+
+  /* ================================================================
+     TRAVELLING DE CÁMARA AL SCROLL — el tercer scrollytelling 3D de
+     la carpeta; conviene saber elegir entre los tres:
+
+       - vista-explosionada-scroll.html → UN producto que se abre en
+         piezas (página de producto único).
+       - carrusel-3d-productos.html → varios productos, el USUARIO
+         elige cuál mirar (carta/catálogo).
+       - ESTE → varios productos como PARADAS DE UN RECORRIDO: el
+         scroll mueve la CÁMARA de un objeto al siguiente, cada uno
+         con su bloque de texto. La estructura "nuestros 4 pilares"
+         (desayuno→comida→merienda→cena, o las 4 líneas de producto)
+         contada como un paseo — el look Awwwards, sin librerías.
+
+     Cómo funciona:
+     1. Productos en fila en Z (cada uno más "adentro"), alternando
+        izquierda/derecha en X (zigzag: el texto va al lado libre).
+     2. Esqueleto scrollytelling de siempre: sección alta + canvas
+        sticky + progreso a mano.
+     3. El progreso NO mueve la cámara linealmente: se interpola por
+        TRAMOS entre puntos de cámara (uno por producto) con easing,
+        y la cámara SIEMPRE mira al protagonista del tramo — por eso
+        se siente un travelling dirigido y no un vuelo libre.
+     4. La niebla del color del fondo insinúa el siguiente producto
+        sin que compita con el actual.
+
+     prefers-reduced-motion: la cámara CORTA a cada parada sin
+     recorrido (como diapositivas) — información sí, mareo no.
+
+     SERVIDOR LOCAL para verlo (Live Server) — ver cargador-3d.js.
+  ================================================================ */
+
+  .recorrido { position: relative; }
+  .pegado { position: sticky; top: 0; height: 100vh; overflow: hidden;
+    background: radial-gradient(circle at 50% 40%, #241d15, #16130f 75%); }
+  #escena-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  .parada { position: absolute; top: 50%; transform: translateY(-50%); z-index: 1;
+    max-width: 330px; opacity: 0; transition: opacity .45s; pointer-events: none; }
+  .parada.visible { opacity: 1; }
+  .parada.izquierda { left: clamp(1.2rem, 7vw, 7rem); }
+  .parada.derecha { right: clamp(1.2rem, 7vw, 7rem); text-align: right; }
+  .parada .numero { color: #e8b04b; font-weight: 800; letter-spacing: .18em; font-size: .75rem; }
+  .parada h2 { font-size: clamp(1.6rem, 3.5vw, 2.4rem); font-weight: 900; letter-spacing: -.02em;
+    margin-top: .5rem; }
+  .parada p { color: #b3a494; line-height: 1.55; margin-top: .7rem; font-size: .92rem; }
+
+  .progreso { position: absolute; right: 1.2rem; top: 50%; transform: translateY(-50%);
+    z-index: 2; display: grid; gap: .5rem; }
+  .progreso i { width: 7px; height: 7px; border-radius: 50%; background: #3a2f21; transition: background .3s; }
+  .progreso i.activo { background: #e8b04b; }
+
+  @media (max-width: 760px) {
+    .parada { top: auto; bottom: 7vh; transform: none; left: 1.2rem !important;
+      right: 1.2rem !important; text-align: left !important; max-width: none; }
+    .progreso { display: none; }
+  }
+</style>
+</head>
+<body>
+  <section class="recorrido" id="recorrido">
+    <div class="pegado">
+      <canvas id="escena-3d"></canvas>
+      <!-- una .parada por producto; izquierda/derecha alternadas para
+           que el texto quede SIEMPRE al lado contrario del objeto -->
+      <div class="parada derecha"><span class="numero">01 — DESAYUNO</span>
+        <h2>Croissant recién hecho</h2><p>Hojaldre de mantequilla, dos fermentaciones, horno a las 6:30.</p></div>
+      <div class="parada izquierda"><span class="numero">02 — MEDIA MAÑANA</span>
+        <h2>Carrot cake</h2><p>La porción que hizo famosa a la casa. Nuez, canela y crema de queso.</p></div>
+      <div class="parada derecha"><span class="numero">03 — MERIENDA</span>
+        <h2>El té de las seis</h2><p>Servicio completo de porcelana, como debe ser.</p></div>
+      <div class="parada izquierda"><span class="numero">04 — NOCHE</span>
+        <h2>Vinos escogidos</h2><p>Cuatro referencias que rotan cada mes. Pregunta por la de hoy.</p></div>
+      <div class="progreso" id="progreso"></div>
+    </div>
+  </section>
+
+  <script src="cargador-3d.js"></script>
+  <!-- DEMO ONLY: en producción, import map local (ver hero-objeto-flotante.html) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+    // ── las paradas (slug del catálogo, mismo orden que las .parada del HTML) ──
+    const PARADAS = ['croissant', 'carrot_cake', 'tea_set_01', 'wine_bottles_01'];
+    const PASO_Z = 7;   // separación "hacia dentro" entre productos
+    const LADO_X = 1.5; // zigzag: el objeto se aparta del texto
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const canvas = document.getElementById('escena-3d');
+    const THREE = await import('three');
+    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+    const { RGBELoader } = await import('three/addons/loaders/RGBELoader.js');
+    const kit3d = window.crearCargador3D(THREE, GLTFLoader, RGBELoader);
+
+    const bloques = [...document.querySelectorAll('.parada')];
+    const recorrido = document.getElementById('recorrido');
+    recorrido.style.height = (PARADAS.length * 100 + 60) + 'vh'; // 100vh por parada + remate
+
+    const progresoUi = document.getElementById('progreso');
+    PARADAS.forEach(() => progresoUi.appendChild(document.createElement('i')));
+
+    let renderer = null;
+    try {
+      renderer = kit3d.prepararRenderer(new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }));
+    } catch (e) {
+      canvas.style.display = 'none';
+      bloques.forEach(b => b.classList.add('visible')); // FALLBACK: los textos, al menos
+    }
+
+    if (renderer) {
+      renderer.setSize(innerWidth, innerHeight);
+
+      const scene = new THREE.Scene();
+      scene.fog = new THREE.Fog(0x16130f, 6, 14); // el siguiente se insinúa, no compite
+
+      const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 80);
+
+      try {
+        await kit3d.aplicarEntorno(renderer, scene, kit3d.ENTORNOS.estudio);
+      } catch (e) {
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+      }
+      kit3d.luzClave(scene, { area: 8 });
+
+      // ── productos en fila en Z, zigzag en X ──
+      const objetos = [];
+      try {
+        for (let i = 0; i < PARADAS.length; i++) {
+          const entrada = kit3d.catalogo.find((m) => m.slug === PARADAS[i]);
+          const m = await kit3d.cargar(entrada.ruta, { alto: 1.7 });
+          m.position.set((i % 2 === 0 ? -1 : 1) * LADO_X, 0, -i * PASO_Z);
+          // cada producto con su sombra de contacto
+          kit3d.sueloSombra(scene, { radio: 2.6, y: -0.88, opacidad: 0.32 }).position
+            .set(m.position.x, -0.88, m.position.z);
+          scene.add(m);
+          objetos.push(m);
+        }
+      } catch (e) {
+        console.warn('Modelos no disponibles (¿abierto sin servidor local?):', e);
+        bloques.forEach(b => b.classList.add('visible'));
+      }
+
+      if (objetos.length >= 2) {
+        // un punto de cámara por parada: delante y al lado contrario del texto
+        const puntosCamara = objetos.map((o) =>
+          new THREE.Vector3(o.position.x * 0.25, 0.6, o.position.z + 4.4));
+
+        const easing = (x) => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+
+        function progresoScroll() {
+          const r = recorrido.getBoundingClientRect();
+          return Math.min(1, Math.max(0, -r.top / (r.height - innerHeight)));
+        }
+
+        const mirada = new THREE.Vector3();
+        function colocarCamara(progreso) {
+          const tramos = objetos.length - 1;
+          const posicion = progreso * tramos;
+          const i = Math.min(tramos - 1, Math.floor(posicion));
+          const fase = reduce ? Math.round(posicion - i) : easing(posicion - i);
+
+          camera.position.lerpVectors(puntosCamara[i], puntosCamara[i + 1], fase);
+          mirada.lerpVectors(objetos[i].position, objetos[i + 1].position, fase);
+          camera.lookAt(mirada); // SIEMPRE hay un protagonista claro delante
+
+          const activa = Math.round(posicion);
+          bloques.forEach((b, j) => b.classList.toggle('visible', j === activa));
+          [...progresoUi.children].forEach((p, j) => p.classList.toggle('activo', j === activa));
+        }
+
+        addEventListener('resize', () => {
+          camera.aspect = innerWidth / innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(innerWidth, innerHeight);
+        });
+
+        const reloj = new THREE.Clock();
+        (function animar() {
+          requestAnimationFrame(animar);
+          colocarCamara(progresoScroll());
+          if (!reduce) {
+            const t = reloj.getElapsedTime();
+            objetos.forEach((o, i) => { o.rotation.y = t * 0.22 + i; }); // cada uno con su fase
+          }
+          renderer.render(scene, camera);
+        })();
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modo oscuro</title>
+<style>
+  /* los colores se definen como variables y cambian según el tema */
+  :root {
+    --bg: #ffffff; --texto: #18181b; --tarjeta: #f4f4f5; --acento: #f59e0b;
+  }
+  [data-tema="oscuro"] {
+    --bg: #18181b; --texto: #f4f4f5; --tarjeta: #27272a; --acento: #fbbf24;
+  }
+
+  body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--texto);
+    transition: background .3s ease, color .3s ease; margin: 0; padding: 3rem 2rem;
+    min-height: 100vh; }
+  .tarjeta { background: var(--tarjeta); border-radius: 14px; padding: 2rem; max-width: 460px;
+    margin: 2rem auto; transition: background .3s ease; }
+  .acento { color: var(--acento); font-weight: 600; }
+
+  /* el interruptor */
+  .switch { display: flex; align-items: center; gap: .8rem; cursor: pointer;
+    background: var(--tarjeta); padding: .6rem 1rem; border-radius: 30px; border: none;
+    color: var(--texto); font: inherit; }
+  .switch .bolita { width: 22px; height: 22px; border-radius: 50%; background: var(--acento);
+    transition: transform .3s ease; }
+  [data-tema="oscuro"] .switch .bolita { transform: translateX(4px); }
+
+  @media (prefers-reduced-motion: reduce) { body, .tarjeta, .bolita { transition: none; } }
+</style>
+</head>
+<body>
+  <button class="switch" id="switch" aria-label="Cambiar tema">
+    <span class="bolita"></span>
+    <span id="switch-texto">Modo oscuro</span>
+  </button>
+
+  <div class="tarjeta">
+    <h2>Tema <span class="acento" id="tema-actual">claro</span></h2>
+    <p>Pulsa el interruptor para cambiar. La preferencia se guarda en
+    <span class="acento">localStorage</span>, así que al recargar la página se mantiene.</p>
+  </div>
+
+<script>
+  const root = document.documentElement;
+  const boton = document.getElementById('switch');
+  const etiqueta = document.getElementById('switch-texto');
+  const temaActual = document.getElementById('tema-actual');
+
+  function aplicar(tema) {
+    root.setAttribute('data-tema', tema);
+    etiqueta.textContent = tema === 'oscuro' ? 'Modo claro' : 'Modo oscuro';
+    temaActual.textContent = tema === 'oscuro' ? 'oscuro' : 'claro';
+  }
+
+  // 1. al cargar: usa lo guardado, o la preferencia del sistema operativo
+  const guardado = localStorage.getItem('tema');
+  const prefiereOscuro = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  aplicar(guardado || (prefiereOscuro ? 'oscuro' : 'claro'));
+
+  // 2. al pulsar: alterna y guarda
+  boton.addEventListener('click', () => {
+    const nuevo = root.getAttribute('data-tema') === 'oscuro' ? 'claro' : 'oscuro';
+    aplicar(nuevo);
+    localStorage.setItem('tema', nuevo);
+  });
+</script>
+</body>
+</html>

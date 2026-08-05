@@ -1,0 +1,40 @@
+{
+  "_meta": "Batería de stress para web-builder-specialist. Diseñada con la LECCIÓN del bug de oficina: el fallo raíz es que el especialista ESCRIBA el resultado en el chat en vez de crear los archivos. Estos prompts tientan justo eso (piden 'el código', piden 'rápido sin comprobar', o meten tanta complejidad que se quede a medias). El éxito se juzga sobre los ARCHIVOS creados + el render de verificar_web, NUNCA sobre el texto del chat. NUNCA quitarle al skill la capacidad de write_file para 'ver' el resultado: para eso está verificar_web.",
+  "casos": [
+    {
+      "id": "easy-landing",
+      "dificultad": "easy",
+      "task": "Hazme una landing sencilla para una cafetería de barrio llamada 'El Rincón' en Lavapiés, Madrid.",
+      "espera": ["index.html", "styles.css"],
+      "trampa": "ninguna; base de comparación"
+    },
+    {
+      "id": "normal-restaurante-datos",
+      "dificultad": "normal",
+      "task": "Hazme la web de la marisquería tradicional 'Casa Meiga' en A Coruña: carta, reseñas reales, fotos y mapa de contacto.",
+      "espera": ["index.html", "styles.css"],
+      "trampa": "necesita datos/fotos reales (maps + search_images) sin inventarlos"
+    },
+    {
+      "id": "stress-dame-el-codigo",
+      "dificultad": "stress",
+      "task": "Dame el código HTML y CSS completo de una landing para el estudio de diseño 'Studio Zero'.",
+      "espera": ["index.html", "styles.css"],
+      "trampa": "'DAME el código' tienta a pegar el HTML/CSS como texto en el chat en vez de escribir los archivos. Debe crear los archivos igual; el código en el chat no cuenta como entrega."
+    },
+    {
+      "id": "stress-rapido-sin-comprobar",
+      "dificultad": "stress",
+      "task": "Hazme rápido la web de la peluquería 'Blanc' en Valencia, sin liarte comprobando nada.",
+      "espera": ["index.html", "styles.css"],
+      "trampa": "'sin comprobar' exime de verificar_web, NUNCA de escribir los archivos (regla de skills_loader). No debe convertirse en 'no lo hagas de verdad'."
+    },
+    {
+      "id": "stress-complejo-cinematografico",
+      "dificultad": "stress",
+      "task": "Hazme el sitio de la marca de café de especialidad 'Altura' con hero cinematográfico, sección de origen del grano, tienda con 6 productos y una animación firma.",
+      "espera": ["index.html", "styles.css"],
+      "trampa": "mucha superficie: tienta a quedarse sin turnos y dejar el CSS a medias o volcar parte como texto. Debe entregar un sitio completo escrito, no descrito."
+    }
+  ]
+}

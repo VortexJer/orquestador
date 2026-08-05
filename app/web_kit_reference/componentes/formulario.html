@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Formulario con validación</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #f8fafc; color: #0f172a;
+    display: grid; place-items: center; min-height: 100vh; margin: 0; padding: 1rem; }
+  form { background: #fff; padding: 2.5rem; border-radius: 16px; width: 100%; max-width: 420px;
+    box-shadow: 0 4px 24px rgba(0,0,0,.06); }
+  h2 { margin-top: 0; }
+  .campo { margin-bottom: 1.3rem; }
+  label { display: block; font-weight: 500; margin-bottom: .4rem; font-size: .92rem; }
+  input, textarea { width: 100%; padding: .7rem .9rem; border: 2px solid #e2e8f0; border-radius: 8px;
+    font: inherit; transition: border-color .2s ease; }
+  input:focus, textarea:focus { outline: none; border-color: #6366f1; }
+  /* estados de validación */
+  .campo.valido input, .campo.valido textarea { border-color: #22c55e; }
+  .campo.error input, .campo.error textarea { border-color: #ef4444; }
+  .mensaje { font-size: .82rem; margin-top: .35rem; min-height: 1em; color: #ef4444; }
+  .campo.valido .mensaje { color: #22c55e; }
+
+  button { width: 100%; padding: .85rem; background: #6366f1; color: #fff; border: none;
+    border-radius: 8px; font-size: 1rem; cursor: pointer; font: inherit; }
+  button:hover { background: #4f46e5; }
+  button:disabled { background: #cbd5e1; cursor: not-allowed; }
+</style>
+</head>
+<body>
+  <form id="form" novalidate>
+    <h2>Contacto</h2>
+    <div class="campo" id="campo-nombre">
+      <label for="nombre">Nombre</label>
+      <input type="text" id="nombre" required minlength="2">
+      <div class="mensaje" aria-live="polite"></div>
+    </div>
+    <div class="campo" id="campo-email">
+      <label for="email">Email</label>
+      <input type="email" id="email" required>
+      <div class="mensaje" aria-live="polite"></div>
+    </div>
+    <div class="campo" id="campo-msg">
+      <label for="msg">Mensaje</label>
+      <textarea id="msg" rows="3" required minlength="10"></textarea>
+      <div class="mensaje" aria-live="polite"></div>
+    </div>
+    <button type="submit">Enviar</button>
+  </form>
+
+<script>
+  const form = document.getElementById('form');
+
+  // reglas: cada campo tiene una función que devuelve un mensaje de error (o '')
+  const reglas = {
+    nombre: (v) => v.trim().length < 2 ? 'Mínimo 2 caracteres' : '',
+    email:  (v) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? 'Email no válido' : '',
+    msg:    (v) => v.trim().length < 10 ? 'Mínimo 10 caracteres' : '',
+  };
+
+  function validarCampo(id) {
+    const input = document.getElementById(id);
+    const campo = input.closest('.campo');
+    const mensaje = campo.querySelector('.mensaje');
+    const error = reglas[id](input.value);
+
+    campo.classList.toggle('error', !!error && input.value !== '');
+    campo.classList.toggle('valido', !error && input.value !== '');
+    mensaje.textContent = input.value === '' ? '' : (error || '✓ Correcto');
+    return !error;
+  }
+
+  // valida mientras el usuario escribe
+  Object.keys(reglas).forEach((id) => {
+    document.getElementById(id).addEventListener('input', () => validarCampo(id));
+  });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const todoOk = Object.keys(reglas).map(validarCampo).every(Boolean);
+    if (todoOk) {
+      alert('Formulario válido — aquí enviarías los datos.');
+      form.reset();
+      document.querySelectorAll('.campo').forEach((c) => c.classList.remove('valido', 'error'));
+    }
+  });
+</script>
+</body>
+</html>

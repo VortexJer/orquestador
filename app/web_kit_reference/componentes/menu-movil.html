@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menú móvil (hamburguesa)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #fff; color: #111; }
+  header { display: flex; justify-content: space-between; align-items: center;
+    padding: 1rem 1.5rem; border-bottom: 1px solid #eee; position: relative; }
+  .logo { font-weight: 700; font-size: 1.2rem; }
+
+  nav ul { list-style: none; display: flex; gap: 1.8rem; padding: 0; margin: 0; }
+  nav a { text-decoration: none; color: #333; font-weight: 500; }
+  nav a:hover { color: #e11d48; }
+
+  /* el botón hamburguesa: 3 líneas que se transforman en X */
+  .burger { display: none; flex-direction: column; gap: 5px; background: none; border: none;
+    cursor: pointer; padding: 6px; z-index: 20; }
+  .burger span { width: 26px; height: 3px; background: #111; border-radius: 2px;
+    transition: transform .3s ease, opacity .3s ease; }
+  .burger.activo span:nth-child(1) { transform: translateY(8px) rotate(45deg); }
+  .burger.activo span:nth-child(2) { opacity: 0; }
+  .burger.activo span:nth-child(3) { transform: translateY(-8px) rotate(-45deg); }
+
+  /* en móvil: oculta el botón hamburguesa y despliega el menú a pantalla */
+  @media (max-width: 700px) {
+    .burger { display: flex; }
+    nav { position: fixed; inset: 0; background: #fff; transform: translateX(100%);
+      transition: transform .3s ease; }
+    nav.abierto { transform: translateX(0); }
+    nav ul { flex-direction: column; justify-content: center; align-items: center;
+      height: 100%; gap: 2rem; font-size: 1.4rem; }
+  }
+
+  main { padding: 3rem 1.5rem; color: #555; }
+  @media (prefers-reduced-motion: reduce) { .burger span, nav { transition: none; } }
+</style>
+</head>
+<body>
+  <header>
+    <div class="logo">MiMarca</div>
+    <button class="burger" id="burger" aria-label="Abrir menú" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <nav id="nav">
+      <ul>
+        <li><a href="#">Inicio</a></li>
+        <li><a href="#">Productos</a></li>
+        <li><a href="#">Nosotros</a></li>
+        <li><a href="#">Contacto</a></li>
+      </ul>
+    </nav>
+  </header>
+  <main><p>Reduce el ancho de la ventana a menos de 700px para ver el menú hamburguesa.</p></main>
+
+<script>
+  const burger = document.getElementById('burger');
+  const nav = document.getElementById('nav');
+
+  burger.addEventListener('click', () => {
+    const abierto = burger.classList.toggle('activo');
+    nav.classList.toggle('abierto', abierto);
+    burger.setAttribute('aria-expanded', String(abierto));
+    burger.setAttribute('aria-label', abierto ? 'Cerrar menú' : 'Abrir menú');
+  });
+
+  // cerrar al pulsar un enlace
+  nav.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => {
+    burger.classList.remove('activo'); nav.classList.remove('abierto');
+    burger.setAttribute('aria-expanded', 'false');
+  }));
+</script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Base de datos local (localStorage CRUD)</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #f8fafc; color: #0f172a;
+    max-width: 600px; margin: 0 auto; padding: 3rem 1.5rem; }
+  h1 { margin-bottom: .3rem; }
+  .sub { color: #64748b; margin-bottom: 2rem; }
+  .alta { display: flex; gap: .6rem; margin-bottom: 2rem; }
+  .alta input { flex: 1; padding: .7rem .9rem; border: 2px solid #e2e8f0; border-radius: 8px; font: inherit; }
+  .alta button { padding: .7rem 1.2rem; background: #0ea5e9; color: #fff; border: none; border-radius: 8px; cursor: pointer; font: inherit; }
+
+  ul { list-style: none; padding: 0; }
+  li { display: flex; align-items: center; gap: .8rem; background: #fff; padding: .9rem 1.1rem;
+    border-radius: 10px; margin-bottom: .6rem; box-shadow: 0 1px 4px rgba(0,0,0,.05); }
+  li .texto { flex: 1; }
+  li.hecho .texto { text-decoration: line-through; color: #94a3b8; }
+  li button { background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: .2rem .4rem; }
+  .vacio { color: #94a3b8; text-align: center; padding: 2rem; }
+</style>
+</head>
+<body>
+  <h1>Lista de tareas</h1>
+  <p class="sub">Esto es una "base de datos" en el navegador: añade tareas, márcalas
+  o bórralas, y <strong>recarga la página</strong> — siguen ahí. Se guardan en localStorage.</p>
+
+  <div class="alta">
+    <input type="text" id="entrada" placeholder="Nueva tarea..." aria-label="Nueva tarea">
+    <button id="agregar">Añadir</button>
+  </div>
+
+  <ul id="lista"></ul>
+
+<script>
+  const CLAVE = 'tareas';          // nombre con el que se guarda en localStorage
+  const lista = document.getElementById('lista');
+  const entrada = document.getElementById('entrada');
+
+  // --- Las 4 operaciones de una base de datos (CRUD) ---
+
+  // READ: leer todos los registros (o array vacío si no hay nada)
+  function leer() {
+    return JSON.parse(localStorage.getItem(CLAVE) || '[]');
+  }
+
+  // guardar el array completo (helper interno)
+  function guardar(tareas) {
+    localStorage.setItem(CLAVE, JSON.stringify(tareas));
+  }
+
+  // CREATE: añadir un registro nuevo
+  function crear(texto) {
+    const tareas = leer();
+    tareas.push({ id: Date.now(), texto, hecho: false });
+    guardar(tareas);
+    pintar();
+  }
+
+  // UPDATE: cambiar el estado "hecho" de un registro
+  function alternar(id) {
+    const tareas = leer().map((t) => t.id === id ? { ...t, hecho: !t.hecho } : t);
+    guardar(tareas);
+    pintar();
+  }
+
+  // DELETE: borrar un registro
+  function borrar(id) {
+    guardar(leer().filter((t) => t.id !== id));
+    pintar();
+  }
+
+  // --- Pintar la lista en pantalla a partir de los datos ---
+  function pintar() {
+    const tareas = leer();
+    lista.innerHTML = '';
+    if (tareas.length === 0) {
+      lista.innerHTML = '<p class="vacio">No hay tareas todavía.</p>';
+      return;
+    }
+    tareas.forEach((t) => {
+      const li = document.createElement('li');
+      if (t.hecho) li.classList.add('hecho');
+      li.innerHTML = `
+        <input type="checkbox" ${t.hecho ? 'checked' : ''} aria-label="Marcar como hecha">
+        <span class="texto"></span>
+        <button aria-label="Borrar">🗑</button>`;
+      li.querySelector('.texto').textContent = t.texto; // textContent evita inyección de HTML
+      li.querySelector('input').addEventListener('change', () => alternar(t.id));
+      li.querySelector('button').addEventListener('click', () => borrar(t.id));
+      lista.appendChild(li);
+    });
+  }
+
+  // --- Eventos de alta ---
+  function agregarDesdeInput() {
+    const texto = entrada.value.trim();
+    if (!texto) return;
+    crear(texto);
+    entrada.value = '';
+    entrada.focus();
+  }
+  document.getElementById('agregar').addEventListener('click', agregarDesdeInput);
+  entrada.addEventListener('keydown', (e) => { if (e.key === 'Enter') agregarDesdeInput(); });
+
+  pintar(); // pintar al cargar
+</script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scroll-driven animations nativas — sin una línea de JS</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #0c0c10; color: #fff; }
+  .label { position: fixed; top: 1rem; left: 1rem; z-index: 50; font-size: .7rem;
+           color: #666; letter-spacing: .15em; text-transform: uppercase; }
+  section { min-height: 90vh; display: grid; place-items: center; padding: 2rem; }
+  h2 { font-size: clamp(2rem, 6vw, 4rem); font-weight: 800; }
+  .caja { width: min(560px, 86vw); padding: 2.5rem; border-radius: 18px;
+    background: linear-gradient(135deg, #161a2e, #0e1120); border: 1px solid rgba(120,150,255,.18); }
+  .caja p { color: #9aa3c0; line-height: 1.6; margin-top: .6rem; }
+
+  /* ================================================================
+     SCROLL-DRIVEN ANIMATIONS NATIVAS — CERO JavaScript.
+
+     animation-timeline: view()  ata la animación al recorrido del
+     elemento por el viewport. Sirve para CUALQUIER propiedad:
+     opacidad, blur, escala, translate, color...
+
+     Cuándo SÍ: efectos simples (un fade, un translateY, un blur).
+     Cuándo NO (usa GSAP ScrollTrigger): scrub fino con muchos
+     keyframes o sincronizar varios elementos a la vez.
+
+     Soporte: Chrome/Edge 2024+. Degrada con gracia → en navegadores
+     sin soporte el elemento simplemente se ve en su estado final
+     (NO desaparece). Por eso es seguro como capa base.
+
+     animation-range controla CUÁNDO ocurre durante el recorrido:
+       entry  = mientras el elemento ENTRA por abajo
+       cover  = mientras CRUZA el viewport
+       exit   = mientras SALE por arriba
+  ================================================================ */
+
+  @media (prefers-reduced-motion: no-preference) {
+
+    /* Fade + subida al entrar */
+    .fx-fade {
+      animation: fadeUp linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 60%;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(60px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Desenfoque que se aclara al entrar */
+    .fx-blur {
+      animation: deblur linear both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 35%;
+    }
+    @keyframes deblur {
+      from { opacity: 0; filter: blur(18px); }
+      to   { opacity: 1; filter: blur(0); }
+    }
+
+    /* Escala desde pequeño */
+    .fx-scale {
+      animation: pop linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 30%;
+    }
+    @keyframes pop {
+      from { opacity: 0; transform: scale(.8); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    /* Barra de progreso de lectura: atada al scroll de TODO el documento */
+    .barra-progreso {
+      position: fixed; top: 0; left: 0; height: 4px; width: 100%;
+      transform-origin: 0 50%; z-index: 60;
+      background: linear-gradient(90deg, #7c5cff, #22d3a8);
+      animation: progreso linear both;
+      animation-timeline: scroll(root);   /* scroll del documento entero */
+    }
+    @keyframes progreso { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  }
+</style>
+</head>
+<body>
+  <p class="label">Scroll-driven nativo · 0 JS · haz scroll</p>
+  <div class="barra-progreso"></div>
+
+  <section><h2 class="fx-fade">Fade al entrar</h2></section>
+  <section>
+    <div class="caja fx-blur">
+      <h2 style="font-size:1.6rem">Blur → nítido</h2>
+      <p>El desenfoque se aclara conforme el bloque cruza el viewport. Sin IntersectionObserver, sin requestAnimationFrame: solo CSS.</p>
+    </div>
+  </section>
+  <section><h2 class="fx-scale">Escala desde pequeño</h2></section>
+  <section><h2 class="fx-fade">Y otra vez fade</h2></section>
+</body>
+</html>

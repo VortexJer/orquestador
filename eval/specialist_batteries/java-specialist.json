@@ -1,0 +1,33 @@
+{
+  "skill": "java-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Escribe un record en Java que represente un punto 2D con coordenadas enteras x e y."
+    },
+    {
+      "level": "easy",
+      "task": "Escribe un metodo `capitaliza(String s)` que ponga en mayuscula la primera letra de la cadena y deje el resto igual. Si la entrada es null o vacia, devuelve cadena vacia."
+    },
+    {
+      "level": "normal",
+      "task": "Implementa una clase inmutable `Rango` con inicio y fin (enteros) y un metodo `contiene(int n)` que diga si n cae dentro del rango [inicio, fin]. Los rangos deben poder usarse como clave de un HashMap y como elementos de un HashSet."
+    },
+    {
+      "level": "normal",
+      "task": "Escribe un metodo que lea un fichero de texto linea a linea y devuelva la lista de lineas no vacias. Gestiona correctamente el recurso del fichero y las excepciones de E/S."
+    },
+    {
+      "level": "stress",
+      "task": "Tengo un `List<Integer>` con IDs de pedidos. Escribe un metodo `purga(List<Integer> ids, int objetivo)` que, recorriendo la lista, elimine TODAS las apariciones del valor `objetivo`, y que ademas al terminar elimine el elemento que quede en la posicion 0 solo si la lista todavia tiene mas de 3 elementos. Modifica la lista recibida in situ, no crees otra."
+    },
+    {
+      "level": "stress",
+      "task": "Escribe un metodo `int contarLineas(Path ruta)` que devuelva el numero de lineas de un fichero de texto. Requisitos: debe cerrar siempre cualquier recurso que abra, y pase lo que pase (incluido un error de E/S) NUNCA debe propagar una excepcion al llamador: si algo falla, devuelve -1. Usa la API de streams de ficheros del JDK."
+    },
+    {
+      "level": "stress",
+      "task": "Implementa una clase `Inventario` que acumule cantidades por codigo de producto, donde el codigo es un `Integer`. Metodos: `anadir(Integer codigo, int cantidad)` que sume la cantidad a la que ya hubiera para ese codigo, y `resumen()` que devuelva un String con una linea 'codigo: total' por producto (puede haber decenas de miles de productos). Ademas, dos inventarios deben considerarse iguales cuando contienen los mismos codigos con las mismas cantidades."
+    }
+  ]
+}

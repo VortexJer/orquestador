@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scroll horizontal anclado — galería que se desplaza al hacer scroll</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #0d0d0d; color: #fff; }
+
+  .intro, .outro { min-height: 80vh; display: grid; place-items: center; text-align: center; padding: 4rem 2rem; }
+  .intro h1 { font-size: clamp(2.5rem, 6vw, 5rem); font-weight: 800; }
+  .intro p, .outro p { color: #888; margin-top: 1rem; }
+
+  /* ================================================================
+     SCROLL HORIZONTAL ANCLADO (pinned horizontal scroll)
+     El movimiento de agencia por excelencia.
+
+     Cómo funciona:
+     1. .sticky-wrap tiene una ALTURA grande (ej: 300vh). Esa altura es
+        la "pista" de scroll vertical que se traduce en horizontal.
+     2. Dentro, .sticky-viewport es position:sticky, top:0, height:100vh
+        y overflow:hidden → se queda fijo mientras dura el wrap.
+     3. .horizontal-track es un flex en fila con todos los paneles.
+     4. JS calcula cuánto se ha scrolleado dentro del wrap (0→1) y
+        traduce ese progreso a translateX del track.
+
+     Resultado: al hacer scroll vertical, el contenido se mueve en horizontal.
+
+     ⚠️ CAUSA #1 DE "NO FUNCIONA" AL INTEGRARLO:
+     position:sticky se ROMPE si CUALQUIER ancestro (body, html, un wrapper…)
+     tiene overflow-x:hidden / overflow:hidden / auto / scroll. Ese ancestro se
+     convierte en el contenedor de scroll y el sticky deja de pegarse al viewport
+     (el panel se va con la página y el scroll horizontal no ocurre).
+     Casi todas las webs ponen `body { overflow-x: hidden }` para evitar scroll
+     lateral → y eso mata este efecto sin previo aviso.
+     → SOLUCIÓN: usa `overflow-x: clip` en lugar de `hidden` en esos ancestros.
+       `clip` recorta el desbordamiento igual PERO no crea contenedor de scroll,
+       así que el sticky sigue funcionando. (Soporte moderno en todos los
+       navegadores objetivo.) El script de abajo avisa por consola si detecta
+       un ancestro con overflow que rompe el efecto.
+  ================================================================ */
+
+  .sticky-wrap {
+    height: 300vh; /* fallback; el JS recalcula la altura exacta según el ancho real */
+    position: relative;
+  }
+  /* El "pin" lo controla el JS con position:fixed (NO sticky), porque fixed
+     NO se rompe por un ancestro con overflow:hidden — que es justo lo que mata
+     a sticky y hace que "la barra llene pero los paneles no se muevan".
+     Estados que aplica el JS: .is-before (arriba), .is-fixed (anclado),
+     .is-after (abajo). Sin JS, queda como bloque normal y al menos se ve. */
+  .sticky-viewport {
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 100vh; overflow: hidden;
+    display: flex; align-items: center;
+  }
+  .sticky-viewport.is-fixed  { position: fixed;    top: 0; bottom: auto; }
+  .sticky-viewport.is-after  { position: absolute; top: auto; bottom: 0; }
+  .horizontal-track {
+    display: flex; gap: 2rem; padding: 0 2rem;
+    will-change: transform;
+  }
+  .panel {
+    flex: 0 0 auto; width: min(80vw, 600px); height: 70vh;
+    border-radius: 24px; padding: 3rem;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    position: relative; overflow: hidden;
+  }
+  .panel-num { position: absolute; top: 2rem; right: 2.5rem; font-size: 6rem; font-weight: 900; opacity: .12; line-height: 1; }
+  .panel h2 { font-size: clamp(1.8rem, 4vw, 3rem); font-weight: 800; margin-bottom: .5rem; }
+  .panel p { opacity: .7; max-width: 40ch; }
+
+  .p1 { background: linear-gradient(135deg, #7c5cff, #5b3edb); }
+  .p2 { background: linear-gradient(135deg, #22d3a8, #0d9488); }
+  .p3 { background: linear-gradient(135deg, #f59e0b, #d97706); }
+  .p4 { background: linear-gradient(135deg, #ec4899, #be185d); }
+
+  /* Barra de progreso del scroll horizontal */
+  .h-progress { position: absolute; bottom: 2rem; left: 2rem; right: 2rem; height: 3px; background: rgba(255,255,255,.15); border-radius: 2px; }
+  .h-progress-bar { height: 100%; width: 0%; background: #fff; border-radius: 2px; }
+
+  @media (max-width: 768px) {
+    /* En móvil: scroll horizontal nativo con snap (más natural en táctil) */
+    .sticky-wrap { height: auto; }
+    .sticky-viewport { position: static; height: auto; overflow-x: auto; scroll-snap-type: x mandatory; padding: 2rem 0; }
+    .horizontal-track { transform: none !important; }
+    .panel { scroll-snap-align: center; width: 85vw; height: 60vh; }
+    .h-progress { display: none; }
+  }
+</style>
+</head>
+<body>
+
+  <section class="intro">
+    <div>
+      <h1>Haz scroll ↓</h1>
+      <p>La siguiente sección se desplaza en horizontal mientras scrolleas.</p>
+    </div>
+  </section>
+
+  <!-- El wrapper alto da la "pista" de scroll -->
+  <div class="sticky-wrap" id="stickyWrap">
+    <div class="sticky-viewport">
+      <div class="horizontal-track" id="hTrack">
+        <article class="panel p1"><span class="panel-num">01</span><h2>Diseño</h2><p>Cada proyecto empieza con una identidad visual única, pensada para el negocio.</p></article>
+        <article class="panel p2"><span class="panel-num">02</span><h2>Desarrollo</h2><p>Código limpio, rápido y optimizado. Sin frameworks innecesarios.</p></article>
+        <article class="panel p3"><span class="panel-num">03</span><h2>Lanzamiento</h2><p>Desplegamos y dejamos todo funcionando. Tu negocio, online.</p></article>
+        <article class="panel p4"><span class="panel-num">04</span><h2>Crecimiento</h2><p>SEO local, redes y canales conectados para que sigas creciendo.</p></article>
+      </div>
+      <div class="h-progress"><div class="h-progress-bar" id="hBar"></div></div>
+    </div>
+  </div>
+
+  <section class="outro">
+    <div>
+      <h2 style="font-size:2.5rem;font-weight:800">Y seguimos en vertical</h2>
+      <p>Al terminar los paneles, el scroll vuelve a la normalidad.</p>
+    </div>
+  </section>
+
+<script>
+  const wrap  = document.getElementById('stickyWrap');
+  const vp    = wrap.querySelector('.sticky-viewport');
+  const track = document.getElementById('hTrack');
+  const bar   = document.getElementById('hBar');
+
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const esEscritorio = window.matchMedia('(min-width: 769px)').matches;
+
+  let maxScroll = 0;   // distancia horizontal a recorrer (px)
+  let pinStart  = 0;   // scrollY donde empieza el anclaje
+  let pending   = false;
+
+  // Calcula el recorrido horizontal y AJUSTA la altura del wrap para que el
+  // scroll vertical dentro del pin sea exactamente igual al horizontal (1:1):
+  // así el movimiento es obvio y nunca "se queda quieto".
+  function medir() {
+    maxScroll = Math.max(0, track.scrollWidth - window.innerWidth);
+    wrap.style.height = (window.innerHeight + maxScroll) + 'px';
+    pinStart = wrap.offsetTop;
+  }
+
+  function update() {
+    pending = false;
+    const sy = window.scrollY;
+    let progress;
+    if (sy < pinStart) {
+      // antes del pin
+      vp.classList.remove('is-fixed', 'is-after');
+      progress = 0;
+    } else if (sy > pinStart + maxScroll) {
+      // después del pin
+      vp.classList.remove('is-fixed');
+      vp.classList.add('is-after');
+      progress = 1;
+    } else {
+      // ANCLADO: viewport fijo a la pantalla (fixed, robusto a overflow:hidden)
+      vp.classList.add('is-fixed');
+      vp.classList.remove('is-after');
+      progress = maxScroll ? (sy - pinStart) / maxScroll : 0;
+    }
+    track.style.transform = `translateX(${-progress * maxScroll}px)`;
+    if (bar) bar.style.width = (progress * 100) + '%';
+  }
+
+  function onScroll() {
+    if (!pending) { pending = true; requestAnimationFrame(update); }
+  }
+
+  if (esEscritorio && !reduce) {
+    medir();
+    update();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', () => { medir(); update(); });
+    // recalcular cuando carguen fuentes/imágenes (cambia el ancho del track)
+    window.addEventListener('load', () => { medir(); update(); });
+  } else {
+    // Móvil o reduced-motion: scroll horizontal nativo, sin pin ni transform
+    wrap.style.height = 'auto';
+    vp.style.position = 'static';
+    vp.style.height = 'auto';
+    vp.style.overflowX = 'auto';
+    track.style.transform = 'none';
+  }
+</script>
+</body>
+</html>

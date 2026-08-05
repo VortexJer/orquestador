@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sticky stacking cards — tarjetas que se apilan al scrollear</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #0d0d0d; color: #fff; }
+
+  .intro { min-height: 60vh; display: grid; place-items: center; text-align: center; padding: 4rem 2rem; }
+  .intro h1 { font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 800; }
+  .intro p { color: #888; margin-top: 1rem; }
+
+  /* ================================================================
+     STICKY STACKING CARDS
+     Las tarjetas se quedan pegadas (sticky) una encima de otra a medida
+     que haces scroll, creando un efecto de "mazo de cartas" que se apila.
+
+     Cómo funciona (CSS puro, sin JS obligatorio):
+     1. Cada .stack-card es position:sticky con top creciente.
+     2. Al hacer scroll, cada tarjeta se queda fija en su 'top' mientras
+        la siguiente sube por debajo... y luego encima.
+     3. Un pequeño scale decreciente (vía JS o nth-child) da profundidad.
+
+     El truco del top escalonado: card 1 top:10vh, card 2 top:12vh, etc.
+     Así se ve el borde superior de cada una apilada.
+  ================================================================ */
+
+  .stack { padding: 0 2rem 50vh; max-width: 900px; margin: 0 auto; }
+
+  .stack-card {
+    position: sticky;
+    height: 70vh;
+    transform-origin: center top;  /* al escalar, el borde superior NO se mueve (evita vibración) */
+    will-change: transform;
+    border-radius: 24px;
+    padding: clamp(2rem, 5vw, 4rem);
+    display: flex; flex-direction: column; justify-content: center;
+    box-shadow: 0 -10px 60px rgba(0,0,0,.4);
+    overflow: hidden;
+  }
+  /* top escalonado: cada tarjeta se fija un poco más abajo que la anterior */
+  .stack-card:nth-child(1) { top: 8vh; }
+  .stack-card:nth-child(2) { top: 11vh; }
+  .stack-card:nth-child(3) { top: 14vh; }
+  .stack-card:nth-child(4) { top: 17vh; }
+
+  /* margen inferior para crear el recorrido de scroll entre tarjetas */
+  .stack-card:not(:last-child) { margin-bottom: 4vh; }
+
+  .stack-card .num { font-size: clamp(3rem, 8vw, 6rem); font-weight: 900; opacity: .15; line-height: 1; margin-bottom: 1rem; }
+  .stack-card h2 { font-size: clamp(1.8rem, 4vw, 3rem); font-weight: 800; margin-bottom: 1rem; }
+  .stack-card p { font-size: var(--tx-md, 1.1rem); max-width: 50ch; opacity: .8; line-height: 1.6; }
+
+  .c1 { background: linear-gradient(135deg, #1c2535, #0f1629); border: 1px solid #2a3a55; }
+  .c2 { background: linear-gradient(135deg, #2d1b4e, #1a0d2e); border: 1px solid #4a2d7a; }
+  .c3 { background: linear-gradient(135deg, #1a3328, #0d1f17); border: 1px solid #2a5a3a; }
+  .c4 { background: linear-gradient(135deg, #3a1f1f, #2a1010); border: 1px solid #5a2a2a; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .stack-card { position: relative; top: auto; height: auto; min-height: 50vh; margin-bottom: 2rem; }
+  }
+</style>
+</head>
+<body>
+
+  <section class="intro">
+    <div>
+      <h1>Tarjetas que se apilan</h1>
+      <p>Haz scroll — cada tarjeta se queda fija y la siguiente se apila encima.</p>
+    </div>
+  </section>
+
+  <div class="stack" id="stack">
+    <article class="stack-card c1">
+      <span class="num">01</span>
+      <h2>Analizamos tu negocio</h2>
+      <p>Entendemos qué haces, a quién te diriges y qué te diferencia antes de tocar una sola línea de diseño.</p>
+    </article>
+    <article class="stack-card c2">
+      <span class="num">02</span>
+      <h2>Diseñamos tu identidad</h2>
+      <p>Color, tipografía y tono adaptados a tu sector. Una web que solo podría ser tuya.</p>
+    </article>
+    <article class="stack-card c3">
+      <span class="num">03</span>
+      <h2>Construimos el sistema</h2>
+      <p>Web, Google, WhatsApp e Instagram conectados y funcionando en 5-7 días.</p>
+    </article>
+    <article class="stack-card c4">
+      <span class="num">04</span>
+      <h2>Lo dejamos funcionando</h2>
+      <p>Desplegamos, revisamos contigo y activamos todo. Tu negocio, online esta semana.</p>
+    </article>
+  </div>
+
+<script>
+  // OPCIONAL: añadir escala decreciente a las tarjetas que ya están "debajo"
+  // para reforzar la sensación de profundidad del mazo.
+  const cards = document.querySelectorAll('.stack-card');
+
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    let pending = false;
+    function update() {
+      cards.forEach((card, i) => {
+        const siguiente = cards[i + 1];
+        if (!siguiente) { card.style.transform = ''; card.style.filter = ''; return; }
+        // CLAVE anti-vibración: medimos la tarjeta SIGUIENTE (un hermano), nunca
+        // el rect de la propia card a la que aplicamos scale. Así no hay bucle
+        // de realimentación (leer un valor que tu propio transform acaba de mover).
+        const sigRect = siguiente.getBoundingClientRect();
+        // 0 mientras la siguiente está por debajo; 1 cuando ya cubre la pantalla
+        const dist = Math.max(0, Math.min(1, (window.innerHeight - sigRect.top) / window.innerHeight));
+        card.style.transform = `scale(${(1 - dist * 0.06).toFixed(4)})`;
+        card.style.filter = `brightness(${(1 - dist * 0.18).toFixed(3)})`;
+      });
+      pending = false;
+    }
+    window.addEventListener('scroll', () => {
+      if (!pending) { requestAnimationFrame(update); pending = true; }
+    }, { passive: true });
+    update();
+  }
+</script>
+</body>
+</html>

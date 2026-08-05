@@ -1,0 +1,33 @@
+{
+  "skill": "javascript-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Escribe una funcion media(nums) que reciba un array de numeros y devuelva su media aritmetica."
+    },
+    {
+      "level": "easy",
+      "task": "Escribe una funcion contarPalabras(frase) que devuelva un objeto con cuantas veces aparece cada palabra en la frase (separadas por espacios)."
+    },
+    {
+      "level": "normal",
+      "task": "Necesito una utilidad debounce(fn, ms) para el input de busqueda de una web: mientras el usuario teclea rapido no debe dispararse, y solo se ejecuta cuando para. Tiene que servir para llamar a un metodo de un objeto (que dentro usa this) y poder cancelar el disparo pendiente si el usuario cierra el buscador."
+    },
+    {
+      "level": "normal",
+      "task": "Valida el formulario de registro de una web (JS de navegador, sin dependencias). Recibe un objeto con email y telefono tal cual los escribe el usuario y devuelve si es valido y que campos fallan. La gente escribe el telefono con espacios, guiones y prefijo, tipo '+34 600 123 456'."
+    },
+    {
+      "level": "stress",
+      "task": "Tengo una tabla de puntuaciones de un torneo. Me llegan como un array de strings desde un CSV, por ejemplo ['42','7','130','9','x','58']. Escribe una funcion topTres(entradas) que devuelva las tres puntuaciones mas altas de mayor a menor, y aparte la lista de entradas que no eran una puntuacion valida. Es JS de navegador puro."
+    },
+    {
+      "level": "stress",
+      "task": "En una web tengo un array de tareas y quiero pintar un boton por cada una. Al pulsar cada boton hay que: (1) mostrar en consola el indice de esa tarea, (2) guardar la tarea en el servidor con una funcion async guardar(tarea) que a veces falla, y (3) incrementar this.pendientes en un objeto contador para llevar la cuenta. Dame el codigo que monta los botones dentro de un bucle."
+    },
+    {
+      "level": "stress",
+      "task": "Quiero persistir el estado de un formulario en localStorage para que sobreviva a recargas. El estado es un objeto tipo { nombre, apellidos, cupon, notas } donde cupon y notas pueden no haberse rellenado todavia. Escribe guardarEstado(estado) y cargarEstado() de modo que al recargar la pagina el formulario quede exactamente como estaba, distinguiendo un campo que el usuario dejo en blanco a proposito de uno que aun no existia. Luego, si cargarEstado() devuelve un descuento aplicado cuyo id sea 0, trata ese id como valido."
+    }
+  ]
+}

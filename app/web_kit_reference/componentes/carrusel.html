@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carrusel</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #18181b; color: #fafafa;
+         display: grid; place-items: center; min-height: 100vh; margin: 0; padding: 1rem; }
+  .carrusel { width: 100%; max-width: 520px; }
+  .ventana { overflow: hidden; border-radius: 16px; }
+  .pista { display: flex; transition: transform .5s ease; }
+  .slide { min-width: 100%; height: 300px; display: grid; place-items: center;
+    font-size: 1.5rem; font-weight: 600; }
+  .s1 { background: #7c3aed; } .s2 { background: #db2777; } .s3 { background: #ea580c; } .s4 { background: #0891b2; }
+
+  .controles { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; }
+  .flecha { background: #27272a; border: none; color: #fafafa; width: 44px; height: 44px;
+    border-radius: 50%; cursor: pointer; font-size: 1.2rem; }
+  .flecha:hover { background: #3f3f46; }
+  .puntos { display: flex; gap: .5rem; }
+  .punto { width: 10px; height: 10px; border-radius: 50%; background: #52525b; border: none;
+    cursor: pointer; padding: 0; }
+  .punto.activo { background: #fafafa; }
+
+  @media (prefers-reduced-motion: reduce) { .pista { transition: none; } }
+</style>
+</head>
+<body>
+  <div class="carrusel">
+    <div class="ventana">
+      <div class="pista" id="pista">
+        <div class="slide s1">Slide 1</div>
+        <div class="slide s2">Slide 2</div>
+        <div class="slide s3">Slide 3</div>
+        <div class="slide s4">Slide 4</div>
+      </div>
+    </div>
+    <div class="controles">
+      <button class="flecha" id="prev" aria-label="Anterior">‹</button>
+      <div class="puntos" id="puntos"></div>
+      <button class="flecha" id="next" aria-label="Siguiente">›</button>
+    </div>
+  </div>
+
+<script>
+  const pista = document.getElementById('pista');
+  const total = pista.children.length;
+  const contPuntos = document.getElementById('puntos');
+  let actual = 0;
+  let autoplay;
+
+  // crear los puntos
+  for (let i = 0; i < total; i++) {
+    const p = document.createElement('button');
+    p.className = 'punto' + (i === 0 ? ' activo' : '');
+    p.setAttribute('aria-label', 'Ir al slide ' + (i + 1));
+    p.addEventListener('click', () => irA(i));
+    contPuntos.appendChild(p);
+  }
+  const puntos = [...contPuntos.children];
+
+  function irA(indice) {
+    actual = (indice + total) % total;
+    pista.style.transform = `translateX(-${actual * 100}%)`;
+    puntos.forEach((p, i) => p.classList.toggle('activo', i === actual));
+  }
+
+  document.getElementById('next').addEventListener('click', () => { irA(actual + 1); reiniciarAuto(); });
+  document.getElementById('prev').addEventListener('click', () => { irA(actual - 1); reiniciarAuto(); });
+
+  // autoplay cada 4s, se reinicia al interactuar
+  function iniciarAuto() { autoplay = setInterval(() => irA(actual + 1), 4000); }
+  function reiniciarAuto() { clearInterval(autoplay); iniciarAuto(); }
+  iniciarAuto();
+</script>
+</body>
+</html>

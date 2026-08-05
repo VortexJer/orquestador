@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Header sticky con scroll</title>
+<style>
+  * { margin: 0; box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; color: #111; }
+
+  header { position: sticky; top: 0; background: rgba(255,255,255,.85); backdrop-filter: blur(8px);
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 1.5rem 2rem; transition: padding .3s ease, box-shadow .3s ease; z-index: 50; }
+  /* clase que JS añade tras hacer scroll: más compacto y con sombra */
+  header.scrolled { padding: .8rem 2rem; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+
+  .logo { font-weight: 700; font-size: 1.3rem; transition: font-size .3s ease; }
+  header.scrolled .logo { font-size: 1.1rem; }
+  nav a { margin-left: 1.5rem; text-decoration: none; color: #444; font-weight: 500; }
+
+  .hero { height: 70vh; display: grid; place-items: center;
+    background: linear-gradient(135deg, #fdba74, #fb7185); color: #fff; font-size: 2rem; font-weight: 700; }
+  main { padding: 3rem 2rem; line-height: 1.8; color: #555; max-width: 700px; margin: 0 auto; }
+
+  @media (prefers-reduced-motion: reduce) { header, .logo { transition: none; } }
+</style>
+</head>
+<body>
+  <header id="header">
+    <div class="logo">MiMarca</div>
+    <nav><a href="#">Inicio</a><a href="#">Servicios</a><a href="#">Contacto</a></nav>
+  </header>
+  <div class="hero">Haz scroll ↓</div>
+  <main>
+    <p>El header de arriba se vuelve más compacto y le aparece una sombra en cuanto
+    haces scroll más de 50px. Es un detalle pequeño que da mucha sensación de pulido.</p>
+    <p style="height: 120vh"></p>
+  </main>
+
+<script>
+  const header = document.getElementById('header');
+  // throttle simple con requestAnimationFrame para no saturar el scroll
+  let pendiente = false;
+  window.addEventListener('scroll', () => {
+    if (!pendiente) {
+      window.requestAnimationFrame(() => {
+        header.classList.toggle('scrolled', window.scrollY > 50);
+        pendiente = false;
+      });
+      pendiente = true;
+    }
+  });
+</script>
+</body>
+</html>

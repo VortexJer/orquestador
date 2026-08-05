@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fondo generativo WebGL — shader propio, sin librerías</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body { font-family: system-ui, sans-serif; color: #fff; overflow: hidden; }
+
+  /* ================================================================
+     FONDO GENERATIVO WEBGL — lo más cercano a "parece un vídeo IA".
+
+     Ruido orgánico animado + degradado líquido hecho con un fragment
+     shader. CERO dependencias: WebGL nativo del navegador.
+
+     REGLAS DE ORO:
+       - Sustituye u_colorA / u_colorB por DOS colores de TU paleta
+         (acento + fondo-oscuro suelen ir bien). Si dejas el morado/azul
+         de demo, parece un shader genérico de internet, no tu proyecto.
+       - SIEMPRE fallback: si gl es null (sin WebGL) o el usuario pide
+         menos movimiento, queda el color de fondo plano detrás. La web
+         funciona igual.
+       - Es la pieza MÁS PESADA de la guía: úsala SOLO en el hero o en
+         una sección "momento de color", nunca en toda la página.
+  ================================================================ */
+
+  /* FALLBACK estático: este color se ve si WebGL falla o reduced-motion */
+  .seccion-shader {
+    position: relative; height: 100%;
+    background: #0c1024;            /* = --color-fondo-oscuro del proyecto */
+    display: grid; place-items: center; text-align: center;
+  }
+  #fondo-shader {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    display: block; z-index: 0;
+  }
+  .contenido { position: relative; z-index: 1; padding: 2rem; }
+  .contenido h1 { font-size: clamp(2.5rem, 8vw, 5rem); font-weight: 900; letter-spacing: -.02em;
+    text-shadow: 0 4px 40px rgba(0,0,0,.5); }
+  .contenido p { margin-top: 1rem; opacity: .85; font-size: 1.1rem; }
+</style>
+</head>
+<body>
+  <section class="seccion-shader">
+    <canvas id="fondo-shader"></canvas>
+    <div class="contenido">
+      <h1>Fondo vivo</h1>
+      <p>Shader propio · sin librerías · coherente con tu paleta</p>
+    </div>
+  </section>
+
+<script>
+(function () {
+  const canvas = document.getElementById('fondo-shader');
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const gl = canvas.getContext('webgl');
+  if (!gl || reduce) return;   // FALLBACK: queda el background CSS plano
+
+  const vSrc = `attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }`;
+  const fSrc = `
+    precision mediump float;
+    uniform float u_time; uniform vec2 u_res;
+    uniform vec3 u_colorA; uniform vec3 u_colorB;
+    float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453); }
+    float noise(vec2 p){
+      vec2 i = floor(p), f = fract(p);
+      float a = hash(i), b = hash(i + vec2(1.,0.));
+      float c = hash(i + vec2(0.,1.)), d = hash(i + vec2(1.,1.));
+      vec2 u = f*f*(3.-2.*f);
+      return mix(a,b,u.x) + (c-a)*u.y*(1.-u.x) + (d-b)*u.x*u.y;
+    }
+    void main(){
+      vec2 uv = gl_FragCoord.xy / u_res;
+      uv.x *= u_res.x / u_res.y;
+      float n  = noise(uv * 3.0 + u_time * 0.05);
+      n += noise(uv * 6.0 - u_time * 0.03) * 0.5;
+      vec3 color = mix(u_colorA, u_colorB, smoothstep(0.2, 0.9, n));
+      gl_FragColor = vec4(color, 1.0);
+    }`;
+
+  function compile(type, src){
+    const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.warn(gl.getShaderInfoLog(s)); return null; }
+    return s;
+  }
+  const prog = gl.createProgram();
+  gl.attachShader(prog, compile(gl.VERTEX_SHADER, vSrc));
+  gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, fSrc));
+  gl.linkProgram(prog); gl.useProgram(prog);
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, 'p');
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+  const uTime = gl.getUniformLocation(prog, 'u_time');
+  const uRes  = gl.getUniformLocation(prog, 'u_res');
+  // ↓↓↓ TUS DOS COLORES (0-1). Aquí van el acento y el fondo del proyecto ↓↓↓
+  gl.uniform3f(gl.getUniformLocation(prog, 'u_colorA'), 0.07, 0.06, 0.18); // fondo profundo
+  gl.uniform3f(gl.getUniformLocation(prog, 'u_colorB'), 0.49, 0.36, 1.0);  // acento
+
+  function resize(){
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = canvas.clientWidth * dpr;
+    canvas.height = canvas.clientHeight * dpr;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.uniform2f(uRes, canvas.width, canvas.height);
+  }
+  window.addEventListener('resize', resize); resize();
+
+  const t0 = performance.now();
+  (function loop(){
+    gl.uniform1f(uTime, (performance.now() - t0) / 1000);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    requestAnimationFrame(loop);
+  })();
+})();
+</script>
+</body>
+</html>

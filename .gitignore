@@ -1,0 +1,43 @@
+# --- Secretos y entorno (NUNCA subir) ---
+.env
+.env.*
+!.env.example
+
+# --- Entornos y caches de Python ---
+.venv/
+**/.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+**/.pytest_cache/
+**/.ruff_cache/
+
+# --- Datos locales / estado de la app (pueden tener contenido personal) ---
+qdrant_local_data/
+.orquestador_sessions/
+.goldentokens/
+descargas/
+graphify-out/
+prueba_interactiva/
+
+# --- Logs y temporales ---
+*.log
+uvicorn.log
+tmp_*
+*.tmp
+
+# --- Artefactos de build de vendor/ (aisight) ---
+vendor/**/node_modules/
+vendor/**/target/
+vendor/**/dist/
+vendor/**/build/
+vendor/**/*.so
+vendor/**/*.pyd
+
+# --- Sistema ---
+.DS_Store
+Thumbs.db
+vendor/

@@ -1,0 +1,68 @@
+[
+  {
+    "id": "terraform-count-vs-for-each-replacement",
+    "language_or_domain": "iac",
+    "tags": ["state", "terraform", "iac"],
+    "problem_description": "Usar count con una lista para crear N recursos indexa por posicion; si un elemento se remueve o reordena de la lista, Terraform destruye y recrea recursos por corrimiento de indice, no solo el elemento afectado.",
+    "why_small_models_fail": "count es la forma mas comun en ejemplos introductorios; el modelo no anticipa el efecto sobre el state en operaciones de mantenimiento futuras porque no ve el historial de cambios del proyecto real.",
+    "correct_approach": "Usar for_each con un mapa de claves estables (no indices) cuando la lista de recursos puede cambiar con el tiempo.",
+    "bad_example": "resource \"aws_instance\" \"node\" {\n  count = length(var.names)\n  tags = { Name = var.names[count.index] }\n}",
+    "good_example": "resource \"aws_instance\" \"node\" {\n  for_each = toset(var.names)\n  tags = { Name = each.key }\n}",
+    "source": "Terraform docs - for_each vs count"
+  },
+  {
+    "id": "iac-terraform-state-secrets-in-plaintext",
+    "language_or_domain": "iac",
+    "tags": ["state", "security", "terraform", "iac"],
+    "problem_description": "El archivo de state de Terraform guarda TODOS los atributos de los recursos en texto plano, incluyendo valores que se pasaron como 'secretos' a un argumento (ej. la contraseña inicial de una base de datos creada via el propio recurso). Commitear el state a git, o dejarlo en un backend no cifrado/publico, expone esos secretos aunque el codigo .tf en si nunca los tenga hardcodeados.",
+    "why_small_models_fail": "El modelo trata el 'secreto' como protegido por el simple hecho de venir de una variable sensitive = true, sin modelar que esa marca solo oculta el valor en los LOGS de plan/apply, no en el archivo de state en si, que sigue conteniendo el valor real.",
+    "correct_approach": "Usar un backend remoto cifrado en reposo (S3 con SSE + bucket privado, Terraform Cloud, etc.), nunca commitear el archivo .tfstate a git, y para secretos genuinamente sensibles, preferir que se generen/inyecten fuera de Terraform (un secrets manager) en vez de pasar por un recurso cuyo atributo termina en el state.",
+    "bad_example": "resource \"aws_db_instance\" \"principal\" {\n  password = var.db_password # sensitive = true en la variable, pero igual queda en texto plano en el .tfstate\n}\n# y el .tfstate se commitea al repo por costumbre",
+    "good_example": "# backend remoto cifrado, .tfstate en .gitignore siempre\nterraform {\n  backend \"s3\" {\n    bucket  = \"mi-org-tfstate\"\n    encrypt = true\n  }\n}",
+    "source": "Terraform docs - 'Sensitive Data in State'"
+  },
+  {
+    "id": "iac-terraform-unpinned-provider-version",
+    "language_or_domain": "iac",
+    "tags": ["reproducibility", "terraform", "iac"],
+    "problem_description": "No fijar la version del provider (o de un modulo) en required_providers permite que terraform init descargue automaticamente una version mas nueva - potencialmente con cambios de comportamiento o breaking changes - en la maquina de otro desarrollador o en CI, produciendo un plan/apply distinto al que se probo, sin que el codigo .tf haya cambiado.",
+    "why_small_models_fail": "El modelo omite el pin de version porque no es estrictamente necesario para que el codigo 'funcione hoy', sin considerar la reproducibilidad del build a lo largo del tiempo y entre distintos entornos.",
+    "correct_approach": "Fijar un rango de version explicito y razonablemente estrecho en required_providers, y commitear el archivo .terraform.lock.hcl generado para que todos los entornos usen exactamente las mismas versiones resueltas.",
+    "bad_example": "terraform {\n  required_providers {\n    aws = { source = \"hashicorp/aws\" } # sin version: cualquiera puede terminar bajando una version distinta\n  }\n}",
+    "good_example": "terraform {\n  required_providers {\n    aws = { source = \"hashicorp/aws\", version = \"~> 5.40\" }\n  }\n}\n# + commitear .terraform.lock.hcl",
+    "source": "Terraform docs - 'Provider Version Constraints'; Dependency Lock File"
+  },
+  {
+    "id": "iac-terraform-hardcoded-credentials-in-provider",
+    "language_or_domain": "iac",
+    "tags": ["security", "terraform", "iac"],
+    "problem_description": "Escribir access_key/secret_key directamente en un bloque provider (o en un .tfvars commiteado al repo) expone credenciales de la nube con el mismo riesgo que cualquier secreto hardcodeado en codigo fuente: queda en el historial de git para siempre, incluso si se corrige despues.",
+    "why_small_models_fail": "El modelo genera el bloque provider mas autocontenido y facil de ejecutar copiando y pegando, sin aplicar por default el patron de leer credenciales desde variables de entorno o un rol de IAM asumido.",
+    "correct_approach": "Nunca poner credenciales en el bloque provider ni en archivos .tfvars versionados; usar variables de entorno (AWS_ACCESS_KEY_ID, etc.), un rol de IAM asumido, o un backend de identidad federada (OIDC en CI).",
+    "bad_example": "provider \"aws\" {\n  access_key = \"AKIA...\" # secreto real en el .tf, commiteado al repo\n  secret_key = \"wJal...\"\n}",
+    "good_example": "provider \"aws\" {\n  region = \"us-east-1\"\n  # credenciales via AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY en el entorno, o un rol asumido\n}",
+    "source": "Terraform docs - AWS Provider, 'Authentication and Configuration'"
+  },
+  {
+    "id": "iac-kubernetes-missing-resource-limits",
+    "language_or_domain": "iac",
+    "tags": ["kubernetes", "resource-management", "iac"],
+    "problem_description": "Un manifiesto de Pod/Deployment sin resources.requests/resources.limits de CPU y memoria permite que ese contenedor consuma recursos sin limite en el nodo, pudiendo degradar o hacer evictar a otros pods del mismo nodo ('noisy neighbor') cuando hay un pico de carga o un memory leak, sin que Kubernetes tenga ninguna base para priorizar o limitar ese pod especifico.",
+    "why_small_models_fail": "El modelo genera el manifiesto minimo que 'funciona' (el pod arranca y sirve trafico) sin agregar resources por default, porque omitirlos no produce ningun error de validacion del manifiesto - el cluster lo acepta igual.",
+    "correct_approach": "Definir siempre requests y limits razonables de CPU/memoria basados en el comportamiento medido de la aplicacion, y usar un LimitRange a nivel de namespace como red de seguridad para pods que igual los omitan.",
+    "bad_example": "containers:\n  - name: api\n    image: miapp:1.0\n    # sin resources: puede consumir toda la CPU/memoria del nodo",
+    "good_example": "containers:\n  - name: api\n    image: miapp:1.0\n    resources:\n      requests: { cpu: \"250m\", memory: \"256Mi\" }\n      limits: { cpu: \"500m\", memory: \"512Mi\" }",
+    "source": "Kubernetes docs - 'Managing Resources for Containers'"
+  },
+  {
+    "id": "iac-kubernetes-latest-tag-non-reproducible",
+    "language_or_domain": "iac",
+    "tags": ["kubernetes", "reproducibility", "iac"],
+    "problem_description": "Usar image: miapp:latest en un Deployment hace que un simple 'reaplicar el mismo manifiesto' (o un reinicio de pod por cualquier otra causa) pueda traer una imagen genuinamente distinta a la que estaba corriendo, si 'latest' fue re-publicado entre medio - rompe la reproducibilidad de despliegues y hace los rollbacks impredecibles (rollback al 'mismo' manifiesto no garantiza volver a la imagen anterior).",
+    "why_small_models_fail": "El modelo usa :latest porque es el tag mas corto y generico visto en la mayoria de ejemplos introductorios, sin modelar que en un entorno de produccion eso desacopla el manifiesto (deberia ser la fuente de verdad completa) del contenido real que se ejecuta.",
+    "correct_approach": "Usar siempre un tag inmutable y especifico (idealmente el digest de la imagen, image@sha256:...) para cualquier despliegue mas alla de un entorno de prueba local.",
+    "bad_example": "containers:\n  - name: api\n    image: miapp:latest # que version es 'latest' hoy puede no ser la de mañana",
+    "good_example": "containers:\n  - name: api\n    image: miapp@sha256:3fd9b6b6d2f6e0f... # inmutable, siempre la misma imagen exacta",
+    "source": "Kubernetes docs - 'Container Images', 'Updating images'; practica estandar de reproducibilidad de despliegues"
+  }
+]

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scroll velocity — skew y marquee reactivos a la velocidad de scroll</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #0d0d0d; color: #fff; overflow-x: hidden; }
+
+  .espacio { height: 60vh; display: grid; place-items: center; text-align: center; padding: 2rem; }
+  .espacio p { color: #555; }
+  .espacio h1 { font-size: clamp(2rem, 5vw, 4rem); font-weight: 800; }
+
+  /* ================================================================
+     SCROLL VELOCITY — efectos atados a la VELOCIDAD del scroll
+     (el sello de Locomotive Scroll / sitios de agencia top)
+
+     Dos efectos clásicos:
+     A) SKEW: el contenido se inclina ligeramente según lo rápido que
+        scrolleas. Scroll rápido = más skew. Al parar, vuelve a 0.
+        Da una sensación física, "con peso", al scroll.
+     B) MARQUEE REACTIVO: una banda de texto que siempre se mueve, pero
+        cuya velocidad y dirección dependen del scroll. Scrolleas hacia
+        abajo → acelera a la izquierda; hacia arriba → frena/invierte.
+  ================================================================ */
+
+  /* A) Secciones con skew */
+  .skew-section { padding: 6rem 2rem; }
+  .skew-target { will-change: transform; }
+
+  .cards-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; max-width: 1100px; margin: 0 auto; }
+  .vcard { background: #16161f; border: 1px solid #232333; border-radius: 20px; padding: 2rem; }
+  .vcard .ico { width: 48px; height: 48px; border-radius: 12px; background: rgba(124,92,255,.15); display: grid; place-items: center; font-size: 1.5rem; margin-bottom: 1rem; }
+  .vcard h3 { font-size: 1.3rem; font-weight: 700; margin-bottom: .5rem; }
+  .vcard p { color: #888; font-size: .9rem; }
+
+  /* B) Marquee reactivo */
+  .vel-marquee { overflow: hidden; padding: 2rem 0; border-block: 1px solid #232333; background: #12121c; margin: 4rem 0; }
+  .vel-track { display: flex; width: max-content; will-change: transform; }
+  .vel-item { display: inline-flex; align-items: center; gap: 2rem; padding: 0 2rem; font-size: clamp(2rem, 5vw, 4rem); font-weight: 800; white-space: nowrap; }
+  .vel-item span { color: #7c5cff; }
+
+  @media (max-width: 700px) { .cards-row { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { .skew-target, .vel-track { transform: none !important; } }
+</style>
+</head>
+<body>
+
+  <section class="espacio">
+    <div><h1>Scroll con peso</h1><p>Haz scroll rápido y lento — observa cómo reacciona ↓</p></div>
+  </section>
+
+  <!-- A) Skew en scroll -->
+  <section class="skew-section">
+    <div class="skew-target" id="skewA">
+      <div class="cards-row">
+        <div class="vcard"><div class="ico">⚡</div><h3>Velocidad</h3><p>El contenido se inclina según lo rápido que scrolleas.</p></div>
+        <div class="vcard"><div class="ico">◈</div><h3>Física</h3><p>Al parar, todo vuelve suavemente a su sitio.</p></div>
+        <div class="vcard"><div class="ico">✦</div><h3>Detalle</h3><p>Sutil pero se nota. Es lo que diferencia a una agencia.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- B) Marquee reactivo a velocidad -->
+  <div class="vel-marquee">
+    <div class="vel-track" id="velTrack">
+      <span class="vel-item">DISEÑO <span>✦</span> DESARROLLO <span>✦</span> ESTRATEGIA <span>✦</span></span>
+    </div>
+  </div>
+
+  <section class="espacio">
+    <div><p>Sigue scrolleando para ver el skew en ambas direcciones</p></div>
+  </section>
+
+  <section class="skew-section">
+    <div class="skew-target" id="skewB">
+      <div class="cards-row">
+        <div class="vcard"><div class="ico">●</div><h3>Uno</h3><p>Cada bloque reacciona al movimiento.</p></div>
+        <div class="vcard"><div class="ico">▲</div><h3>Dos</h3><p>El skew se acumula con la velocidad.</p></div>
+        <div class="vcard"><div class="ico">■</div><h3>Tres</h3><p>Y se suaviza al detenerse.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="espacio"><div><p>Fin de la demo</p></div></section>
+
+<script>
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (!reduce) {
+    let lastY = window.scrollY;
+    let velocity = 0;       // velocidad actual de scroll
+    let skew = 0;           // skew suavizado aplicado
+    let marqueeX = 0;       // posición del marquee
+    const skewTargets = document.querySelectorAll('.skew-target');
+    const velTrack = document.getElementById('velTrack');
+
+    // Marquee a prueba de balas: clonamos la "unidad" hasta que el track
+    // sea más ancho que el viewport + una unidad. Así nunca queda hueco a la
+    // derecha y el reciclaje (sumar una unidad) es invisible.
+    let unidad = velTrack ? velTrack.scrollWidth : 0;   // ancho de un ítem
+    if (velTrack && unidad) {
+      const base = Array.from(velTrack.children);
+      let guardia = 0;
+      while (velTrack.scrollWidth < window.innerWidth + unidad && guardia < 50) {
+        base.forEach(n => velTrack.appendChild(n.cloneNode(true)));
+        guardia++;
+      }
+    }
+
+    function loop() {
+      const currentY = window.scrollY;
+      // Velocidad instantánea (px por frame)
+      const instantVel = currentY - lastY;
+      lastY = currentY;
+
+      // Suavizar la velocidad con lerp
+      velocity += (instantVel - velocity) * 0.1;
+
+      // A) SKEW — limitado a ±8 grados, proporcional a la velocidad
+      const targetSkew = Math.max(-8, Math.min(8, velocity * 0.4));
+      skew += (targetSkew - skew) * 0.1;
+      skewTargets.forEach(t => { t.style.transform = `skewY(${skew.toFixed(2)}deg)`; });
+
+      // B) MARQUEE — siempre avanza, pero la velocidad depende del scroll
+      // base 0.5px/frame + componente de scroll
+      const marqueeSpeed = 0.5 + Math.abs(velocity) * 0.5;
+      marqueeX -= marqueeSpeed;
+      // reciclar sumando UNA unidad (no la mitad): como el patrón se repite
+      // cada 'unidad', el salto es invisible y nunca aparece hueco a la derecha
+      if (unidad) { while (marqueeX <= -unidad) marqueeX += unidad; }
+      if (velTrack) velTrack.style.transform = `translateX(${marqueeX}px)`;
+
+      requestAnimationFrame(loop);
+    }
+    loop();
+  }
+</script>
+</body>
+</html>

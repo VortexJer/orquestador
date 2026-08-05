@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tilt 3D — tarjetas con perspectiva al hover</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #0d0d0d; color: #fff;
+         min-height: 100vh; display: flex; flex-wrap: wrap; gap: 2rem;
+         padding: 4rem 2rem; align-items: flex-start; justify-content: center; }
+  .label { width: 100%; font-size: .7rem; color: #555; letter-spacing: .15em; text-transform: uppercase; }
+
+  /* ================================================================
+     TILT 3D — la tarjeta se inclina siguiendo el cursor.
+
+     El truco: transform perspective + rotateX + rotateY calculados
+     según la posición del ratón relativa al centro de la tarjeta.
+     JS actualiza el transform en mousemove y lo resetea en mouseleave.
+
+     Úsalo en: tarjetas de servicios, platos, proyectos, testimonios.
+     NO en: listas largas, contenido de texto denso, móvil.
+
+     class="tilt"  →  inclina la tarjeta entera
+     .tilt-brillo  →  div interno que simula un reflejo de luz
+  ================================================================ */
+
+  .tilt {
+    transform-style: preserve-3d;
+    transition: transform 0.1s ease, box-shadow 0.3s ease;
+    will-change: transform;
+  }
+  .tilt:not(:hover) {
+    transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.6s ease;
+  }
+
+  .tilt-brillo {
+    position: absolute; inset: 0; border-radius: inherit;
+    background: radial-gradient(circle at 50% 50%, rgba(255,255,255,.15) 0%, transparent 60%);
+    pointer-events: none; opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 1;
+  }
+  .tilt:hover .tilt-brillo { opacity: 1; }
+
+  /* === Variante 1: tarjeta de plato === */
+  .card-plato {
+    width: 260px; background: #1a1a1a; border-radius: 16px;
+    padding: 2rem; position: relative; overflow: hidden;
+    border: 1px solid #2a2a2a; cursor: default;
+  }
+  .card-plato:hover { box-shadow: 0 30px 60px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.08); }
+  .card-plato .num { font-size: 3rem; font-weight: 900; color: rgba(232,160,32,.2); line-height: 1; margin-bottom: .5rem; }
+  .card-plato h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: .5rem; }
+  .card-plato p  { font-size: .85rem; color: #888; line-height: 1.5; }
+  .card-plato .precio { margin-top: 1rem; font-size: 1rem; font-weight: 700; color: #e8a020; }
+
+  /* === Variante 2: tarjeta de servicio/feature === */
+  .card-feature {
+    width: 220px; background: linear-gradient(135deg, #1c2535, #0f1629);
+    border-radius: 20px; padding: 2rem; position: relative; overflow: hidden;
+    border: 1px solid rgba(59,110,245,.2); cursor: default;
+  }
+  .card-feature:hover { box-shadow: 0 30px 60px rgba(59,110,245,.2); border-color: rgba(59,110,245,.4); }
+  .card-feature .icono { font-size: 2.5rem; margin-bottom: 1rem; }
+  .card-feature h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: .4rem; }
+  .card-feature p  { font-size: .85rem; color: rgba(255,255,255,.55); line-height: 1.5; }
+
+  /* === Variante 3: tarjeta dark con imagen placeholder === */
+  .card-img {
+    width: 280px; border-radius: 16px; overflow: hidden; position: relative; cursor: default;
+    box-shadow: 0 10px 30px rgba(0,0,0,.4);
+  }
+  .card-img:hover { box-shadow: 0 30px 60px rgba(0,0,0,.6); }
+  .card-img .img-ph {
+    height: 180px;
+    background: linear-gradient(135deg, #2d7a7a, #1f5c5c);
+    display: grid; place-items: center; font-size: 3rem;
+  }
+  .card-img .content { background: #1a1a1a; padding: 1.2rem; }
+  .card-img h3 { font-size: 1rem; font-weight: 700; margin-bottom: .3rem; }
+  .card-img p  { font-size: .8rem; color: #888; }
+
+  @media (hover: none) {
+    /* En táctil no hay hover, no activar el tilt */
+    .tilt { transform: none !important; }
+    .tilt-brillo { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tilt { transition: none !important; transform: none !important; }
+  }
+</style>
+</head>
+<body>
+
+  <p class="label">Tarjetas con inclinación 3D al pasar el ratón — pasa el cursor despacio</p>
+
+  <div class="card-plato tilt">
+    <div class="tilt-brillo"></div>
+    <div class="num">01</div>
+    <h3>Arròs negre</h3>
+    <p>Arroz meloso con tinta de sepia, cuit a foc lent amb fumet de peix.</p>
+    <div class="precio">18,00 €</div>
+  </div>
+
+  <div class="card-plato tilt">
+    <div class="tilt-brillo"></div>
+    <div class="num">02</div>
+    <h3>Fideuà de marisc</h3>
+    <p>Fideus rossejats amb gambes, cloïsses i sípia. Amb allioli casolà.</p>
+    <div class="precio">17,50 €</div>
+  </div>
+
+  <div class="card-feature tilt">
+    <div class="tilt-brillo"></div>
+    <div class="icono">⚡</div>
+    <h3>Velocidad</h3>
+    <p>Respuesta inmediata para todos tus clientes.</p>
+  </div>
+
+  <div class="card-feature tilt">
+    <div class="tilt-brillo"></div>
+    <div class="icono">◎</div>
+    <h3>Precisión</h3>
+    <p>Cada detalle diseñado para el éxito.</p>
+  </div>
+
+  <div class="card-img tilt">
+    <div class="tilt-brillo"></div>
+    <div class="img-ph">🐟</div>
+    <div class="content">
+      <h3>Pescado del día</h3>
+      <p>Directo de lonja cada mañana</p>
+    </div>
+  </div>
+
+<script>
+  // Factor de inclinación: cuántos grados se inclina en cada eje (max)
+  const MAX_INCLINACION = 15;
+
+  document.querySelectorAll('.tilt').forEach(card => {
+
+    card.addEventListener('mousemove', e => {
+      const rect = card.getBoundingClientRect();
+      // Posición del ratón relativa al centro de la tarjeta (-1 a +1)
+      const x = (e.clientX - rect.left) / rect.width  - 0.5; // -0.5 a +0.5
+      const y = (e.clientY - rect.top)  / rect.height - 0.5; // -0.5 a +0.5
+
+      const rotX = -y * MAX_INCLINACION * 2; // invertido: arriba → inclina hacia atrás
+      const rotY =  x * MAX_INCLINACION * 2;
+
+      card.style.transform = `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg) scale3d(1.04, 1.04, 1.04)`;
+
+      // Mover el brillo siguiendo el ratón
+      const brillo = card.querySelector('.tilt-brillo');
+      if (brillo) {
+        const px = (x + 0.5) * 100; // 0 a 100
+        const py = (y + 0.5) * 100;
+        brillo.style.background = `radial-gradient(circle at ${px}% ${py}%, rgba(255,255,255,.18) 0%, transparent 60%)`;
+      }
+    });
+
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = '';
+      const brillo = card.querySelector('.tilt-brillo');
+      if (brillo) brillo.style.background = '';
+    });
+  });
+</script>
+</body>
+</html>

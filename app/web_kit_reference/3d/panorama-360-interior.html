@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panorama 360° del local — mirar alrededor arrastrando, como Street View (15.23)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body { font-family: system-ui, sans-serif; color: #fff; overflow: hidden; }
+
+  /* ================================================================
+     PANORAMA 360° — "métete dentro del local": una foto equirect-
+     angular (360°x180°, la que sacan las cámaras 360 o el modo
+     esfera del móvil) proyectada DENTRO de una esfera gigante, con
+     la cámara en el centro. Arrastras y miras alrededor, como
+     Street View. Para restaurantes, hoteles, gimnasios, clínicas o
+     tiendas es EL argumento de venta: enseñar el sitio real.
+
+     Cómo funciona (tres líneas de verdad):
+       - SphereGeometry grande con material { side: THREE.BackSide }
+         (pintar el INTERIOR de la esfera, no el exterior).
+       - geometry.scale(-1, 1, 1) voltea la esfera para que la foto
+         no salga en espejo.
+       - El drag mueve la ROTACIÓN de la cámara (limitada en
+         vertical: ±85°, pasarse da vértigo y voltea el mundo).
+
+     LA FOTO: una equirectangular real (proporción 2:1; sale de una
+     Insta360/Ricoh Theta o del modo "esfera" de la cámara de
+     Android). Este demo usa una FOTO REAL de una cafetería incluida
+     en el kit (modelos/entornos/comfy_cafe_360.jpg, CC0) — para tu
+     proyecto, cámbiala por la foto del local del cliente en
+     TEXTURE_URL. OJO: como todo asset local cargado por fetch,
+     necesita un servidor local para verse (Live Server) — con doble
+     clic este demo cae al plan B: un interior placeholder PINTADO en
+     un <canvas> 2D usado como CanvasTexture (truco reutilizable
+     cuando necesites una textura sin cargar archivos).
+
+     Nota de honestidad con el cliente: un panorama 360 SOLO luce si
+     la foto es buena (local recogido, luz de día, cámara a altura
+     de ojos). Con una foto mala, mejor una galería normal.
+  ================================================================ */
+
+  .visor { position: relative; height: 100%; background: #0b0d14; }
+  #escena-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; }
+  #escena-3d.arrastrando { cursor: grabbing; }
+
+  .rotulo { position: absolute; left: 50%; bottom: 2.2rem; transform: translateX(-50%);
+    z-index: 1; text-align: center; pointer-events: none; }
+  .rotulo h1 { font-size: clamp(1.4rem, 3.5vw, 2rem); font-weight: 900; letter-spacing: -.02em;
+    text-shadow: 0 2px 24px rgba(0,0,0,.7); }
+  .rotulo p { color: rgba(255,255,255,.75); font-size: .85rem; margin-top: .3rem; }
+  .aviso-fallback { display: none; position: absolute; inset: 0; place-items: center;
+    text-align: center; color: #9aa3b5; padding: 2rem; }
+</style>
+</head>
+<body>
+  <div class="visor">
+    <canvas id="escena-3d"></canvas>
+    <div class="rotulo">
+      <h1>Nuestra sala, en 360°</h1>
+      <p>Arrastra para mirar alrededor</p>
+    </div>
+    <div class="aviso-fallback" id="aviso"><p>Tu navegador no puede mostrar el tour 360 — mira la galería de fotos.</p></div>
+  </div>
+
+  <!-- DEMO ONLY: en producción, import map local (ver hero-objeto-flotante.html) -->
+  <script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+  <script type="module">
+    // ── TU FOTO AQUÍ: la equirectangular real del local (2:1) ──
+    const TEXTURE_URL = 'modelos/entornos/comfy_cafe_360.jpg'; // foto real de demo (CC0)
+
+    const THREE = await import('three');
+    const canvas = document.getElementById('escena-3d');
+
+    let renderer = null;
+    try {
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    } catch (e) {
+      canvas.style.display = 'none';
+      document.getElementById('aviso').style.display = 'grid'; // FALLBACK honesto
+    }
+
+    if (renderer) {
+      renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+      renderer.setSize(innerWidth, innerHeight);
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.1, 120);
+      camera.position.set(0, 0, 0.01); // en el CENTRO de la esfera
+
+      // ── placeholder: pintar un "interior" en un canvas 2D y usarlo de
+      // textura (CanvasTexture). Con foto real, todo esto sobra. ──
+      function texturaPlaceholder() {
+        const c = document.createElement('canvas');
+        c.width = 2048; c.height = 1024;
+        const ctx = c.getContext('2d');
+        // techo → pared → suelo (bandas horizontales = anillos del panorama)
+        const cielo = ctx.createLinearGradient(0, 0, 0, 300);
+        cielo.addColorStop(0, '#141210'); cielo.addColorStop(1, '#2a221a');
+        ctx.fillStyle = cielo; ctx.fillRect(0, 0, 2048, 300);
+        ctx.fillStyle = '#3a2f24'; ctx.fillRect(0, 300, 2048, 420);   // pared
+        const piso = ctx.createLinearGradient(0, 720, 0, 1024);
+        piso.addColorStop(0, '#241b13'); piso.addColorStop(1, '#120d09');
+        ctx.fillStyle = piso; ctx.fillRect(0, 720, 2048, 304);        // suelo
+        for (let i = 0; i < 6; i++) { // "ventanas" cálidas repartidas alrededor
+          const x = 90 + i * 340;
+          ctx.fillStyle = '#0d0a07'; ctx.fillRect(x - 12, 328, 204, 340);
+          const luz = ctx.createLinearGradient(0, 330, 0, 660);
+          luz.addColorStop(0, '#f0c073'); luz.addColorStop(1, '#a86c34');
+          ctx.fillStyle = luz; ctx.fillRect(x, 340, 180, 316);
+          ctx.fillStyle = '#0d0a07'; ctx.fillRect(x + 84, 340, 12, 316); // parteluz
+        }
+        ctx.fillStyle = '#4a3b2c'; // zócalo
+        ctx.fillRect(0, 700, 2048, 22);
+        const t = new THREE.CanvasTexture(c);
+        t.colorSpace = THREE.SRGBColorSpace;
+        return t;
+      }
+
+      // la foto real; si no puede cargar (doble clic sin servidor, ruta
+      // mala), el material cae al placeholder pintado — nunca esfera negra
+      const material = new THREE.MeshBasicMaterial({ map: texturaPlaceholder() });
+      if (TEXTURE_URL) {
+        new THREE.TextureLoader().load(TEXTURE_URL, (t) => {
+          t.colorSpace = THREE.SRGBColorSpace;
+          material.map = t;
+          material.needsUpdate = true;
+        }, undefined, (e) => console.warn('360 real no disponible, queda el placeholder:', e));
+      }
+
+      // la esfera-mundo: BackSide + volteo en X para no ver la foto en espejo
+      const geometria = new THREE.SphereGeometry(50, 60, 40);
+      geometria.scale(-1, 1, 1);
+      scene.add(new THREE.Mesh(geometria, material)); // Basic: una foto no necesita luces
+
+      // ── mirar alrededor: el drag controla yaw/pitch de la cámara ──
+      let yaw = 0, pitch = 0, yawObjetivo = 0, pitchObjetivo = 0;
+      let arrastrando = false, xPrevio = 0, yPrevio = 0;
+      const LIMITE_VERTICAL = Math.PI / 2 - 0.09; // ±85°: ver más allá marea
+
+      canvas.addEventListener('pointerdown', (e) => {
+        arrastrando = true; xPrevio = e.clientX; yPrevio = e.clientY;
+        canvas.classList.add('arrastrando');
+        canvas.setPointerCapture(e.pointerId);
+      });
+      canvas.addEventListener('pointermove', (e) => {
+        if (!arrastrando) return;
+        yawObjetivo += (e.clientX - xPrevio) * 0.0028;   // arrastrar a la derecha = mirar a la izquierda
+        pitchObjetivo += (e.clientY - yPrevio) * 0.0028; // (mismo signo que "agarrar el mundo")
+        pitchObjetivo = Math.max(-LIMITE_VERTICAL, Math.min(LIMITE_VERTICAL, pitchObjetivo));
+        xPrevio = e.clientX; yPrevio = e.clientY;
+      });
+      canvas.addEventListener('pointerup', () => {
+        arrastrando = false;
+        canvas.classList.remove('arrastrando');
+      });
+
+      addEventListener('resize', () => {
+        camera.aspect = innerWidth / innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(innerWidth, innerHeight);
+      });
+
+      // deriva lentísima cuando nadie toca: el panorama se presenta solo
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const reloj = new THREE.Clock();
+      (function animar() {
+        requestAnimationFrame(animar);
+        if (!arrastrando && !reduce) yawObjetivo += reloj.getDelta() * 0.03;
+        else reloj.getDelta(); // mantener el reloj al día también parado
+        yaw += (yawObjetivo - yaw) * 0.08;     // suavizado: nada de saltos
+        pitch += (pitchObjetivo - pitch) * 0.08;
+        camera.rotation.order = 'YXZ';         // yaw primero, luego pitch: como una cabeza
+        camera.rotation.y = -yaw;
+        camera.rotation.x = -pitch;
+        renderer.render(scene, camera);
+      })();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Campo de partículas 3D con Three.js — profundidad real por cámara (15.9)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body { font-family: system-ui, sans-serif; color: #fff; overflow: hidden; }
+
+  /* ================================================================
+     CAMPO DE PARTÍCULAS EN 3D REAL — no confundir con un fondo de
+     "partículas" hecho en 2D (canvas plano, todas al mismo z): aquí
+     cada punto tiene una posición x/y/z REAL en el espacio, así que al
+     mover la cámara los puntos cercanos se desplazan más rápido que
+     los lejanos (parallax de profundidad genuino — ver
+     'sizeAttenuation' abajo: los puntos cercanos se ven más grandes,
+     no es un truco visual).
+
+     CUÁNDO usarlo: como atmósfera de fondo en el hero o una sección
+     "momento de color" (ver 2.2 de la guía) de un proyecto mood E/F
+     que YA decidiste que necesita ese nivel — NO como fondo por
+     defecto de cualquier proyecto. Es más pesado que
+     ../animaciones/fondo-shader-webgl.html (motor 3D completo por unos
+     puntos), así que si solo buscas textura/movimiento de fondo sin
+     sensación de profundidad real, usa el shader 2D en su lugar. Igual
+     que el resto de esta carpeta 3d/: máximo UNA escena Three.js por
+     proyecto.
+
+     AUTOALOJAR: mismo proceso que hero-objeto-flotante.html (ver su
+     bloque de comentarios) — descarga three.module.min.js, colócalo en
+     assets/js/lib/, y cambia el import map de abajo por la ruta local.
+  ================================================================ */
+
+  .seccion-particulas {
+    position: relative; height: 100%;
+    background: #0b0d14; /* = --color-fondo-oscuro: fallback si WebGL falla */
+    display: grid; place-items: center; text-align: center;
+  }
+  #particulas-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
+  .contenido { position: relative; z-index: 1; padding: 2rem; pointer-events: none; }
+  .contenido h1 { font-size: clamp(2.5rem, 8vw, 5rem); font-weight: 900; letter-spacing: -.02em;
+    text-shadow: 0 4px 40px rgba(0,0,0,.6); }
+  .contenido p { margin-top: 1rem; opacity: .8; }
+</style>
+</head>
+<body>
+  <section class="seccion-particulas">
+    <canvas id="particulas-3d"></canvas>
+    <div class="contenido">
+      <h1>Atmósfera con profundidad</h1>
+      <p>Cada punto vive en su propio x/y/z — mueve el ratón para verlo.</p>
+    </div>
+  </section>
+
+  <!-- DEMO ONLY: en producción, import map local a assets/js/lib/three.module.min.js -->
+  <script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+  <script type="module">
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const canvas = document.getElementById('particulas-3d');
+    if (reduce) {
+      canvas.style.display = 'none'; // FALLBACK: queda el color plano
+    } else {
+      const THREE = await import('three');
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 60);
+      camera.position.z = 12;
+
+      let renderer = null;
+      try {
+        renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      } catch (e) {
+        canvas.style.display = 'none'; // FALLBACK: sin WebGL, queda el color plano
+      }
+
+      if (renderer) {
+        renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+        renderer.setSize(innerWidth, innerHeight);
+
+        // ── Nube de puntos: posiciones REALES en un volumen 3D (no un
+        // plano) — de eso sale la profundidad al moverse la cámara ──
+        const N = 900; // en móvil de gama baja, baja esto a 400-500
+        const posiciones = new Float32Array(N * 3);
+        for (let i = 0; i < N; i++) {
+          posiciones[i * 3]     = (Math.random() - 0.5) * 24; // x
+          posiciones[i * 3 + 1] = (Math.random() - 0.5) * 14; // y
+          posiciones[i * 3 + 2] = (Math.random() - 0.5) * 24; // z ← la clave
+        }
+        const geometria = new THREE.BufferGeometry();
+        geometria.setAttribute('position', new THREE.BufferAttribute(posiciones, 3));
+
+        const material = new THREE.PointsMaterial({
+          color: 0x8b6cff,        // ← --color-acento del proyecto
+          size: 0.06,
+          transparent: true,
+          opacity: 0.8,
+          sizeAttenuation: true,  // puntos cercanos más grandes = perspectiva real
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        });
+        const puntos = new THREE.Points(geometria, material);
+        scene.add(puntos);
+
+        // ── Parallax de cámara: la cámara se desplaza levemente hacia
+        // el puntero, siempre mirando al centro — esto es lo que hace
+        // que la profundidad se LEA, quieta no se nota tanto ──
+        let targetX = 0, targetY = 0;
+        addEventListener('pointermove', (e) => {
+          targetX = (e.clientX / innerWidth - 0.5) * 2;
+          targetY = (e.clientY / innerHeight - 0.5) * 2;
+        });
+        addEventListener('resize', () => {
+          camera.aspect = innerWidth / innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(innerWidth, innerHeight);
+        });
+
+        const reloj = new THREE.Clock();
+        (function animar() {
+          requestAnimationFrame(animar);
+          const t = reloj.getElapsedTime();
+
+          camera.position.x += (targetX * 1.5 - camera.position.x) * 0.03;
+          camera.position.y += (-targetY * 1.0 - camera.position.y) * 0.03;
+          camera.lookAt(0, 0, 0);
+
+          puntos.rotation.y = t * 0.02; // deriva propia lentísima, siempre presente
+
+          renderer.render(scene, camera);
+        })();
+      }
+    }
+  </script>
+</body>
+</html>

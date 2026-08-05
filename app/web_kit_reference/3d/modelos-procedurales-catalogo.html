@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Catálogo de modelos 3D procedurales — objetos de negocio hechos con código, sin .glb (15.18)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body { font-family: system-ui, sans-serif; color: #fff; overflow: hidden;
+    background: #0b0d14; }
+
+  /* ================================================================
+     CATÁLOGO DE MODELOS 3D PROCEDURALES — la respuesta a "quiero un
+     plato / una botella / una casa en 3D" SIN descargar ningún modelo.
+
+     POR QUÉ EXISTE ESTE ARCHIVO (rendimiento, el problema real):
+     un .glb fotorealista descargado de un banco de modelos pesa
+     1-20 MB (malla densa + texturas 4K) y deja la web congelada
+     mientras carga — es la causa nº1 de "la página 3D va lentísima".
+     Cada modelo de este catálogo es PURO CÓDIGO (primitivas de
+     Three.js: lathe, cilindros, esferas, extrusiones): pesa 1-3 KB,
+     carga instantáneo y encima hereda los colores del proyecto.
+     El look es low-poly estilizado (flatShading + colores planos),
+     deliberadamente NO fotorealista — como un render de Pixar barato,
+     no como una foto. Para 3D fotorealista de verdad, el cliente debe
+     aportar su propio .glb optimizado (ver cargar-modelo-gltf.html) —
+     nunca descargar uno genérico pesado.
+
+     CÓMO USARLO EN UN PROYECTO:
+       1. Abre este archivo y navega el catálogo hasta encontrar el
+          objeto (o el más parecido — todos son adaptables).
+       2. Copia SU función crearX() (están abajo, una por modelo,
+          autocontenidas) + el helper MAT() al proyecto.
+       3. Úsala donde el resto de la carpeta 3d/ usa una geometría
+          genérica: en hero-objeto-flotante.html sustituye el TorusKnot
+          por crearPlatoComida(); en producto-configurador-drag.html
+          gira crearFrascoPerfume(); etc. Cada modelo dice abajo (campo
+          "aplicacion") cuál es su encaje típico.
+       4. Cambia los colores del objeto a la paleta del proyecto — cada
+          función los declara arriba del todo como constantes.
+
+     REGLAS DE ESCALA Y ORIGEN: cada crearX() devuelve un THREE.Group
+     de proporciones plausibles pero tamaño arbitrario. NO asumas una
+     altura concreta: usa encuadrar() (abajo) que centra y escala
+     cualquier grupo a un tamaño objetivo midiendo su Box3 — así
+     ningún modelo sale gigante o microscópico al integrarlo.
+
+     URL: ?modelo=<id> abre el catálogo con ese modelo seleccionado
+     (ej.: modelos-procedurales-catalogo.html?modelo=hamburguesa).
+  ================================================================ */
+
+  .app { display: grid; grid-template-columns: 270px 1fr; height: 100%; }
+
+  aside { overflow-y: auto; padding: 1.1rem .9rem 2rem; background: #101320;
+    border-right: 1px solid #232741; scrollbar-width: thin; }
+  aside h1 { font-size: .95rem; letter-spacing: .02em; margin-bottom: .2rem; }
+  aside .sub { font-size: .7rem; color: #8b90a8; margin-bottom: 1rem; line-height: 1.45; }
+  .grupo { margin-top: .9rem; }
+  .grupo h2 { font-size: .62rem; text-transform: uppercase; letter-spacing: .16em;
+    color: #6d7291; margin-bottom: .35rem; }
+  .grupo button { display: block; width: 100%; text-align: left; border: 0;
+    background: transparent; color: #c6c9da; font: inherit; font-size: .82rem;
+    padding: .32rem .55rem; border-radius: 7px; cursor: pointer; }
+  .grupo button:hover { background: #1a1e33; color: #fff; }
+  .grupo button.activo { background: #2b2f52; color: #fff; font-weight: 600; }
+
+  main { position: relative; }
+  #escena { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .ficha { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+    padding: 1.1rem 1.4rem 1.3rem; pointer-events: none;
+    background: linear-gradient(transparent, rgba(8,10,18,.88) 40%); }
+  .ficha h3 { font-size: 1.15rem; }
+  .ficha code { font-size: .78rem; color: #9ad1ff; background: #161a2c;
+    padding: .1rem .45rem; border-radius: 5px; }
+  .ficha p { margin-top: .4rem; font-size: .8rem; color: #a9adc4; max-width: 62ch; line-height: 1.5; }
+
+  @media (max-width: 720px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: 34% 1fr; }
+    aside { border-right: 0; border-bottom: 1px solid #232741; }
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <aside id="lista">
+      <h1>Modelos 3D procedurales</h1>
+      <p class="sub">Objetos de negocio hechos 100% con código (1-3 KB cada uno, cero descargas).
+        Elige uno; su función <em>crearX()</em> se copia tal cual a tu proyecto.</p>
+      <!-- los grupos/botones se generan desde el registro JS de abajo -->
+    </aside>
+    <main>
+      <canvas id="escena"></canvas>
+      <div class="ficha">
+        <h3 id="ficha-nombre"></h3>
+        <p id="ficha-texto"></p>
+      </div>
+    </main>
+  </div>
+
+  <!-- DEMO ONLY: en producción, import map local a assets/js/lib/three.module.min.js
+       (ver hero-objeto-flotante.html, sección AUTOALOJADO) -->
+  <script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+  <script type="module">
+    const THREE = await import('three');
+
+    /* ══════════════════════════════════════════════════════════════
+       HELPERS COMPARTIDOS — copia MAT() (y sombraFalsa()/encuadrar()
+       si los usas) junto con cualquier crearX() que te lleves.
+       ══════════════════════════════════════════════════════════════ */
+
+    // Material estilizado por defecto: flatShading da el look low-poly
+    // facetado; sin metalness para que los colores planos "canten".
+    // Para vidrio/líquidos/metales cada modelo pasa sus overrides.
+    const MAT = (color, extra = {}) => new THREE.MeshStandardMaterial({
+      color, roughness: .62, metalness: 0, flatShading: true, ...extra,
+    });
+    const M = (geo, mat) => new THREE.Mesh(geo, mat);
+    const V2 = (pares) => pares.map(([x, y]) => new THREE.Vector2(x, y));
+
+    // Sombra falsa: un plano con degradado radial pintado en canvas.
+    // Cuesta CERO frente a sombras reales (shadowMap) — usa SIEMPRE
+    // esto en webs; las sombras reales de Three.js son un lujo de GPU
+    // que en móvil se paga caro.
+    function sombraFalsa(radio = 1.4, opacidad = .38) {
+      const c = document.createElement('canvas'); c.width = c.height = 128;
+      const ctx = c.getContext('2d');
+      const g = ctx.createRadialGradient(64, 64, 6, 64, 64, 62);
+      g.addColorStop(0, `rgba(0,0,0,${opacidad})`); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 128);
+      const plano = M(new THREE.PlaneGeometry(radio * 2, radio * 2),
+        new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
+      plano.rotation.x = -Math.PI / 2;
+      return plano;
+    }
+
+    // Centra y escala CUALQUIER grupo a una altura/anchura máxima dada,
+    // midiendo su caja real — así da igual el tamaño con que se modeló.
+    function encuadrar(obj, tamObjetivo = 2.3) {
+      const caja = new THREE.Box3().setFromObject(obj);
+      const tam = caja.getSize(new THREE.Vector3());
+      const centro = caja.getCenter(new THREE.Vector3());
+      const s = tamObjetivo / Math.max(tam.x, tam.y, tam.z);
+      obj.scale.setScalar(s);
+      obj.position.copy(centro).multiplyScalar(-s);
+      return { alturaMedia: tam.y * s / 2 }; // para colocar la sombra bajo el objeto
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       LOS MODELOS — cada función es autocontenida (solo necesita THREE
+       y MAT) y devuelve un THREE.Group. Las constantes de color van
+       arriba de cada una: cámbialas por la paleta del proyecto.
+       ══════════════════════════════════════════════════════════════ */
+
+    // ── RESTAURACIÓN ─────────────────────────────────────────────
+
+    function crearPlatoComida() {
+      const CERAMICA = 0xf2ede4, CARNE = 0x8a4b2d, VERDE = 0x7fb069, LIMON = 0xf4d35e;
+      const g = new THREE.Group();
+      const plato = M(new THREE.LatheGeometry(V2([[0, 0], [.95, 0], [1.15, .09], [1.38, .2]]), 36),
+        MAT(CERAMICA, { flatShading: false, roughness: .35 }));
+      g.add(plato);
+      const filete = M(new THREE.CylinderGeometry(.4, .46, .24, 9), MAT(CARNE));
+      filete.position.set(-.34, .2, .08); filete.rotation.y = .5;
+      g.add(filete);
+      const veta = M(new THREE.CylinderGeometry(.32, .36, .05, 9), MAT(0xa9663f));
+      veta.position.set(-.34, .32, .08); veta.rotation.y = .5;
+      g.add(veta);
+      for (let i = 0; i < 6; i++) { // guisantes
+        const p = M(new THREE.SphereGeometry(.07, 8, 6), MAT(VERDE));
+        p.position.set(.35 + Math.cos(i * 2.2) * .18, .13, -.28 + Math.sin(i * 1.7) * .2);
+        g.add(p);
+      }
+      const rodaja = M(new THREE.CylinderGeometry(.17, .17, .05, 12), MAT(LIMON));
+      rodaja.position.set(.42, .1, .42);
+      g.add(rodaja);
+      return g;
+    }
+
+    function crearHamburguesa() {
+      const PAN = 0xd9984a, LECHUGA = 0x77b255, QUESO = 0xf6c445, CARNE = 0x6d3b23;
+      const g = new THREE.Group();
+      const base = M(new THREE.CylinderGeometry(.72, .66, .26, 14), MAT(PAN));
+      base.position.y = .13; g.add(base);
+      const carne = M(new THREE.CylinderGeometry(.74, .76, .22, 14), MAT(CARNE));
+      carne.position.y = .38; g.add(carne);
+      const queso = M(new THREE.BoxGeometry(1.18, .06, 1.18), MAT(QUESO));
+      queso.position.y = .51; queso.rotation.y = Math.PI / 4.3; g.add(queso);
+      const lechuga = M(new THREE.CylinderGeometry(.82, .86, .09, 16), MAT(LECHUGA));
+      lechuga.position.y = .58; g.add(lechuga);
+      const tapa = M(new THREE.SphereGeometry(.76, 14, 9, 0, Math.PI * 2, 0, Math.PI / 2), MAT(PAN));
+      tapa.scale.y = .62; tapa.position.y = .64; g.add(tapa);
+      for (let i = 0; i < 9; i++) { // sésamo
+        const a = i * 2.4, r = .18 + (i % 3) * .17;
+        const s = M(new THREE.SphereGeometry(.035, 6, 5), MAT(0xf5e6c8));
+        s.position.set(Math.cos(a) * r, .64 + Math.sqrt(Math.max(0, .55 - r * r * .8)) * .82, Math.sin(a) * r);
+        g.add(s);
+      }
+      return g;
+    }
+
+    function crearPorcionPizza() {
+      const MASA = 0xf1c27d, BORDE = 0xd9984a, QUESO = 0xf6c445, PEPPERONI = 0xc1443c;
+      const g = new THREE.Group();
+      const plana = new THREE.Group(); // se modela "de pie" en XY y luego se tumba
+      const forma = new THREE.Shape();
+      forma.moveTo(0, 0); forma.lineTo(-.5, 1.5);
+      forma.quadraticCurveTo(0, 1.72, .5, 1.5); forma.closePath();
+      plana.add(M(new THREE.ExtrudeGeometry(forma, { depth: .09, bevelEnabled: false }), MAT(MASA)));
+      const queso = M(new THREE.ExtrudeGeometry(forma, { depth: .05, bevelEnabled: false }), MAT(QUESO));
+      queso.scale.set(.86, .86, 1); queso.position.z = .09; plana.add(queso);
+      const corteza = M(new THREE.TorusGeometry(1.52, .13, 8, 10, .58), MAT(BORDE));
+      corteza.rotation.z = THREE.MathUtils.degToRad(73); corteza.position.z = .1; plana.add(corteza);
+      [[-.14, .78], [.16, 1.1], [-.05, 1.32]].forEach(([x, y]) => {
+        const p = M(new THREE.CylinderGeometry(.13, .13, .04, 10), MAT(PEPPERONI));
+        p.rotation.x = Math.PI / 2; p.position.set(x, y, .16); plana.add(p);
+      });
+      plana.rotation.x = -Math.PI / 2;
+      g.add(plana);
+      return g;
+    }
+
+    function crearBolRamen() {
+      const BOL = 0x264653, CALDO = 0xc17f3f, FIDEO = 0xf5e6c8;
+      const g = new THREE.Group();
+      const bol = M(new THREE.LatheGeometry(V2([[0, 0], [.38, 0], [.44, .07], [.85, .62], [.88, .72]]), 24),
+        MAT(BOL, { side: THREE.DoubleSide }));
+      g.add(bol);
+      const caldo = M(new THREE.CircleGeometry(.8, 24), MAT(CALDO, { flatShading: false }));
+      caldo.rotation.x = -Math.PI / 2; caldo.position.y = .58; g.add(caldo);
+      for (let i = 0; i < 3; i++) { // fideos asomando
+        const f = M(new THREE.TorusGeometry(.2 - i * .04, .035, 6, 12, Math.PI), MAT(FIDEO, { flatShading: false }));
+        f.position.set(-.25 + i * .22, .58, -.1 + (i % 2) * .18);
+        f.rotation.x = -.25;
+        g.add(f);
+      }
+      const naruto = M(new THREE.CylinderGeometry(.14, .14, .05, 12), MAT(0xffffff));
+      naruto.position.set(.3, .6, .2); g.add(naruto);
+      const centro = M(new THREE.CylinderGeometry(.05, .05, .06, 8), MAT(0xf28ca0));
+      centro.position.set(.3, .61, .2); g.add(centro);
+      [-1, 1].forEach((s, i) => { // palillos apoyados
+        const p = M(new THREE.CylinderGeometry(.022, .022, 1.5, 6), MAT(0xc8a06a));
+        p.position.set(.35, .82, s * .05);
+        p.rotation.z = THREE.MathUtils.degToRad(64 + i * 4);
+        g.add(p);
+      });
+      return g;
+    }
+
+    function crearGorroChef() {
+      const BLANCO = 0xf6f3ec;
+      const g = new THREE.Group();
+      const banda = M(new THREE.CylinderGeometry(.44, .42, .38, 18), MAT(BLANCO, { flatShading: false }));
+      banda.position.y = .19; g.add(banda);
+      [[0, .62, 0, .34], [-.3, .56, .1, .27], [.3, .56, .08, .27], [.02, .58, -.3, .27], [-.05, .58, .3, .26]]
+        .forEach(([x, y, z, r]) => {
+          const nube = M(new THREE.SphereGeometry(r, 10, 8), MAT(BLANCO));
+          nube.position.set(x, y, z); g.add(nube);
+        });
+      return g;
+    }
+
+    // ── CAFETERÍA / PASTELERÍA ───────────────────────────────────
+
+    function crearTazaCafe() {
+      const TAZA = 0xe07a5f, CAFE = 0x3e2723, PLATILLO = 0xf2ede4;
+      const g = new THREE.Group();
+      const platillo = M(new THREE.LatheGeometry(V2([[0, 0], [.6, 0], [.78, .07]]), 28),
+        MAT(PLATILLO, { flatShading: false, roughness: .35 }));
+      g.add(platillo);
+      const taza = M(new THREE.LatheGeometry(V2([[.3, .08], [.42, .1], [.5, .62], [.44, .62], [.37, .16]]), 22),
+        MAT(TAZA, { flatShading: false, side: THREE.DoubleSide }));
+      g.add(taza);
+      const cafe = M(new THREE.CircleGeometry(.43, 22), MAT(CAFE, { flatShading: false, roughness: .25 }));
+      cafe.rotation.x = -Math.PI / 2; cafe.position.y = .54; g.add(cafe);
+      const asa = M(new THREE.TorusGeometry(.17, .045, 8, 16), MAT(TAZA, { flatShading: false }));
+      asa.position.set(.56, .37, 0); g.add(asa);
+      [[-.1, .18], [.12, .22]].forEach(([x, alto], i) => { // vapor estilizado
+        const v = M(new THREE.TorusGeometry(.09, .022, 6, 12, Math.PI * 1.3),
+          MAT(0xffffff, { transparent: true, opacity: .4, flatShading: false }));
+        v.position.set(x, .85 + alto, 0); v.rotation.z = i ? Math.PI : 0;
+        g.add(v);
+      });
+      return g;
+    }
+
+    function crearCroissant() {
+      const DORADO = 0xd9984a;
+      const g = new THREE.Group();
+      const n = 7;
+      for (let i = 0; i < n; i++) {
+        const t = i / (n - 1);                        // 0..1 a lo largo de la media luna
+        const ang = (t - .5) * Math.PI * 1.15;        // arco de ~103º
+        const esc = .5 + Math.sin(t * Math.PI) * .5;  // gordo en medio, fino en puntas
+        const seg = M(new THREE.SphereGeometry(.32, 9, 7), MAT(DORADO));
+        seg.position.set(Math.sin(ang) * .72, .26, -Math.cos(ang) * .72 + .45);
+        seg.scale.set(esc, esc * .82, esc);
+        seg.rotation.y = -ang;
+        g.add(seg);
+      }
+      return g;
+    }
+
+    function crearDonut() {
+      const MASA = 0xe8b878, GLASEADO = 0xf28ca0;
+      const g = new THREE.Group();
+      const masa = M(new THREE.TorusGeometry(.52, .26, 10, 22), MAT(MASA, { flatShading: false }));
+      masa.rotation.x = -Math.PI / 2; masa.position.y = .26; g.add(masa);
+      const glaseado = M(new THREE.TorusGeometry(.52, .27, 10, 22), MAT(GLASEADO, { flatShading: false }));
+      glaseado.rotation.x = -Math.PI / 2; glaseado.position.y = .3; glaseado.scale.y = 1; glaseado.scale.z = 1;
+      glaseado.scale.set(1.01, 1.01, .72); g.add(glaseado);
+      const chispas = [0xffffff, 0xf4d35e, 0x2ec4b6, 0xe63946];
+      for (let i = 0; i < 14; i++) { // sprinkles
+        const a = i * .45, r = .38 + (i % 3) * .12;
+        const ch = M(new THREE.BoxGeometry(.09, .025, .025), MAT(chispas[i % 4]));
+        ch.position.set(Math.cos(a) * r, .53 + Math.cos((r - .52) * 2.4) * .02, Math.sin(a) * r);
+        ch.rotation.y = a * 1.7;
+        g.add(ch);
+      }
+      return g;
+    }
+
+    function crearCupcake() {
+      const PAPEL = 0x2a9d8f, BIZCOCHO = 0xe8b878, CREMA = 0xf28ca0, CEREZA = 0xd7263d;
+      const g = new THREE.Group();
+      const papel = M(new THREE.CylinderGeometry(.5, .36, .5, 14), MAT(PAPEL));
+      papel.position.y = .25; g.add(papel);
+      const bizcocho = M(new THREE.CylinderGeometry(.54, .5, .16, 14), MAT(BIZCOCHO));
+      bizcocho.position.y = .56; g.add(bizcocho);
+      [[.4, .16, .68], [.28, .14, .88], [.15, .12, 1.05]].forEach(([r, tubo, y]) => {
+        const rosco = M(new THREE.TorusGeometry(r, tubo, 8, 16), MAT(CREMA, { flatShading: false }));
+        rosco.rotation.x = -Math.PI / 2; rosco.position.y = y;
+        g.add(rosco);
+      });
+      const punta = M(new THREE.SphereGeometry(.12, 10, 8), MAT(CREMA, { flatShading: false }));
+      punta.position.y = 1.16; g.add(punta);
+      const cereza = M(new THREE.SphereGeometry(.09, 10, 8), MAT(CEREZA, { flatShading: false, roughness: .25 }));
+      cereza.position.y = 1.3; g.add(cereza);
+      return g;
+    }
+
+    function crearTarta() {
+      const BASE = 0xf28ca0, CREMA = 0xf5e6c8, CEREZA = 0xd7263d;
+      const g = new THREE.Group();
+      const piso1 = M(new THREE.CylinderGeometry(.85, .85, .5, 22), MAT(BASE, { flatShading: false }));
+      piso1.position.y = .25; g.add(piso1);
+      const piso2 = M(new THREE.CylinderGeometry(.58, .58, .42, 20), MAT(CREMA, { flatShading: false }));
+      piso2.position.y = .71; g.add(piso2);
+      [[.85, .5], [.58, .92]].forEach(([r, y]) => { // borde de nata en cada piso
+        for (let i = 0; i < 12; i++) {
+          const a = i / 12 * Math.PI * 2;
+          const gota = M(new THREE.SphereGeometry(.085, 8, 6), MAT(CREMA, { flatShading: false }));
+          gota.position.set(Math.cos(a) * r, y, Math.sin(a) * r);
+          g.add(gota);
+        }
+      });
+      [[0, 0], [.22, .12], [-.2, .18]].forEach(([x, z]) => {
+        const c = M(new THREE.SphereGeometry(.09, 10, 8), MAT(CEREZA, { flatShading: false, roughness: .25 }));
+        c.position.set(x, .99, z); g.add(c);
+      });
+      return g;
+    }
+
+    function crearHelado() {
+      const BARQUILLO = 0xc98a4b, FRESA = 0xf28ca0, VAINILLA = 0xf5e6c8, CEREZA = 0xd7263d;
+      const g = new THREE.Group();
+      const cono = M(new THREE.ConeGeometry(.42, 1.1, 12, 1, true), MAT(BARQUILLO));
+      cono.rotation.x = Math.PI; cono.position.y = .55; g.add(cono);
+      const bola1 = M(new THREE.SphereGeometry(.44, 11, 9), MAT(FRESA));
+      bola1.position.y = 1.2; g.add(bola1);
+      const bola2 = M(new THREE.SphereGeometry(.37, 11, 9), MAT(VAINILLA));
+      bola2.position.set(.06, 1.72, 0); g.add(bola2);
+      const cereza = M(new THREE.SphereGeometry(.08, 10, 8), MAT(CEREZA, { flatShading: false, roughness: .25 }));
+      cereza.position.set(.06, 2.08, 0); g.add(cereza);
+      return g;
+    }
+
+    // ── BAR / VINOTECA ───────────────────────────────────────────
+
+    function crearBotellaVino() {
+      const VIDRIO = 0x2e5339, ETIQUETA = 0xf2ede4, CAPSULA = 0x8c2f39;
+      const g = new THREE.Group();
+      const botella = M(new THREE.LatheGeometry(V2([
+        [0, 0], [.5, 0], [.55, .08], [.55, 1.15], [.5, 1.28], [.2, 1.55], [.17, 1.62], [.17, 2.02], [0, 2.02],
+      ]), 26), MAT(VIDRIO, { flatShading: false, roughness: .22 }));
+      g.add(botella);
+      const etiqueta = M(new THREE.CylinderGeometry(.565, .565, .48, 26, 1, true),
+        MAT(ETIQUETA, { flatShading: false }));
+      etiqueta.position.y = .62; g.add(etiqueta);
+      const franja = M(new THREE.CylinderGeometry(.57, .57, .07, 26, 1, true),
+        MAT(CAPSULA, { flatShading: false }));
+      franja.position.y = .62; g.add(franja);
+      const capsula = M(new THREE.CylinderGeometry(.185, .185, .3, 16), MAT(CAPSULA, { flatShading: false }));
+      capsula.position.y = 1.95; g.add(capsula);
+      return g;
+    }
+
+    function crearCopaVino() {
+      const VIDRIO = { color: 0xdfe9f5, transparent: true, opacity: .26, roughness: .05, flatShading: false, side: THREE.DoubleSide };
+      const VINO = 0x7a1e2b;
+      const g = new THREE.Group();
+      const copa = M(new THREE.LatheGeometry(V2([
+        [0, 0], [.42, 0], [.42, .04], [.07, .1], [.055, .85], [.3, .98], [.44, 1.25], [.4, 1.62], [.38, 1.66],
+      ]), 26), new THREE.MeshStandardMaterial(VIDRIO));
+      g.add(copa);
+      const vino = M(new THREE.LatheGeometry(V2([
+        [0, .98], [.335, .98], [.41, 1.22], [.42, 1.32], [0, 1.32],
+      ]), 26), MAT(VINO, { flatShading: false, roughness: .15 }));
+      g.add(vino);
+      return g;
+    }
+
+    function crearCopaCoctel() {
+      const VIDRIO = { color: 0xdfe9f5, transparent: true, opacity: .26, roughness: .05, flatShading: false, side: THREE.DoubleSide };
+      const LICOR = 0x2ec4b6, OLIVA = 0x7fb069;
+      const g = new THREE.Group();
+      const copa = M(new THREE.LatheGeometry(V2([
+        [0, 0], [.4, 0], [.4, .04], [.05, .1], [.045, .95], [.85, 1.62], [.87, 1.66],
+      ]), 26), new THREE.MeshStandardMaterial(VIDRIO));
+      g.add(copa);
+      const licor = M(new THREE.LatheGeometry(V2([[0, 1.02], [.1, 1.02], [.74, 1.55], [0, 1.55]]), 26),
+        MAT(LICOR, { flatShading: false, roughness: .1, transparent: true, opacity: .85 }));
+      g.add(licor);
+      const palillo = M(new THREE.CylinderGeometry(.02, .02, .8, 6), MAT(0xc8a06a));
+      palillo.position.set(.2, 1.62, 0); palillo.rotation.z = -.5; g.add(palillo);
+      const oliva = M(new THREE.SphereGeometry(.09, 10, 8), MAT(OLIVA, { flatShading: false }));
+      oliva.position.set(.06, 1.4, 0); g.add(oliva);
+      return g;
+    }
+
+    function crearJarraCerveza() {
+      const VIDRIO = { color: 0xf5e0b8, transparent: true, opacity: .4, roughness: .1, flatShading: false, side: THREE.DoubleSide };
+      const CERVEZA = 0xd98e04, ESPUMA = 0xfdf6e3;
+      const g = new THREE.Group();
+      const jarra = M(new THREE.CylinderGeometry(.5, .46, 1.15, 16, 1, true), new THREE.MeshStandardMaterial(VIDRIO));
+      jarra.position.y = .575; g.add(jarra);
+      const fondo = M(new THREE.CylinderGeometry(.46, .46, .06, 16), new THREE.MeshStandardMaterial(VIDRIO));
+      fondo.position.y = .03; g.add(fondo);
+      const cerveza = M(new THREE.CylinderGeometry(.44, .42, .95, 16), MAT(CERVEZA, { flatShading: false, transparent: true, opacity: .92 }));
+      cerveza.position.y = .53; g.add(cerveza);
+      for (let i = 0; i < 8; i++) { // espuma
+        const a = i / 8 * Math.PI * 2;
+        const e = M(new THREE.SphereGeometry(.16, 9, 7), MAT(ESPUMA, { flatShading: false }));
+        e.position.set(Math.cos(a) * .3, 1.12, Math.sin(a) * .3);
+        g.add(e);
+      }
+      const cima = M(new THREE.SphereGeometry(.2, 9, 7), MAT(ESPUMA, { flatShading: false }));
+      cima.position.y = 1.2; g.add(cima);
+      const goteo = M(new THREE.SphereGeometry(.09, 8, 6), MAT(ESPUMA, { flatShading: false }));
+      goteo.scale.y = 1.8; goteo.position.set(.48, .98, .12); g.add(goteo);
+      const asa = M(new THREE.TorusGeometry(.28, .06, 8, 16, Math.PI), MAT(0xf5e0b8, {
+        flatShading: false, transparent: true, opacity: .55 }));
+      asa.position.set(.55, .58, 0); asa.rotation.z = -Math.PI / 2; g.add(asa);
+      return g;
+    }
+
+    // ── TIENDA / E-COMMERCE ──────────────────────────────────────
+
+    function crearBolsaCompra() {
+      const BOLSA = 0xe07a5f, ASA = 0x8c4a35;
+      const g = new THREE.Group();
+      const bolsa = M(new THREE.BoxGeometry(1, 1.25, .55), MAT(BOLSA));
+      bolsa.position.y = .625; g.add(bolsa);
+      const interior = M(new THREE.BoxGeometry(.9, .06, .45), MAT(0x5e2f22));
+      interior.position.y = 1.26; g.add(interior);
+      [-1, 1].forEach((s) => {
+        const asa = M(new THREE.TorusGeometry(.22, .035, 8, 16, Math.PI), MAT(ASA, { flatShading: false }));
+        asa.position.set(0, 1.27, s * .18);
+        g.add(asa);
+      });
+      const logo = M(new THREE.CircleGeometry(.16, 20), MAT(0xf2ede4, { flatShading: false }));
+      logo.position.set(0, .72, .28); g.add(logo);
+      return g;
+    }
+
+    function crearCajaRegalo() {
+      const CAJA = 0x2a9d8f, CINTA = 0xf4a261;
+      const g = new THREE.Group();
+      const caja = M(new THREE.BoxGeometry(1, .9, 1), MAT(CAJA));
+      caja.position.y = .45; g.add(caja);
+      const tapa = M(new THREE.BoxGeometry(1.08, .16, 1.08), MAT(CAJA));
+      tapa.position.y = .92; g.add(tapa);
+      const cinta1 = M(new THREE.BoxGeometry(1.1, 1.02, .16), MAT(CINTA));
+      cinta1.position.y = .5; g.add(cinta1);
+      const cinta2 = M(new THREE.BoxGeometry(.16, 1.02, 1.1), MAT(CINTA));
+      cinta2.position.y = .5; g.add(cinta2);
+      [-1, 1].forEach((s) => { // lazo
+        const bucle = M(new THREE.TorusGeometry(.14, .05, 8, 14), MAT(CINTA, { flatShading: false }));
+        bucle.position.set(s * .14, 1.06, 0);
+        bucle.rotation.y = Math.PI / 2; bucle.rotation.x = s * .35;
+        g.add(bucle);
+      });
+      const nudo = M(new THREE.SphereGeometry(.08, 8, 6), MAT(CINTA));
+      nudo.position.y = 1.02; g.add(nudo);
+      return g;
+    }
+
+    function crearMaleta() {
+      const CUERPO = 0xe07a5f, DETALLE = 0x8c4a35;
+      const g = new THREE.Group();
+      const cuerpo = M(new THREE.BoxGeometry(1, 1.4, .48), MAT(CUERPO));
+      cuerpo.position.y = .78; g.add(cuerpo);
+      [-.22, .22].forEach((x) => { // franjas verticales
+        const f = M(new THREE.BoxGeometry(.1, 1.42, .5), MAT(DETALLE));
+        f.position.set(x, .78, 0); g.add(f);
+      });
+      const asa = M(new THREE.TorusGeometry(.16, .04, 8, 14, Math.PI), MAT(DETALLE, { flatShading: false }));
+      asa.position.y = 1.48; g.add(asa);
+      [-.32, .32].forEach((x) => {
+        const rueda = M(new THREE.CylinderGeometry(.09, .09, .08, 12), MAT(0x2b2d33));
+        rueda.rotation.x = Math.PI / 2; rueda.position.set(x, .07, 0);
+        g.add(rueda);
+      });
+      return g;
+    }
+
+    // ── BELLEZA / PELUQUERÍA ─────────────────────────────────────
+
+    function crearFrascoPerfume() {
+      const VIDRIO = { color: 0xf6c9d4, transparent: true, opacity: .45, roughness: .08, flatShading: false };
+      const LIQUIDO = 0xf28ca0, ORO = { color: 0xd4af37, metalness: .85, roughness: .25, flatShading: false };
+      const g = new THREE.Group();
+      const frasco = M(new THREE.BoxGeometry(.85, 1.05, .38), new THREE.MeshStandardMaterial(VIDRIO));
+      frasco.position.y = .525; g.add(frasco);
+      const liquido = M(new THREE.BoxGeometry(.73, .68, .28), MAT(LIQUIDO, { flatShading: false, transparent: true, opacity: .9 }));
+      liquido.position.y = .37; g.add(liquido);
+      const cuello = M(new THREE.CylinderGeometry(.11, .13, .12, 12), new THREE.MeshStandardMaterial(ORO));
+      cuello.position.y = 1.11; g.add(cuello);
+      const tapon = M(new THREE.SphereGeometry(.19, 12, 10), new THREE.MeshStandardMaterial(ORO));
+      tapon.position.y = 1.32; g.add(tapon);
+      return g;
+    }
+
+    function crearPintalabios() {
+      const METAL = { color: 0xb08d57, metalness: .8, roughness: .3, flatShading: false };
+      const NEGRO = 0x232323, ROJO = 0xd7263d;
+      const g = new THREE.Group();
+      const base = M(new THREE.CylinderGeometry(.19, .19, .55, 14), new THREE.MeshStandardMaterial(METAL));
+      base.position.y = .275; g.add(base);
+      const funda = M(new THREE.CylinderGeometry(.155, .155, .3, 14), MAT(NEGRO, { flatShading: false, roughness: .3 }));
+      funda.position.y = .68; g.add(funda);
+      const barra = M(new THREE.CylinderGeometry(.12, .12, .4, 12), MAT(ROJO, { flatShading: false, roughness: .35 }));
+      barra.position.y = 1.0; g.add(barra);
+      const punta = M(new THREE.SphereGeometry(.12, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), MAT(ROJO, { flatShading: false, roughness: .35 }));
+      punta.scale.y = 1.5; punta.position.y = 1.2; punta.rotation.z = .35; punta.position.x = -.02;
+      g.add(punta);
+      return g;
+    }
+
+    function crearPosteBarbero() {
+      const g = new THREE.Group();
+      const c = document.createElement('canvas'); c.width = 128; c.height = 128; // rayas diagonales
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#f2ede4'; ctx.fillRect(0, 0, 128, 128);
+      ctx.lineWidth = 22;
+      [['#c1443c', 0], ['#3d5a80', 64]].forEach(([color, offset]) => {
+        ctx.strokeStyle = color;
+        for (let x = -128 + offset; x < 256; x += 128) {
+          ctx.beginPath(); ctx.moveTo(x, 128); ctx.lineTo(x + 128, 0); ctx.stroke();
+        }
+      });
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = THREE.RepeatWrapping; tex.repeat.x = 3;
+      const tubo = M(new THREE.CylinderGeometry(.28, .28, 1.25, 20, 1, true),
+        new THREE.MeshStandardMaterial({ map: tex, roughness: .35 }));
+      tubo.position.y = .82; g.add(tubo);
+      const ORO = { color: 0xd4af37, metalness: .85, roughness: .3, flatShading: false };
+      [[.14, 1.52], [.14, .12]].forEach(([, y], i) => {
+        const tapa = M(new THREE.SphereGeometry(.3, 14, 10), new THREE.MeshStandardMaterial(ORO));
+        tapa.scale.y = .55; tapa.position.y = i === 0 ? 1.48 : .17;
+        g.add(tapa);
+      });
+      const bola = M(new THREE.SphereGeometry(.16, 12, 10), new THREE.MeshStandardMaterial(ORO));
+      bola.position.y = 1.72; g.add(bola);
+      return g;
+    }
+
+    // ── SALUD / FITNESS ──────────────────────────────────────────
+
+    function crearMancuerna() {
+      const BARRA = { color: 0x9ea3ad, metalness: .7, roughness: .35, flatShading: false };
+      const DISCO = 0x2b2d33;
+      const g = new THREE.Group();
+      const barra = M(new THREE.CylinderGeometry(.08, .08, 1.7, 12), new THREE.MeshStandardMaterial(BARRA));
+      barra.rotation.z = Math.PI / 2; barra.position.y = .42; g.add(barra);
+      [-1, 1].forEach((s) => {
+        [[.42, 0], [.3, .17]].forEach(([r, extra]) => {
+          const disco = M(new THREE.CylinderGeometry(r, r, .16, 18), MAT(DISCO, { flatShading: false, roughness: .5 }));
+          disco.rotation.z = Math.PI / 2;
+          disco.position.set(s * (.62 + extra), .42, 0);
+          g.add(disco);
+        });
+      });
+      return g;
+    }
+
+    function crearPesaRusa() {
+      const HIERRO = 0x2b2d33, DETALLE = 0xe76f51;
+      const g = new THREE.Group();
+      const cuerpo = M(new THREE.SphereGeometry(.55, 16, 12), MAT(HIERRO, { flatShading: false, roughness: .45 }));
+      cuerpo.scale.y = .92; cuerpo.position.y = .52; g.add(cuerpo);
+      const franja = M(new THREE.CylinderGeometry(.505, .53, .18, 16), MAT(DETALLE, { flatShading: false }));
+      franja.position.y = .62; g.add(franja);
+      const asa = M(new THREE.TorusGeometry(.3, .085, 10, 18, Math.PI), MAT(HIERRO, { flatShading: false, roughness: .45 }));
+      asa.position.y = 1.0; g.add(asa);
+      return g;
+    }
+
+    function crearCapsula() {
+      const A = 0xe63946, B = 0xf5e6c8;
+      const g = new THREE.Group();
+      const mitades = [[A, 1], [B, -1]];
+      mitades.forEach(([color, lado]) => {
+        const mitad = new THREE.Group();
+        const tubo = M(new THREE.CylinderGeometry(.3, .3, .35, 16), MAT(color, { flatShading: false, roughness: .3 }));
+        tubo.position.y = lado * .175;
+        const tapa = M(new THREE.SphereGeometry(.3, 16, 10, 0, Math.PI * 2, lado > 0 ? 0 : Math.PI / 2, Math.PI / 2), MAT(color, { flatShading: false, roughness: .3 }));
+        tapa.position.y = lado * .35;
+        mitad.add(tubo, tapa);
+        g.add(mitad);
+      });
+      g.rotation.z = -.7; g.position.y = .55;
+      const envoltorio = new THREE.Group(); envoltorio.add(g);
+      return envoltorio;
+    }
+
+    function crearCorazon() {
+      const ROJO = 0xe63946;
+      const g = new THREE.Group();
+      const s = new THREE.Shape(); // la forma de corazón clásica de los docs de three.js
+      s.moveTo(.5, .5);
+      s.bezierCurveTo(.5, .5, .4, 0, 0, 0);
+      s.bezierCurveTo(-.6, 0, -.6, .7, -.6, .7);
+      s.bezierCurveTo(-.6, 1.1, -.3, 1.54, .5, 1.9);
+      s.bezierCurveTo(1.2, 1.54, 1.6, 1.1, 1.6, .7);
+      s.bezierCurveTo(1.6, .7, 1.6, 0, 1, 0);
+      s.bezierCurveTo(.7, 0, .5, .5, .5, .5);
+      const corazon = M(new THREE.ExtrudeGeometry(s, {
+        depth: .35, bevelEnabled: true, bevelThickness: .08, bevelSize: .08, bevelSegments: 3,
+      }), MAT(ROJO, { flatShading: false, roughness: .35 }));
+      corazon.rotation.z = Math.PI; // la forma de los docs viene "boca abajo"
+      g.add(corazon);
+      return g;
+    }
+
+    // ── TECNOLOGÍA ───────────────────────────────────────────────
+
+    function crearSmartphone() {
+      const CUERPO = 0x1d1f27, PANTALLA = 0x9ad1ff;
+      const g = new THREE.Group();
+      const cuerpo = M(new THREE.BoxGeometry(.78, 1.55, .09), MAT(CUERPO, { flatShading: false, roughness: .3 }));
+      g.add(cuerpo);
+      const pantalla = M(new THREE.PlaneGeometry(.68, 1.42),
+        new THREE.MeshStandardMaterial({ color: PANTALLA, emissive: PANTALLA, emissiveIntensity: .55, roughness: .2 }));
+      pantalla.position.z = .047; g.add(pantalla);
+      const camara = M(new THREE.CylinderGeometry(.045, .045, .02, 10), MAT(0x0a0a0a, { flatShading: false }));
+      camara.rotation.x = Math.PI / 2; camara.position.set(.22, .6, -.05);
+      g.add(camara);
+      g.position.y = 1; // que "flote" de pie
+      const envoltorio = new THREE.Group(); envoltorio.add(g);
+      return envoltorio;
+    }
+
+    function crearLaptop() {
+      const CUERPO = 0x9ea3ad, PANTALLA = 0x9ad1ff, TECLADO = 0x3a3f4a;
+      const g = new THREE.Group();
+      const base = M(new THREE.BoxGeometry(1.55, .07, 1.02), MAT(CUERPO, { flatShading: false, metalness: .55, roughness: .4 }));
+      base.position.y = .035; g.add(base);
+      const teclado = M(new THREE.PlaneGeometry(1.32, .72), MAT(TECLADO, { flatShading: false }));
+      teclado.rotation.x = -Math.PI / 2; teclado.position.set(0, .072, -.06); g.add(teclado);
+      const bisagra = new THREE.Group();
+      bisagra.position.set(0, .07, -.51);
+      const tapa = M(new THREE.BoxGeometry(1.55, 1.02, .05), MAT(CUERPO, { flatShading: false, metalness: .55, roughness: .4 }));
+      tapa.position.y = .51;
+      const pantalla = M(new THREE.PlaneGeometry(1.38, .86),
+        new THREE.MeshStandardMaterial({ color: PANTALLA, emissive: PANTALLA, emissiveIntensity: .5, roughness: .2 }));
+      pantalla.position.set(0, .51, .028);
+      bisagra.add(tapa, pantalla);
+      bisagra.rotation.x = -.32; // pantalla abierta ~108º
+      g.add(bisagra);
+      return g;
+    }
+
+    function crearCamaraFoto() {
+      const CUERPO = 0x2b2d33, LENTE = 0x1a1c22, PLATA = { color: 0xc9ced6, metalness: .7, roughness: .3, flatShading: false };
+      const g = new THREE.Group();
+      const cuerpo = M(new THREE.BoxGeometry(1.35, .8, .5), MAT(CUERPO, { flatShading: false, roughness: .45 }));
+      cuerpo.position.y = .4; g.add(cuerpo);
+      const franja = M(new THREE.BoxGeometry(1.36, .3, .51), new THREE.MeshStandardMaterial(PLATA));
+      franja.position.y = .4; g.add(franja);
+      const aro = M(new THREE.CylinderGeometry(.34, .34, .3, 20), new THREE.MeshStandardMaterial(PLATA));
+      aro.rotation.x = Math.PI / 2; aro.position.set(0, .4, .35); g.add(aro);
+      const lente = M(new THREE.CylinderGeometry(.26, .26, .32, 20), MAT(LENTE, { flatShading: false, roughness: .2 }));
+      lente.rotation.x = Math.PI / 2; lente.position.set(0, .4, .37); g.add(lente);
+      const cristal = M(new THREE.CircleGeometry(.2, 20),
+        new THREE.MeshStandardMaterial({ color: 0x39557a, emissive: 0x39557a, emissiveIntensity: .35, roughness: .1 }));
+      cristal.position.set(0, .4, .535); g.add(cristal);
+      const boton = M(new THREE.CylinderGeometry(.07, .07, .06, 10), MAT(0xe63946, { flatShading: false }));
+      boton.position.set(-.5, .84, 0); g.add(boton);
+      const visor = M(new THREE.BoxGeometry(.3, .14, .1), MAT(LENTE, { flatShading: false }));
+      visor.position.set(.35, .84, 0); g.add(visor);
+      return g;
+    }
+
+    // ── INMOBILIARIA / AUTO ──────────────────────────────────────
+
+    function crearCasa() {
+      const PARED = 0xf2ede4, TEJADO = 0xe07a5f, PUERTA = 0x8c4a35, LUZ = 0xffd166;
+      const g = new THREE.Group();
+      const cuerpo = M(new THREE.BoxGeometry(1.5, .95, 1.05), MAT(PARED, { flatShading: false }));
+      cuerpo.position.y = .475; g.add(cuerpo);
+      const forma = new THREE.Shape(); // frontón del tejado
+      forma.moveTo(-.85, 0); forma.lineTo(.85, 0); forma.lineTo(0, .62); forma.closePath();
+      const tejado = M(new THREE.ExtrudeGeometry(forma, { depth: 1.2, bevelEnabled: false }), MAT(TEJADO));
+      tejado.position.set(0, .95, -.6); g.add(tejado);
+      const puerta = M(new THREE.BoxGeometry(.3, .5, .05), MAT(PUERTA, { flatShading: false }));
+      puerta.position.set(-.3, .25, .53); g.add(puerta);
+      [[.28, .5], [.62, .5]].forEach(([x, y]) => {
+        const v = M(new THREE.BoxGeometry(.26, .26, .05),
+          new THREE.MeshStandardMaterial({ color: LUZ, emissive: LUZ, emissiveIntensity: .4 }));
+        v.position.set(x, y, .53); g.add(v);
+      });
+      const chimenea = M(new THREE.BoxGeometry(.18, .45, .18), MAT(PARED, { flatShading: false }));
+      chimenea.position.set(.45, 1.3, -.25); g.add(chimenea);
+      return g;
+    }
+
+    function crearEdificio() {
+      const TORRE = 0x3d5a80, ANEXO = 0x293241, LUZ = 0xffd166;
+      const g = new THREE.Group();
+      const torre = M(new THREE.BoxGeometry(1, 2.3, 1), MAT(TORRE, { flatShading: false }));
+      torre.position.y = 1.15; g.add(torre);
+      const anexo = M(new THREE.BoxGeometry(.7, 1.2, .8), MAT(ANEXO, { flatShading: false }));
+      anexo.position.set(.82, .6, 0); g.add(anexo);
+      const azotea = M(new THREE.BoxGeometry(.3, .12, .3), MAT(ANEXO, { flatShading: false }));
+      azotea.position.y = 2.36; g.add(azotea);
+      const ventana = new THREE.MeshStandardMaterial({ color: LUZ, emissive: LUZ, emissiveIntensity: .5 });
+      for (let piso = 0; piso < 6; piso++) {
+        for (let col = 0; col < 3; col++) {
+          if ((piso * 3 + col) % 4 === 1) continue; // algunas apagadas: se ve vivo, no perfecto
+          const v = M(new THREE.PlaneGeometry(.16, .2), ventana);
+          v.position.set(-.28 + col * .28, .35 + piso * .34, .501);
+          g.add(v);
+        }
+      }
+      return g;
+    }
+
+    function crearCocheLowPoly() {
+      const CARROCERIA = 0x457b9d, CABINA = 0x2f5876, RUEDA = 0x22242b, FARO = 0xffd166;
+      const g = new THREE.Group();
+      const chasis = M(new THREE.BoxGeometry(2, .42, .95), MAT(CARROCERIA, { flatShading: false }));
+      chasis.position.y = .42; g.add(chasis);
+      const cabina = M(new THREE.BoxGeometry(1.05, .4, .85), MAT(CABINA, { flatShading: false }));
+      cabina.position.set(-.1, .82, 0); g.add(cabina);
+      [[-.6, 1], [-.6, -1], [.6, 1], [.6, -1]].forEach(([x, s]) => {
+        const rueda = M(new THREE.CylinderGeometry(.26, .26, .18, 12), MAT(RUEDA, { flatShading: false }));
+        rueda.rotation.x = Math.PI / 2; rueda.position.set(x, .26, s * .45);
+        g.add(rueda);
+        const tapacubos = M(new THREE.CylinderGeometry(.11, .11, .19, 10), MAT(0x9ea3ad, { flatShading: false, metalness: .6 }));
+        tapacubos.rotation.x = Math.PI / 2; tapacubos.position.set(x, .26, s * .45);
+        g.add(tapacubos);
+      });
+      [-1, 1].forEach((s) => {
+        const faro = M(new THREE.BoxGeometry(.06, .12, .16),
+          new THREE.MeshStandardMaterial({ color: FARO, emissive: FARO, emissiveIntensity: .6 }));
+        faro.position.set(1.01, .45, s * .3); g.add(faro);
+      });
+      return g;
+    }
+
+    // ── OTROS SECTORES ───────────────────────────────────────────
+
+    function crearLibros() {
+      const COLORES = [0xe07a5f, 0x2a9d8f, 0x3d5a80];
+      const g = new THREE.Group();
+      COLORES.forEach((color, i) => {
+        const libro = new THREE.Group();
+        const tapa = M(new THREE.BoxGeometry(1.15, .2, 1.5), MAT(color, { flatShading: false }));
+        const paginas = M(new THREE.BoxGeometry(1.06, .15, 1.44), MAT(0xf6f3ec, { flatShading: false }));
+        paginas.position.x = .06;
+        libro.add(tapa, paginas);
+        libro.position.y = .1 + i * .21;
+        libro.rotation.y = (i - 1) * .3;
+        g.add(libro);
+      });
+      return g;
+    }
+
+    function crearAnillo() {
+      const ORO = { color: 0xd4af37, metalness: .85, roughness: .22, flatShading: false };
+      const GEMA = 0x5ec8e5;
+      const g = new THREE.Group();
+      const aro = M(new THREE.TorusGeometry(.5, .09, 12, 28), new THREE.MeshStandardMaterial(ORO));
+      aro.position.y = .62; g.add(aro);
+      const engaste = M(new THREE.BoxGeometry(.16, .12, .16), new THREE.MeshStandardMaterial(ORO));
+      engaste.position.y = 1.18; g.add(engaste);
+      const gema = M(new THREE.OctahedronGeometry(.2),
+        MAT(GEMA, { roughness: .1, emissive: GEMA, emissiveIntensity: .25 }));
+      gema.position.y = 1.32; g.add(gema);
+      return g;
+    }
+
+    function crearDiamante() {
+      const HIELO = 0x9ad7e8;
+      const g = new THREE.Group();
+      const mat = MAT(HIELO, { roughness: .06, transparent: true, opacity: .88, emissive: HIELO, emissiveIntensity: .18 });
+      const pabellon = M(new THREE.ConeGeometry(.72, .95, 8), mat); // la punta de abajo
+      pabellon.rotation.x = Math.PI; pabellon.position.y = .48; g.add(pabellon);
+      const corona = M(new THREE.CylinderGeometry(.44, .72, .32, 8), mat);
+      corona.position.y = 1.12; g.add(corona);
+      return g;
+    }
+
+    function crearTrofeo() {
+      const ORO = { color: 0xd4af37, metalness: .85, roughness: .28, flatShading: false };
+      const MADERA = 0x5e3a28;
+      const g = new THREE.Group();
+      const base = M(new THREE.BoxGeometry(.75, .2, .75), MAT(MADERA, { flatShading: false }));
+      base.position.y = .1; g.add(base);
+      const pedestal = M(new THREE.CylinderGeometry(.14, .2, .3, 14), new THREE.MeshStandardMaterial(ORO));
+      pedestal.position.y = .35; g.add(pedestal);
+      const copa = M(new THREE.LatheGeometry(V2([
+        [.1, .5], [.16, .52], [.2, .62], [.5, 1.05], [.53, 1.22], [.5, 1.24],
+      ]), 22), new THREE.MeshStandardMaterial({ ...ORO, side: THREE.DoubleSide }));
+      g.add(copa);
+      [-1, 1].forEach((s) => {
+        const asa = M(new THREE.TorusGeometry(.17, .04, 8, 16, Math.PI * 1.15), new THREE.MeshStandardMaterial(ORO));
+        asa.position.set(s * .5, .95, 0);
+        asa.rotation.z = s > 0 ? -Math.PI / 2.4 : Math.PI - Math.PI / 2.4 + Math.PI / 6;
+        g.add(asa);
+      });
+      return g;
+    }
+
+    function crearPlantaMaceta() {
+      const MACETA = 0xc1613b, TIERRA = 0x3e2f23, VERDES = [0x5a8f5a, 0x77b255, 0x4a7a4a];
+      const g = new THREE.Group();
+      const maceta = M(new THREE.LatheGeometry(V2([[0, 0], [.34, 0], [.44, .5], [.5, .52], [.5, .6], [.46, .6]]), 18),
+        MAT(MACETA, { side: THREE.DoubleSide }));
+      g.add(maceta);
+      const tierra = M(new THREE.CircleGeometry(.42, 18), MAT(TIERRA, { flatShading: false }));
+      tierra.rotation.x = -Math.PI / 2; tierra.position.y = .56; g.add(tierra);
+      for (let i = 0; i < 7; i++) { // hojas tipo sansevieria: conos aplanados en abanico
+        const a = i / 7 * Math.PI * 2;
+        const alto = .8 + (i % 3) * .32;
+        const hoja = M(new THREE.ConeGeometry(.13, alto, 5), MAT(VERDES[i % 3]));
+        hoja.scale.z = .35;
+        hoja.position.set(Math.cos(a) * .16, .55 + alto / 2, Math.sin(a) * .16);
+        hoja.rotation.z = Math.cos(a) * -.22;
+        hoja.rotation.x = Math.sin(a) * .22;
+        hoja.rotation.y = -a;
+        g.add(hoja);
+      }
+      return g;
+    }
+
+    function crearRelojDespertador() {
+      const CUERPO = 0xe63946, ESFERA = 0xf6f3ec, AGUJA = 0x2b2d33;
+      const g = new THREE.Group();
+      const cuerpo = M(new THREE.CylinderGeometry(.62, .62, .32, 22), MAT(CUERPO, { flatShading: false }));
+      cuerpo.rotation.x = Math.PI / 2; cuerpo.position.y = .72; g.add(cuerpo);
+      const esfera = M(new THREE.CircleGeometry(.5, 22), MAT(ESFERA, { flatShading: false }));
+      esfera.position.set(0, .72, .165); g.add(esfera);
+      const minutera = M(new THREE.BoxGeometry(.045, .4, .02), MAT(AGUJA));
+      minutera.position.set(0, .9, .18); g.add(minutera);
+      const horaria = M(new THREE.BoxGeometry(.045, .28, .02), MAT(AGUJA));
+      horaria.rotation.z = -Math.PI / 3; horaria.position.set(.11, .78, .18); g.add(horaria);
+      [-1, 1].forEach((s) => {
+        const campana = M(new THREE.SphereGeometry(.16, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), MAT(0xd4af37, { flatShading: false, metalness: .8, roughness: .3 }));
+        campana.position.set(s * .32, 1.28, 0); campana.rotation.z = s * -.5;
+        g.add(campana);
+        const pata = M(new THREE.CylinderGeometry(.04, .04, .3, 8), MAT(AGUJA, { flatShading: false }));
+        pata.position.set(s * .4, .18, 0); pata.rotation.z = s * .5;
+        g.add(pata);
+      });
+      return g;
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       REGISTRO — id (para ?modelo=), sector, y cómo aplicarlo.
+       ══════════════════════════════════════════════════════════════ */
+    const MODELOS = [
+      // Restauración
+      { id: 'plato-comida', nombre: 'Plato de comida', sector: 'Restauración', crear: crearPlatoComida,
+        aplicacion: 'Hero de restaurante: en hero-objeto-flotante.html sustituye el TorusKnot por crearPlatoComida(). También queda genial girando lento en producto-configurador-drag.html.' },
+      { id: 'hamburguesa', nombre: 'Hamburguesa', sector: 'Restauración', crear: crearHamburguesa,
+        aplicacion: 'Hero de hamburguesería o sección de carta. Sus capas son meshes separados: sirve tal cual para una vista explotada (ver vista-explotada-scroll.html).' },
+      { id: 'pizza', nombre: 'Porción de pizza', sector: 'Restauración', crear: crearPorcionPizza,
+        aplicacion: 'Pizzería: hero u orbitando junto a otros platos en escaparate-productos-3d.html. Cambia los toppings duplicando/quitando los cilindros de pepperoni.' },
+      { id: 'ramen', nombre: 'Bol de ramen', sector: 'Restauración', crear: crearBolRamen,
+        aplicacion: 'Restaurante asiático. El color BOL es el acento del proyecto; los palillos se pueden quitar si estorban en el encuadre.' },
+      { id: 'gorro-chef', nombre: 'Gorro de chef', sector: 'Restauración', crear: crearGorroChef,
+        aplicacion: 'Icono de marca para cualquier restaurante: pequeño junto al logo en el hero, o como objeto flotante de la sección "nuestro chef".' },
+      // Cafetería / pastelería
+      { id: 'taza-cafe', nombre: 'Taza de café', sector: 'Cafetería y pastelería', crear: crearTazaCafe,
+        aplicacion: 'Cafetería: hero con la taza girando lento. El vapor son dos arcos translúcidos — anímalos subiendo con position.y si quieres vida extra.' },
+      { id: 'croissant', nombre: 'Croissant', sector: 'Cafetería y pastelería', crear: crearCroissant,
+        aplicacion: 'Panadería/brunch. Está hecho de esferas en arco: cambia n y el radio para hacerlo más rechoncho o más fino.' },
+      { id: 'donut', nombre: 'Donut', sector: 'Cafetería y pastelería', crear: crearDonut,
+        aplicacion: 'Pastelería/donutería: es EL objeto más agradecido para girar en un hero. El glaseado hereda el color de acento del proyecto.' },
+      { id: 'cupcake', nombre: 'Cupcake', sector: 'Cafetería y pastelería', crear: crearCupcake,
+        aplicacion: 'Pastelería: perfecto en trío con distintos colores de crema orbitando en escaparate-productos-3d.html.' },
+      { id: 'tarta', nombre: 'Tarta de dos pisos', sector: 'Cafetería y pastelería', crear: crearTarta,
+        aplicacion: 'Pastelería de encargo/bodas: hero elegante con giro lento. Los dos pisos + nata son la estructura; añade un tercer piso copiando el patrón.' },
+      { id: 'helado', nombre: 'Helado de cucurucho', sector: 'Cafetería y pastelería', crear: crearHelado,
+        aplicacion: 'Heladería: cambia los colores de las bolas por los sabores estrella. Con una inclinación leve (rotation.z = .15) gana mucho dinamismo.' },
+      // Bar / vinoteca
+      { id: 'botella-vino', nombre: 'Botella de vino', sector: 'Bar y vinoteca', crear: crearBotellaVino,
+        aplicacion: 'Vinoteca/bodega: de pie girando en el hero, o junto a crearCopaVino() en una composición. La etiqueta es un cilindro: ponle un CanvasTexture con el nombre del cliente.' },
+      { id: 'copa-vino', nombre: 'Copa de vino', sector: 'Bar y vinoteca', crear: crearCopaVino,
+        aplicacion: 'Combínala con la botella. El vidrio usa transparencia simple (barata) — NO uses transmission real de cristal-material-premium.html salvo que sea el único objeto 3D de la página.' },
+      { id: 'copa-coctel', nombre: 'Copa de cóctel', sector: 'Bar y vinoteca', crear: crearCopaCoctel,
+        aplicacion: 'Coctelería: hero oscuro con luz de acento neón (PointLight del color del proyecto). El color LICOR es el que más personalidad le da — pruébalo en rosa o ámbar.' },
+      { id: 'jarra-cerveza', nombre: 'Jarra de cerveza', sector: 'Bar y vinoteca', crear: crearJarraCerveza,
+        aplicacion: 'Cervecería/bar de tapas: la espuma son esferas — muévelas un poco entre sí para variar la silueta. Queda mejor con fondo oscuro cálido.' },
+      // Tienda / e-commerce
+      { id: 'bolsa-compra', nombre: 'Bolsa de compra', sector: 'Tienda y e-commerce', crear: crearBolsaCompra,
+        aplicacion: 'Cualquier tienda: el círculo frontal es el hueco del logo (ponle un CanvasTexture con las iniciales). Ideal para el hero de una landing de rebajas.' },
+      { id: 'caja-regalo', nombre: 'Caja de regalo', sector: 'Tienda y e-commerce', crear: crearCajaRegalo,
+        aplicacion: 'Campañas (Navidad, San Valentín, aniversario): caja del color del proyecto + cinta del acento. En grupo de 3 tamaños distintos hace un escaparate precioso.' },
+      { id: 'maleta', nombre: 'Maleta de viaje', sector: 'Tienda y e-commerce', crear: crearMaleta,
+        aplicacion: 'Agencia de viajes/tienda de equipaje: girando en el hero. Las franjas verticales son el sitio natural para el color de acento.' },
+      // Belleza / peluquería
+      { id: 'frasco-perfume', nombre: 'Frasco de perfume', sector: 'Belleza y peluquería', crear: crearFrascoPerfume,
+        aplicacion: 'Perfumería/cosmética: pide luz elegante (key suave + acento cálido). Perfecto para producto-configurador-drag.html: se arrastra y gira como producto estrella.' },
+      { id: 'pintalabios', nombre: 'Pintalabios', sector: 'Belleza y peluquería', crear: crearPintalabios,
+        aplicacion: 'Maquillaje: en grupo de 3-4 con barras de distinto color orbitando (escaparate-productos-3d.html) parece una gama de producto real.' },
+      { id: 'poste-barbero', nombre: 'Poste de barbero', sector: 'Belleza y peluquería', crear: crearPosteBarbero,
+        aplicacion: 'Barbería: el clásico. Las rayas son un CanvasTexture — cambia los dos colores por los del proyecto. Gíralo SOLO sobre su eje Y (como el de verdad).' },
+      // Salud / fitness
+      { id: 'mancuerna', nombre: 'Mancuerna', sector: 'Salud y fitness', crear: crearMancuerna,
+        aplicacion: 'Gimnasio/entrenador personal: hero contundente con fondo oscuro. Una rotación z leve y constante (como flotando en el espacio) le va mejor que el giro en Y.' },
+      { id: 'pesa-rusa', nombre: 'Pesa rusa', sector: 'Salud y fitness', crear: crearPesaRusa,
+        aplicacion: 'Crossfit/funcional: la franja es el color de acento. Combínala con crearMancuerna() en una composición de dos objetos.' },
+      { id: 'capsula', nombre: 'Cápsula / píldora', sector: 'Salud y fitness', crear: crearCapsula,
+        aplicacion: 'Farmacia/suplementos: los dos colores de las mitades son los dos colores de marca. En lluvia de varias cápsulas (position aleatoria) hace un fondo de sección potente.' },
+      { id: 'corazon', nombre: 'Corazón', sector: 'Salud y fitness', crear: crearCorazon,
+        aplicacion: 'Clínica/salud/donaciones: latido = escala pulsante (scale 1 → 1.06 con Math.sin(t*2)). Extrusión con bisel, así que aguanta primer plano.' },
+      // Tecnología
+      { id: 'smartphone', nombre: 'Smartphone', sector: 'Tecnología', crear: crearSmartphone,
+        aplicacion: 'App/startup: la pantalla es un plano emisivo — ponle un CanvasTexture con la captura real de la app del cliente y tienes un mockup 3D.' },
+      { id: 'laptop', nombre: 'Portátil abierto', sector: 'Tecnología', crear: crearLaptop,
+        aplicacion: 'SaaS/servicios digitales: igual que el smartphone, la pantalla acepta un CanvasTexture con el producto real. La bisagra es un grupo: anima rotation.x para "abrirlo" al entrar.' },
+      { id: 'camara-foto', nombre: 'Cámara de fotos', sector: 'Tecnología', crear: crearCamaraFoto,
+        aplicacion: 'Fotógrafo/estudio creativo: girando lento en el hero con luz dramática lateral. El botón rojo y el cristal azulado le dan el carácter — consérvalos.' },
+      // Inmobiliaria / auto
+      { id: 'casa', nombre: 'Casa', sector: 'Inmobiliaria y auto', crear: crearCasa,
+        aplicacion: 'Inmobiliaria/reformas: las ventanas son emisivas — de noche (fondo oscuro) la casa se ve "habitada". Varias casas en fila hacen una calle para recorrido-camara-scroll.html.' },
+      { id: 'edificio', nombre: 'Edificio de oficinas', sector: 'Inmobiliaria y auto', crear: crearEdificio,
+        aplicacion: 'Promotora/oficinas/coworking: algunas ventanas están apagadas a propósito (se ve vivo). Combínalo con crearCasa() para una mini-ciudad.' },
+      { id: 'coche', nombre: 'Coche low-poly', sector: 'Inmobiliaria y auto', crear: crearCocheLowPoly,
+        aplicacion: 'Taller/concesionario/autoescuela: carrocería = color de marca. Las ruedas son cilindros independientes: anima rotation.z para que "ruede" al hacer scroll.' },
+      // Otros sectores
+      { id: 'libros', nombre: 'Pila de libros', sector: 'Otros sectores', crear: crearLibros,
+        aplicacion: 'Librería/academia/editorial: cada tapa con un color de la paleta. Añade libros copiando el patrón (posición y = i * grosor, rotación y alternada).' },
+      { id: 'anillo', nombre: 'Anillo con gema', sector: 'Otros sectores', crear: crearAnillo,
+        aplicacion: 'Joyería: pide fondo oscuro y luz de acento fría. Si es LA pieza de la página, considera el material de cristal real para la gema (cristal-material-premium.html).' },
+      { id: 'diamante', nombre: 'Diamante', sector: 'Otros sectores', crear: crearDiamante,
+        aplicacion: 'Joyería/premium/logros: 8 caras flatShading = destellos limpios al girar. También funciona como icono abstracto de "calidad" para cualquier sector.' },
+      { id: 'trofeo', nombre: 'Trofeo', sector: 'Otros sectores', crear: crearTrofeo,
+        aplicacion: 'Club deportivo/academia/premios: sección de logros con el trofeo girando. El oro es metalness alto: necesita una PointLight cerca para brillar de verdad.' },
+      { id: 'planta', nombre: 'Planta en maceta', sector: 'Otros sectores', crear: crearPlantaMaceta,
+        aplicacion: 'Floristería/interiorismo/wellness: un balanceo MUY leve de las hojas (rotation.z con seno) la hace orgánica. En grupo de 3 macetas de tamaños distintos, escaparate perfecto.' },
+      { id: 'reloj', nombre: 'Reloj despertador', sector: 'Otros sectores', crear: crearRelojDespertador,
+        aplicacion: 'Academia/productividad/eventos ("reserva tu hora"): anima la minutera (rotation.z) para que el tiempo "corra". El cuerpo es el color de acento.' },
+    ];
+
+    /* ══════════════════════════════════════════════════════════════
+       VISOR DEL CATÁLOGO (esto NO se copia a proyectos — es solo la
+       plataforma giratoria para ver los modelos de arriba).
+       ══════════════════════════════════════════════════════════════ */
+    const canvas = document.getElementById('escena');
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(38, 1, .1, 50);
+    camera.position.set(0, 1.15, 4.6);
+    camera.lookAt(0, .1, 0);
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+
+    // El rig de luz estilizado: key cálida + fill fría + acento de color.
+    // Esta combinación es la que hace que los colores planos se vean
+    // "de dibujo bonito" y no de plástico muerto — cópiala con el modelo.
+    scene.add(new THREE.AmbientLight(0xffffff, .55));
+    const key = new THREE.DirectionalLight(0xfff2e0, 1.5);
+    key.position.set(3, 5, 4); scene.add(key);
+    const fill = new THREE.DirectionalLight(0xbcd4ff, .5);
+    fill.position.set(-4, 2, -2); scene.add(fill);
+    const acento = new THREE.PointLight(0x8b6cff, 10, 18);
+    acento.position.set(-3, 1, 3); scene.add(acento);
+
+    const pivote = new THREE.Group();
+    scene.add(pivote);
+    let sombra = null;
+
+    function mostrar(entrada) {
+      pivote.clear();
+      if (sombra) { scene.remove(sombra); }
+      const obj = entrada.crear();
+      const { alturaMedia } = encuadrar(obj, 2.15);
+      pivote.add(obj);
+      sombra = sombraFalsa(1.5, .42);
+      sombra.position.y = -alturaMedia - .12;
+      scene.add(sombra);
+      pivote.rotation.y = -.5;
+      document.getElementById('ficha-nombre').innerHTML =
+        `${entrada.nombre} — <code>${entrada.crear.name}()</code>`;
+      document.getElementById('ficha-texto').textContent = entrada.aplicacion;
+      history.replaceState(null, '', `?modelo=${entrada.id}`);
+      document.querySelectorAll('.grupo button').forEach((b) =>
+        b.classList.toggle('activo', b.dataset.id === entrada.id));
+    }
+
+    // Sidebar generada desde el registro, agrupando por sector
+    const lista = document.getElementById('lista');
+    let sectorActual = '';
+    let contenedor = null;
+    for (const m of MODELOS) {
+      if (m.sector !== sectorActual) {
+        sectorActual = m.sector;
+        contenedor = document.createElement('div');
+        contenedor.className = 'grupo';
+        contenedor.innerHTML = `<h2>${m.sector}</h2>`;
+        lista.appendChild(contenedor);
+      }
+      const b = document.createElement('button');
+      b.textContent = m.nombre;
+      b.dataset.id = m.id;
+      b.addEventListener('click', () => mostrar(m));
+      contenedor.appendChild(b);
+    }
+
+    const inicial = new URLSearchParams(location.search).get('modelo');
+    mostrar(MODELOS.find((m) => m.id === inicial) || MODELOS[0]);
+
+    function ajustar() {
+      const r = canvas.getBoundingClientRect();
+      camera.aspect = r.width / r.height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(r.width, r.height, false);
+    }
+    addEventListener('resize', ajustar);
+    ajustar();
+
+    let targetX = 0;
+    addEventListener('pointermove', (e) => { targetX = (e.clientX / innerWidth - 0.5) * 2; });
+
+    const reloj = new THREE.Clock();
+    (function animar() {
+      requestAnimationFrame(animar);
+      if (!reduce) {
+        const t = reloj.getElapsedTime();
+        pivote.rotation.y += ((targetX * .9 - .5) - pivote.rotation.y) * .03 + .0035;
+        pivote.position.y = Math.sin(t * .8) * .04;
+      }
+      renderer.render(scene, camera);
+    })();
+  </script>
+</body>
+</html>

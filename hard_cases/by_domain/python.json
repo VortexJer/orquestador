@@ -1,0 +1,79 @@
+[
+  {
+    "id": "python-mutable-default-arg",
+    "language_or_domain": "python",
+    "tags": ["shared-state", "closures", "python"],
+    "problem_description": "Un argumento por defecto mutable (def f(items=[])) se crea una sola vez al definir la funcion, no en cada llamada; las mutaciones persisten entre llamadas distintas.",
+    "why_small_models_fail": "El patron es sintacticamente identico al de otros lenguajes donde el default si se re-evalua por llamada; el modelo copia el habito sin modelar el ciclo de vida del objeto por defecto de Python.",
+    "correct_approach": "Usar None como sentinel y crear el mutable dentro del cuerpo de la funcion.",
+    "bad_example": "def add_item(item, items=[]):\n    items.append(item)\n    return items",
+    "good_example": "def add_item(item, items=None):\n    items = items if items is not None else []\n    items.append(item)\n    return items",
+    "source": "Python docs - Default Argument Values"
+  },
+  {
+    "id": "python-asyncio-task-gc",
+    "language_or_domain": "python",
+    "tags": ["asyncio", "concurrency", "python"],
+    "problem_description": "asyncio.create_task(coro()) sin guardar la referencia puede ser recolectado por el GC a mitad de ejecucion si no hay ninguna referencia fuerte viva - la tarea desaparece silenciosamente sin excepcion visible.",
+    "why_small_models_fail": "El patron 'fire and forget' es comun en tutoriales que funcionan en scripts cortos donde el loop termina antes de que el GC actue; el modelo no distingue ese caso del de un servidor de larga vida.",
+    "correct_approach": "Guardar la tarea en un set a nivel de modulo/clase y remover con un callback al terminar.",
+    "bad_example": "def schedule(coro):\n    asyncio.create_task(coro)",
+    "good_example": "_background_tasks: set = set()\n\ndef schedule(coro):\n    task = asyncio.create_task(coro)\n    _background_tasks.add(task)\n    task.add_done_callback(_background_tasks.discard)",
+    "source": "asyncio docs - Creating Tasks"
+  },
+  {
+    "id": "python-late-binding-closures-in-loop",
+    "language_or_domain": "python",
+    "tags": ["closures", "loops", "python"],
+    "problem_description": "Una lambda o funcion anidada creada dentro de un for captura la VARIABLE del loop, no su valor en ese momento (late binding). Si todas las funciones se guardan y se llaman despues, todas ven el ultimo valor que tomo la variable.",
+    "why_small_models_fail": "El modelo asume 'binding' por valor en el momento de creacion (como pasaria si se capturara explicitamente un argumento), que es el comportamiento intuitivo pero no el real de los closures de Python.",
+    "correct_approach": "Capturar el valor actual como argumento por defecto de la propia lambda/funcion, o usar functools.partial.",
+    "bad_example": "callbacks = [lambda: i for i in range(3)]\n# todas devuelven 2, no 0,1,2",
+    "good_example": "callbacks = [lambda i=i: i for i in range(3)]\n# ahora cada una captura su propio i",
+    "source": "Python FAQ - Why do lambdas defined in a loop with different values all return the same result?"
+  },
+  {
+    "id": "python-generator-exhaustion",
+    "language_or_domain": "python",
+    "tags": ["generators", "iterators", "python"],
+    "problem_description": "Un generador solo se puede recorrer una vez. Si se guarda en una variable y se usa en dos lugares (ej. una validacion con `any()` y despues un `for` sobre el mismo objeto), la segunda iteracion no produce nada, sin ningun error.",
+    "why_small_models_fail": "El modelo trata generadores y listas como intercambiables porque en el codigo de ejemplo del corpus casi siempre se consumen una sola vez; no anticipa el caso de reuso.",
+    "correct_approach": "Si el resultado se necesita mas de una vez, materializarlo en una lista, o crear una funcion que devuelva un generador nuevo cada vez que se llama.",
+    "bad_example": "rows = (parse(line) for line in fh)\nif any(r.is_valid for r in rows):\n    for r in rows:  # ya esta agotado, no itera nada\n        process(r)",
+    "good_example": "rows = [parse(line) for line in fh]\nif any(r.is_valid for r in rows):\n    for r in rows:\n        process(r)",
+    "source": "Python docs - Generator Types"
+  },
+  {
+    "id": "python-bare-except-swallows-baseexception",
+    "language_or_domain": "python",
+    "tags": ["error-handling", "python"],
+    "problem_description": "Un `except:` sin especificar tipo (o `except BaseException:`) atrapa tambien SystemExit, KeyboardInterrupt y GeneratorExit, que heredan de BaseException, no de Exception - esto puede impedir que Ctrl+C o sys.exit() funcionen como se espera.",
+    "why_small_models_fail": "El modelo generaliza 'atrapa cualquier error' sin distinguir la jerarquia BaseException/Exception de Python, que es distinta a la de otros lenguajes donde 'catch-all' no intercepta señales de control del interprete.",
+    "correct_approach": "Usar `except Exception:` para 'cualquier error de la aplicacion', reservando `except BaseException` solo para casos explicitos de shutdown/cleanup que lo necesiten de verdad.",
+    "bad_example": "try:\n    run()\nexcept:\n    log.error(\"fallo\")",
+    "good_example": "try:\n    run()\nexcept Exception:\n    log.error(\"fallo\")",
+    "source": "Python docs - Built-in Exceptions, jerarquia BaseException"
+  },
+  {
+    "id": "python-float-equality",
+    "language_or_domain": "python",
+    "tags": ["numerics", "python"],
+    "problem_description": "Comparar floats con == puede fallar por la representacion binaria de punto flotante (0.1 + 0.2 == 0.3 es False en Python, como en casi todo lenguaje con IEEE 754).",
+    "why_small_models_fail": "El modelo trata los floats como numeros exactos de matematica, no como aproximaciones binarias, porque el corpus de ejemplos simples casi nunca expone el error de redondeo.",
+    "correct_approach": "Comparar con una tolerancia (math.isclose) en vez de == cuando los valores vienen de operaciones aritmeticas, o usar Decimal si se necesita precision exacta (ej. dinero).",
+    "bad_example": "if total == 0.3:\n    ...",
+    "good_example": "import math\nif math.isclose(total, 0.3, rel_tol=1e-9):\n    ...",
+    "source": "Python docs - Floating Point Arithmetic: Issues and Limitations"
+  },
+  {
+    "id": "python-decorator-missing-functools-wraps",
+    "language_or_domain": "python",
+    "tags": ["decorators", "python"],
+    "problem_description": "Un decorador que envuelve una funcion sin usar functools.wraps pierde __name__, __doc__ y __wrapped__ de la funcion original, lo que rompe introspeccion, logging basado en nombre de funcion, y a veces pickling.",
+    "why_small_models_fail": "El wrapper generico `def wrapper(*args, **kwargs): return func(*args, **kwargs)` funciona igual en tests simples; el modelo no ve la degradacion de metadata porque no se manifiesta como un error en tiempo de ejecucion.",
+    "correct_approach": "Aplicar siempre @functools.wraps(func) al wrapper interno de cualquier decorador.",
+    "bad_example": "def logged(func):\n    def wrapper(*a, **kw):\n        print(func(*a, **kw))\n    return wrapper",
+    "good_example": "import functools\n\ndef logged(func):\n    @functools.wraps(func)\n    def wrapper(*a, **kw):\n        print(func(*a, **kw))\n    return wrapper",
+    "source": "Python docs - functools.wraps"
+  }
+]

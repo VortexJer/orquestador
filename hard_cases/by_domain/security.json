@@ -1,0 +1,79 @@
+[
+  {
+    "id": "security-fstring-sql-injection-in-orm",
+    "language_or_domain": "security",
+    "tags": ["cwe-89", "python", "sql", "security"],
+    "problem_description": "Construir una query con f-string/concatenacion e interpolar un valor de usuario directamente (incluso al usar un ORM que expone .execute(raw_sql)) abre inyeccion SQL, aunque el resto del codigo use el ORM de forma segura.",
+    "why_small_models_fail": "El modelo asocia 'usar el ORM' con 'estar a salvo' en terminos generales, y no distingue la via de escape (raw/execute con SQL crudo) como un caso especial que reintroduce el riesgo.",
+    "correct_approach": "Parametros ligados (execute(query, (valor,))) siempre que se use SQL crudo; Semgrep con regla CWE-89 como verificacion de ground-truth antes de aceptar cualquier execute() con f-string/concatenacion.",
+    "bad_example": "cursor.execute(f\"SELECT * FROM users WHERE email = '{email}'\")",
+    "good_example": "cursor.execute(\"SELECT * FROM users WHERE email = %s\", (email,))",
+    "source": "OWASP - SQL Injection Prevention Cheat Sheet"
+  },
+  {
+    "id": "security-insecure-deserialization-rce",
+    "language_or_domain": "security",
+    "tags": ["cwe-502", "security"],
+    "problem_description": "Deserializar datos no confiables con mecanismos que permiten ejecucion de codigo arbitrario durante la propia deserializacion (pickle.loads en Python, ObjectInputStream en Java, unserialize() en PHP sobre input de usuario) puede dar al atacante ejecucion remota de codigo con solo enviar un payload serializado malicioso, sin necesitar ninguna otra vulnerabilidad.",
+    "why_small_models_fail": "El modelo trata 'deserializar' como una operacion de parseo de datos neutral (similar a JSON.parse), sin modelar que ciertos formatos de serializacion binaria ejecutan codigo como parte del proceso de reconstruir el objeto.",
+    "correct_approach": "Nunca deserializar datos no confiables con pickle/ObjectInputStream/unserialize sin control estricto de origen; usar formatos de datos puros (JSON, protobuf) para cualquier dato que cruce una frontera de confianza.",
+    "bad_example": "datos = pickle.loads(request.body) # request.body viene directo del cliente HTTP",
+    "good_example": "datos = json.loads(request.body) # JSON no ejecuta codigo al parsear, es un formato de datos puro",
+    "source": "OWASP - Deserialization Cheat Sheet; CWE-502"
+  },
+  {
+    "id": "security-ssrf-via-user-supplied-url",
+    "language_or_domain": "security",
+    "tags": ["cwe-918", "security"],
+    "problem_description": "Una funcionalidad que hace un fetch server-side de una URL provista por el usuario (ej. 'importar imagen desde esta URL', webhooks, preview de links) sin validar ni restringir el destino permite Server-Side Request Forgery: el atacante puede hacer que el servidor acceda a servicios internos (metadata de la nube en 169.254.169.254, servicios en localhost, redes privadas) que no serian alcanzables directamente desde afuera.",
+    "why_small_models_fail": "El modelo implementa el fetch de la forma mas directa (tomar la URL del usuario y pasarla tal cual a la libreria HTTP), tratando la URL como un dato de entrada neutral en vez de un vector de ataque contra la red interna del propio servidor.",
+    "correct_approach": "Validar el host resuelto contra una whitelist de dominios permitidos, rechazar explicitamente rangos de IP privados/loopback/metadata, y deshabilitar redirects automaticos (o revalidar el destino final tras cada redirect) antes de hacer el fetch.",
+    "bad_example": "def importar_imagen(url):\n    respuesta = requests.get(url) # url viene directo del usuario, sin validar\n    return respuesta.content",
+    "good_example": "def importar_imagen(url):\n    host = obtener_host(url)\n    if not es_dominio_permitido(host) or es_ip_privada(resolver(host)):\n        raise ValueError(\"destino no permitido\")\n    respuesta = requests.get(url, allow_redirects=False)\n    return respuesta.content",
+    "source": "OWASP - Server-Side Request Forgery Prevention Cheat Sheet; CWE-918"
+  },
+  {
+    "id": "security-jwt-alg-none-or-weak-secret",
+    "language_or_domain": "security",
+    "tags": ["cwe-347", "security", "authentication"],
+    "problem_description": "Verificar un JWT sin fijar explicitamente el algoritmo esperado permite que un atacante envie un token con 'alg: none' (sin firma) o cambie de RS256 a HS256 usando la clave publica como secreto HMAC, falsificando tokens validos. Usar un secreto de firma corto, por defecto, o hardcodeado en el codigo tambien permite forjar tokens por fuerza bruta o simplemente leyendolo del repositorio.",
+    "why_small_models_fail": "El modelo llama a la funcion de verificacion de la libreria JWT con la firma minima (token, secreto) sin fijar explicitamente el/los algoritmos permitidos, confiando en que la libreria 'ya es segura por defecto' - varias librerias historicamente no lo eran salvo configuracion explicita.",
+    "correct_approach": "Especificar explicitamente el algoritmo permitido (o lista cerrada de algoritmos) al verificar, nunca aceptar 'none', y usar un secreto/clave generado con suficiente entropia y gestionado como secreto (no en el codigo fuente).",
+    "bad_example": "payload = jwt.decode(token, secreto) # sin fijar 'algorithms', puede aceptar alg=none segun la libreria/version",
+    "good_example": "payload = jwt.decode(token, secreto, algorithms=[\"HS256\"]) # solo acepta el algoritmo esperado explicitamente",
+    "source": "OWASP - JSON Web Token (JWT) Cheat Sheet; CWE-347"
+  },
+  {
+    "id": "security-path-traversal-file-download",
+    "language_or_domain": "security",
+    "tags": ["cwe-22", "security"],
+    "problem_description": "Construir una ruta de archivo concatenando un nombre provisto por el usuario (ej. /descargas/{nombre_archivo}) sin sanitizar secuencias como ../ permite path traversal: el atacante puede solicitar ../../../../etc/passwd (o el equivalente en el sistema operativo) y leer archivos arbitrarios fuera del directorio destinado.",
+    "why_small_models_fail": "El modelo genera la concatenacion de ruta mas directa para resolver 'servir un archivo por nombre', sin aplicar por default ninguna normalizacion/validacion de que la ruta resultante siga estando dentro del directorio base permitido.",
+    "correct_approach": "Resolver la ruta final a su forma absoluta normalizada y verificar explicitamente que sigue siendo un descendiente del directorio base permitido antes de abrir el archivo; rechazar cualquier ruta que no lo sea.",
+    "bad_example": "def descargar(nombre_archivo):\n    ruta = os.path.join(\"/var/app/descargas\", nombre_archivo)\n    return open(ruta, \"rb\").read() # nombre_archivo=\"../../../../etc/passwd\" escapa del directorio",
+    "good_example": "def descargar(nombre_archivo):\n    base = Path(\"/var/app/descargas\").resolve()\n    ruta = (base / nombre_archivo).resolve()\n    if base not in ruta.parents and ruta != base:\n        raise ValueError(\"ruta no permitida\")\n    return open(ruta, \"rb\").read()",
+    "source": "OWASP - Path Traversal; CWE-22"
+  },
+  {
+    "id": "security-secrets-committed-to-source-control",
+    "language_or_domain": "security",
+    "tags": ["cwe-798", "security"],
+    "problem_description": "Hardcodear una API key, contraseña o token directamente en el codigo fuente que se commitea a git deja ese secreto expuesto para siempre en el historial del repositorio, aunque se 'elimine' en un commit posterior - cualquiera con acceso al historial (incluido un repo que se hace publico por error) puede recuperarlo con git log/git show.",
+    "why_small_models_fail": "El modelo genera el ejemplo mas directo y autocontenido (con la clave 'de muestra' escrita inline) para que el codigo sea ejecutable tal cual, sin marcar la diferencia entre un placeholder de ejemplo y un patron que en codigo real termina commiteado con el secreto de verdad.",
+    "correct_approach": "Leer secretos siempre desde variables de entorno o un gestor de secretos (Vault, AWS Secrets Manager, etc.), nunca escritos literalmente en el codigo; si un secreto real ya fue commiteado, rotarlo (invalidarlo) ademas de removerlo, porque removerlo del codigo actual no lo borra del historial de git.",
+    "bad_example": "STRIPE_API_KEY = \"sk_live_51H8x...\" # secreto real, queda en el historial de git para siempre",
+    "good_example": "STRIPE_API_KEY = os.environ[\"STRIPE_API_KEY\"] # el valor real nunca toca el repositorio",
+    "source": "OWASP - Secrets Management Cheat Sheet; CWE-798"
+  },
+  {
+    "id": "security-cors-reflected-origin-with-credentials",
+    "language_or_domain": "security",
+    "tags": ["cwe-346", "security", "cors"],
+    "problem_description": "Los navegadores rechazan la combinacion literal de Access-Control-Allow-Origin: * junto con Access-Control-Allow-Credentials: true. Para 'sortear' eso, es comun reflejar dinamicamente el header Origin de la request como valor de Access-Control-Allow-Origin (en vez de una whitelist fija) - eso efectivamente abre requests autenticadas con cookies/credenciales desde CUALQUIER origen, replicando el problema que el navegador intentaba impedir.",
+    "why_small_models_fail": "El modelo 'resuelve' el error del navegador reflejando el Origin recibido porque hace que el error desaparezca y las pruebas funcionales pasen, sin modelar que esa solucion anula por completo la proteccion de origen que CORS con credenciales esta diseñado para dar.",
+    "correct_approach": "Mantener una whitelist explicita y cerrada de origenes permitidos (no reflejar el header Origin dinamicamente sin validarlo contra esa lista) cuando Allow-Credentials es true.",
+    "bad_example": "response.headers[\"Access-Control-Allow-Origin\"] = request.headers[\"Origin\"] # refleja CUALQUIER origen\nresponse.headers[\"Access-Control-Allow-Credentials\"] = \"true\"",
+    "good_example": "origen = request.headers.get(\"Origin\")\nif origen in ORIGENES_PERMITIDOS:\n    response.headers[\"Access-Control-Allow-Origin\"] = origen\n    response.headers[\"Access-Control-Allow-Credentials\"] = \"true\"",
+    "source": "OWASP - CORS OriginHeaderScrutiny; MDN - CORS, credentialed requests"
+  }
+]

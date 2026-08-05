@@ -1,0 +1,223 @@
+# Que herramientas ve cada especialista.
+#
+# EL PROBLEMA QUE RESUELVE
+# Los esquemas de las 35 herramientas son ~31.000 caracteres (~7.700
+# tokens) y viajaban ENTEROS en cada llamada, para todos los
+# especialistas. Un `python-specialist` recibia en cada turno la
+# descripcion completa de `fetch_menu_and_reviews_from_maps`,
+# `critique_screenshot` y `search_images` - herramientas que no puede usar
+# para nada en su dominio.
+#
+# No es solo coste: un catalogo de 35 herramientas donde 20 son
+# irrelevantes empeora la eleccion del modelo. Es el mismo efecto que ya
+# estaba documentado para los prompts largos en auto_router (los modelos de
+# este tamaño "caen en defaults genericos" cuando les llega demasiado), y
+# se ve como llamadas a la tool equivocada.
+#
+# COMO SE LEE
+# `sets` agrupa herramientas por familia. `especialistas` dice que familias
+# recibe cada uno. Todos reciben `core` implicitamente - sin escribir ni
+# leer archivos no hay agente.
+#
+# REGLA AL AÑADIR UNA TOOL NUEVA
+# Meterla en algun set. Una tool que no este en ninguno NO se le entrega a
+# nadie, y el test `test_toda_tool_esta_en_algun_set` lo detecta - preferible
+# a que aparezca en silencio en los 20 especialistas.
+
+sets:
+  # Sin esto no hay agente: leer, escribir, preguntar, delegar. Va a todos.
+  core:
+    - load_skill_section      # carga progresiva del propio skill
+    - plan                    # plan visible (todo list) de una tarea de varios pasos
+    - ask_user
+    - delegate_to_specialist
+    - read_file
+    - write_file
+    - edit_file
+    - list_dir
+    - glob_search
+    - grep_search
+    - delete_files
+    - search_hard_cases       # base de casos dificiles: util en todo dominio
+    # goldentokens: leer cosas grandes sin volcarlas al contexto. Van en
+    # core porque el ahorro aplica a cualquier dominio - un JSON o un
+    # archivo largo aparecen tanto en una tarea de codigo como en una web.
+    - peek_file
+    - query_json
+
+  # Verificacion de codigo y consulta del propio repo.
+  codigo:
+    - install_dependency
+    - run_check               # ruff / mypy / pytest
+    - query_code_graph
+    - shortest_path_in_graph
+
+  # Verificadores de EJECUCION especificos de un dominio. Van en familias
+  # sueltas (no en `codigo`) para que un python-specialist no cargue en
+  # cada turno el esquema de una tool SQL/C++/xlsx que no puede usar - el
+  # mismo motivo por el que existe este archivo.
+  sql_ejecucion:
+    - run_sql                 # SQLite en memoria: filas reales + EXPLAIN
+  cpp_ejecucion:
+    - compile_run_cpp         # g++ con warnings + timeout (caza bucles)
+  hoja_calculo:
+    - eval_xlsx_formulas      # CALCULA las formulas (lo que openpyxl no)
+
+  # APIs de REFERENCIA gratuitas. Bajan la alucinacion de firmas/versiones en
+  # CUALQUIER dominio de codigo: en vez de escribir de memoria (y equivocarse
+  # en un nombre de parametro o un numero de version con total seguridad), el
+  # especialista consulta la fuente real. Por eso van a todos los de lenguaje.
+  referencia_codigo:
+    - code_examples           # Stack Overflow: respuestas votadas + su codigo
+    - search_code             # GitHub: codigo real de repos (usa GITHUB_TOKEN)
+    - package_info            # PyPI/npm/crates/...: version/descripcion/repo actuales
+    - vuln_check              # OSV.dev: CVEs conocidos del paquete + version de fix
+
+  # Red de seguridad contra la alucinacion de DATOS DEL MUNDO REAL. Los de
+  # referencia_codigo cubren firmas/versiones de paquetes; esto cubre lo demas
+  # (un hecho, una fecha, una cifra, algo de un producto/persona/coche) para
+  # que NINGUN especialista tenga que contestarlo de memoria y se lo invente
+  # (el 'BMW 118d con motor 1.8 TDI' salio de un especialista sin buscar). Es
+  # SOLO search_web, no deep_research: una consulta puntual para verificar un
+  # dato, no una investigacion cara. Los de web/oficina ya lo tienen via
+  # web_contenido, asi que no lo repiten.
+  busqueda_web:
+    - search_web
+
+  # Directorio de APIs publicas + datos de ejemplo: para montar webs con datos
+  # reales (clima, cripto...) o prototipos creibles sin inventar el JSON.
+  web_datos:
+    - find_api                # APIs.guru: miles de APIs publicas por tema
+    - sample_data             # DummyJSON: datos falsos realistas
+
+  # Recursos de DISEÑO web, todos gratis: material real (iconos, tipografias,
+  # paletas, avatares/logos, componentes con animacion) en vez de dejar que el
+  # modelo invente un font-family o dibuje un SVG a mano que sale roto.
+  diseño_web:
+    - search_icons            # Iconify: 200k+ iconos, URL SVG lista
+    - search_fonts            # Google Fonts: familias reales + <link> con pesos
+    - color_palette           # The Color API: paletas armonicas
+    - design_assets           # DiceBear/placehold/Picsum/Simple Icons/QR
+    - uiverse                 # UIverse: componentes con animacion (HTML+CSS, MIT)
+
+  # Generacion de documentos ofimaticos.
+  oficina:
+    - generate_docx
+    - generate_xlsx
+    - generate_pptx
+    - lint_email
+
+  # Traer contenido real de internet.
+  web_contenido:
+    - web_fetch
+    - extract_business_info
+    - search_web
+    - deep_research           # investigacion recursiva y cibersegura (SSRF-safe)
+    - wikipedia               # articulo real de un tema (coche, empresa, persona...)
+    - check_links
+
+  # Datos de negocios reales desde Maps. Solo tienen sentido cuando el
+  # sitio promociona un negocio local.
+  web_negocio:
+    - fetch_business_from_maps
+    - fetch_menu_and_reviews_from_maps
+    - fetch_menu_photos_from_maps
+    - extract_menu_text
+
+  # Buscar y juzgar imagenes. Son los esquemas MAS grandes del catalogo
+  # (search_images 774 tok, search_web_image 710 tok), asi que sacarlos de
+  # donde no hacen falta es el mayor ahorro individual.
+  web_imagenes:
+    - search_images
+    - search_web_image
+    - analyze_image
+    - classify_image_content
+
+  # Construir y VER el resultado. `verificar_web` es la unica forma que
+  # tiene el agente de "ver" lo que hizo, y hace las tres comprobaciones de
+  # una vez.
+  #
+  # Las tres sueltas (render_check, lint_web_page, critique_screenshot) NO
+  # estan aqui a proposito: el skill pedia llamarlas juntas y en las
+  # sesiones reales el modelo hacia una por turno, 7 de 7 veces. Cada turno
+  # de mas reenvia la conversacion entera. Al ofrecer solo la compuesta, la
+  # agrupacion deja de depender de que se acuerde, y ademas se ahorran dos
+  # esquemas en cada llamada.
+  web_construccion:
+    - list_reference_components
+    - read_reference_component
+    - verificar_web
+    - check_contrast           # ratio de contraste WCAG exacto (a11y no lo calcula a ojo)
+
+especialistas:
+  web-builder-specialist:
+    - web_contenido
+    - web_negocio
+    - web_imagenes
+    - web_construccion
+    - web_datos            # APIs publicas + datos de ejemplo para la web
+    - diseño_web           # iconos, tipografias, paletas, assets, UIverse
+    - referencia_codigo    # ejemplos/paquetes reales para el JS del sitio
+  web-designer-specialist:
+    - web_imagenes
+    - web_construccion
+    - web_contenido
+    - web_datos
+    - diseño_web           # el diseñador es quien mas usa iconos/fuentes/paletas
+
+  # Investigacion OSINT: buscar en muchos angulos, LEER y contrastar fuentes
+  # (deep_research), consultar wikipedia si el sujeto es notable, confirmar un
+  # perfil concreto (web_fetch/check_links) y mirar imagenes/fotos de perfil
+  # -que ayudan a distinguir a dos personas homonimas-. web_contenido ya trae
+  # search_web+deep_research+wikipedia+web_fetch+check_links; web_imagenes las
+  # fotos. No lleva herramientas de codigo ni de oficina: solo investiga.
+  research-specialist: [web_contenido, web_imagenes]
+
+  # Los de codigo: verificacion y grafo del repo + APIs de referencia
+  # (ejemplos reales, versiones/vulns de paquetes) + busqueda_web como red de
+  # seguridad para un dato del mundo real, nada de oficina.
+  python-specialist: [codigo, referencia_codigo, busqueda_web]
+  typescript-specialist: [codigo, referencia_codigo, busqueda_web]
+  javascript-specialist: [codigo, referencia_codigo, busqueda_web]
+  java-specialist: [codigo, referencia_codigo, busqueda_web]
+  csharp-specialist: [codigo, referencia_codigo, busqueda_web]
+  cpp-specialist: [codigo, cpp_ejecucion, referencia_codigo, busqueda_web]
+  go-specialist: [codigo, referencia_codigo, busqueda_web]
+  rust-specialist: [codigo, referencia_codigo, busqueda_web]
+  php-specialist: [codigo, referencia_codigo, busqueda_web]
+  ruby-specialist: [codigo, referencia_codigo, busqueda_web]
+  kotlin-specialist: [codigo, referencia_codigo, busqueda_web]
+  sql-specialist: [codigo, sql_ejecucion, referencia_codigo, busqueda_web]
+  # seguridad: los ejemplos y sobre todo vuln_check (CVEs de dependencias)
+  # son parte central de su trabajo.
+  security-specialist: [codigo, referencia_codigo, busqueda_web]
+
+  # Transversales. testing y refactor necesitan verificar codigo;
+  # docs no ejecuta nada, solo lee y escribe (core ya se lo da) - pero SI
+  # busca, que una doc puede necesitar un dato real (una version, un enlace).
+  testing-specialist: [codigo, referencia_codigo, busqueda_web]
+  refactor-specialist: [codigo, referencia_codigo, busqueda_web]
+  docs-specialist: [busqueda_web]
+  code-review-specialist: [codigo, referencia_codigo, busqueda_web]
+  debugging-specialist: [codigo, referencia_codigo, busqueda_web]
+  # accesibilidad necesita VER la pagina: render_check y critique_screenshot
+  # son su unica forma de juzgar contraste y foco visible.
+  accessibility-specialist: [web_construccion, busqueda_web]
+  devops-iac-specialist: [codigo, busqueda_web]
+
+  # Oficina: generar el documento y poco mas. web_contenido (incluye
+  # search_web + deep_research) porque un informe o una presentacion pueden
+  # necesitar informacion real de internet - p.ej. un Word sobre un producto
+  # concreto se documenta buscando, no de memoria.
+  # web_imagenes: un documento sobre un tema real gana MUCHO con fotos; ahora
+  # generate_docx sabe incrustarlas (campo 'image' de cada seccion).
+  office-word-specialist: [oficina, web_contenido, web_imagenes]
+  office-spreadsheet-specialist: [oficina, web_contenido, hoja_calculo]
+  office-presentation-specialist: [oficina, web_contenido, web_imagenes]
+  # email: solo genera el mensaje, pero busca por si el correo cita un dato real.
+  office-email-specialist: [oficina, busqueda_web]
+
+  # generalist-tiny corre en el tier mas chico y hace tareas triviales:
+  # solo core. Darle mas herramientas a un modelo de 8B no lo hace mas
+  # capaz, lo hace mas propenso a elegir mal.
+  generalist-tiny: []

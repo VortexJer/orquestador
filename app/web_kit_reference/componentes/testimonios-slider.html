@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slider de testimonios</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #f5f4f0; color: #1a1a1a;
+         min-height: 100vh; display: grid; place-items: center; padding: 4rem 2rem; }
+
+  /* === Slider de testimonios ===
+     Sin librerías externas. Usa scroll-snap para deslizamiento suave nativo
+     y botones + dots para control manual. */
+
+  .testimonios { width: 100%; max-width: 900px; }
+  .testimonios h2 {
+    font-size: clamp(1.8rem, 4vw, 3rem); margin-bottom: 3rem; text-align: center;
+  }
+
+  /* Track con scroll-snap */
+  .slider-track {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    gap: 1.5rem;
+    padding-bottom: .5rem; /* espacio para scrollbar invisible */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .slider-track::-webkit-scrollbar { display: none; }
+
+  /* Cada testimonio */
+  .testimonio {
+    flex: 0 0 100%;
+    scroll-snap-align: start;
+    background: #fff;
+    border-radius: 24px;
+    padding: 3rem;
+    box-shadow: 0 4px 24px rgba(0,0,0,.06);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .stars { color: #f59e0b; font-size: 1.2rem; letter-spacing: .1em; }
+
+  .testimonio blockquote {
+    font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+    line-height: 1.7; color: #333; font-style: italic;
+    border: none; padding: 0;
+  }
+  .testimonio blockquote::before { content: '"'; font-size: 4rem; line-height: 0;
+    vertical-align: -.6em; color: #e07a3f; font-style: normal; margin-right: .1em; }
+
+  .autor {
+    display: flex; align-items: center; gap: 1rem; margin-top: auto;
+  }
+  .autor-avatar {
+    width: 52px; height: 52px; border-radius: 50%; background: #e07a3f;
+    display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+  .autor-nombre { font-weight: 700; }
+  .autor-cargo  { font-size: .85rem; color: #888; }
+
+  /* Controles */
+  .controls {
+    display: flex; align-items: center; justify-content: center;
+    gap: 1rem; margin-top: 2rem;
+  }
+  .btn-nav {
+    width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid #ddd;
+    background: #fff; cursor: pointer; font-size: 1.1rem; display: grid;
+    place-items: center; transition: background .2s, border-color .2s;
+  }
+  .btn-nav:hover { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+
+  /* Dots */
+  .dots { display: flex; gap: .5rem; }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #ddd;
+    cursor: pointer; transition: background .2s, width .3s;
+    border: none; padding: 0;
+  }
+  .dot.activo { background: #e07a3f; width: 24px; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<div class="testimonios">
+  <h2>Lo que dicen nuestros clientes</h2>
+
+  <div class="slider-track" id="slider">
+
+    <div class="testimonio">
+      <div class="stars">★★★★★</div>
+      <blockquote>El mejor servicio que he probado en años. El equipo estuvo pendiente de cada detalle y el resultado superó todas nuestras expectativas. No dudaríamos en repetir.</blockquote>
+      <div class="autor">
+        <div class="autor-avatar">M</div>
+        <div>
+          <p class="autor-nombre">María González</p>
+          <p class="autor-cargo">Directora de Marketing · Luminary</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="testimonio">
+      <div class="stars">★★★★★</div>
+      <blockquote>Llevábamos meses buscando una solución así. En cuanto lo probamos, supimos que era lo que necesitábamos. La integración fue sencilla y el soporte, impecable.</blockquote>
+      <div class="autor">
+        <div class="autor-avatar">C</div>
+        <div>
+          <p class="autor-nombre">Carlos Martínez</p>
+          <p class="autor-cargo">CTO · TechVision</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="testimonio">
+      <div class="stars">★★★★☆</div>
+      <blockquote>Muy buena experiencia desde el primer contacto. Cumplieron plazos, fueron transparentes con el proceso y el producto final es exactamente lo que pedimos.</blockquote>
+      <div class="autor">
+        <div class="autor-avatar">A</div>
+        <div>
+          <p class="autor-nombre">Ana Ruiz</p>
+          <p class="autor-cargo">Fundadora · Atelier Blanc</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="controls">
+    <button class="btn-nav" id="prev" aria-label="Anterior">←</button>
+    <div class="dots" id="dots"></div>
+    <button class="btn-nav" id="next" aria-label="Siguiente">→</button>
+  </div>
+</div>
+
+<script>
+  const slider = document.getElementById('slider');
+  const slides = slider.querySelectorAll('.testimonio');
+  const dotsEl = document.getElementById('dots');
+  let actual = 0;
+
+  // Crear dots
+  slides.forEach((_, i) => {
+    const d = document.createElement('button');
+    d.className = 'dot' + (i === 0 ? ' activo' : '');
+    d.setAttribute('aria-label', `Testimonio ${i + 1}`);
+    d.addEventListener('click', () => irA(i));
+    dotsEl.appendChild(d);
+  });
+
+  function irA(idx) {
+    actual = (idx + slides.length) % slides.length;
+    slider.scrollTo({ left: actual * slider.offsetWidth, behavior: 'smooth' });
+    dotsEl.querySelectorAll('.dot').forEach((d, i) => {
+      d.classList.toggle('activo', i === actual);
+    });
+  }
+
+  document.getElementById('prev').addEventListener('click', () => irA(actual - 1));
+  document.getElementById('next').addEventListener('click', () => irA(actual + 1));
+
+  // Auto-avance cada 5 segundos
+  let autoplay = setInterval(() => irA(actual + 1), 5000);
+
+  // Pausar al interactuar
+  slider.addEventListener('touchstart', () => clearInterval(autoplay), { passive: true });
+  document.getElementById('prev').addEventListener('click', () => { clearInterval(autoplay); });
+  document.getElementById('next').addEventListener('click', () => { clearInterval(autoplay); });
+</script>
+</body>
+</html>

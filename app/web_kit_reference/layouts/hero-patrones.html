@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Patrones de hero</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; }
+  .etiqueta { background: #111; color: #fff; padding: .4rem 1.5rem; font-size: .8rem;
+    letter-spacing: .05em; text-transform: uppercase; }
+  .btn { display: inline-block; padding: .8rem 1.6rem; border-radius: 8px; text-decoration: none;
+    font-weight: 600; margin-top: 1.5rem; }
+
+  /* 1. Centrado clásico */
+  .hero-centro { min-height: 70vh; display: grid; place-items: center; text-align: center;
+    background: #fef3c7; padding: 2rem; }
+  .hero-centro h1 { font-size: clamp(2rem, 5vw, 3.5rem); max-width: 600px; }
+  .hero-centro p { color: #92400e; margin-top: 1rem; max-width: 480px; }
+  .hero-centro .btn { background: #d97706; color: #fff; }
+
+  /* 2. Dividido: texto a un lado, visual al otro */
+  .hero-split { min-height: 70vh; display: grid; grid-template-columns: 1fr 1fr; align-items: center; }
+  .hero-split .texto { padding: 3rem; }
+  .hero-split h1 { font-size: clamp(2rem, 4vw, 3rem); }
+  .hero-split p { color: #475569; margin-top: 1rem; }
+  .hero-split .visual { background: linear-gradient(135deg, #6366f1, #ec4899); height: 100%;
+    min-height: 50vh; display: grid; place-items: center; color: #fff; font-size: 4rem; }
+  .hero-split .btn { background: #6366f1; color: #fff; }
+  @media (max-width: 800px) { .hero-split { grid-template-columns: 1fr; } }
+
+  /* 3. Con imagen de fondo y overlay */
+  .hero-bg { min-height: 70vh; display: grid; place-items: center; text-align: center;
+    color: #fff; padding: 2rem; position: relative;
+    background: linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,.55)), linear-gradient(135deg,#0f766e,#155e75); }
+  .hero-bg h1 { font-size: clamp(2rem, 5vw, 3.5rem); }
+  .hero-bg p { margin-top: 1rem; opacity: .9; }
+  .hero-bg .btn { background: #fff; color: #0f766e; }
+
+  /* 4. Minimalista a la izquierda */
+  .hero-min { min-height: 60vh; display: flex; flex-direction: column; justify-content: center;
+    padding: 4rem; background: #fafafa; }
+  .hero-min h1 { font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 800; line-height: 1.05; max-width: 700px; }
+  .hero-min p { color: #71717a; margin-top: 1.5rem; max-width: 440px; }
+  .hero-min .btn { background: #18181b; color: #fff; align-self: flex-start; }
+</style>
+</head>
+<body>
+  <div class="etiqueta">1 · Centrado clásico</div>
+  <section class="hero-centro">
+    <div><h1>Un titular que va al grano</h1><p>Subtítulo de apoyo breve.</p><a class="btn" href="#">Empezar</a></div>
+  </section>
+
+  <div class="etiqueta">2 · Dividido (texto + visual)</div>
+  <section class="hero-split">
+    <div class="texto"><h1>Texto a la izquierda</h1><p>Visual o producto a la derecha.</p><a class="btn" href="#">Ver más</a></div>
+    <div class="visual">✦</div>
+  </section>
+
+  <div class="etiqueta">3 · Fondo con overlay</div>
+  <section class="hero-bg">
+    <div><h1>Imagen de fondo</h1><p>El overlay oscuro garantiza la legibilidad del texto.</p><a class="btn" href="#">Descubrir</a></div>
+  </section>
+
+  <div class="etiqueta">4 · Minimalista, tipografía grande</div>
+  <section class="hero-min">
+    <h1>La tipografía<br>es la protagonista.</h1>
+    <p>Mucho espacio en blanco, un solo acento.</p>
+    <a class="btn" href="#">Contacto</a>
+  </section>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grid responsive</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #f1f5f9; color: #0f172a; padding: 3rem 2rem; }
+  h2 { margin: 2rem 0 1rem; }
+  .item { background: #fff; border-radius: 12px; padding: 2rem 1rem; text-align: center;
+    box-shadow: 0 1px 6px rgba(0,0,0,.05); font-weight: 600; color: #475569; }
+
+  /* === Grid que se adapta SOLO, sin media queries ===
+     auto-fit + minmax: cada columna mide mínimo 200px; el navegador mete
+     tantas como quepan y reparte el espacio sobrante. Reduce la ventana
+     para ver cómo cambia el número de columnas automáticamente. */
+  .grid-auto {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+
+  /* === Grid de 12 columnas (control manual del ancho de cada item) === */
+  .grid-12 { display: grid; grid-template-columns: repeat(12, 1fr); gap: 1rem; }
+  .col-12 { grid-column: span 12; }
+  .col-6  { grid-column: span 6; }
+  .col-4  { grid-column: span 4; }
+  .col-8  { grid-column: span 8; }
+  /* en móvil, todo a ancho completo */
+  @media (max-width: 700px) {
+    .grid-12 > * { grid-column: span 12 !important; }
+  }
+</style>
+</head>
+<body>
+  <h2>Grid automático (auto-fit)</h2>
+  <div class="grid-auto">
+    <div class="item">1</div><div class="item">2</div><div class="item">3</div>
+    <div class="item">4</div><div class="item">5</div><div class="item">6</div>
+  </div>
+
+  <h2>Grid de 12 columnas (anchos a medida)</h2>
+  <div class="grid-12">
+    <div class="item col-12">col-12 (ancho completo)</div>
+    <div class="item col-6">col-6</div>
+    <div class="item col-6">col-6</div>
+    <div class="item col-4">col-4</div>
+    <div class="item col-8">col-8</div>
+  </div>
+</body>
+</html>

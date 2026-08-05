@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Header completo — sticky + hamburguesa + CTA</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; color: #111; min-height: 200vh; }
+
+  /* ============================================================
+     HEADER COMPLETO
+     Estructura HTML obligatoria (en este orden dentro del header):
+       1. .logo              — con margin-right: auto para empujar el resto a la derecha
+       2. <nav>              — ul con los enlaces
+       3. .nav-cta           — botón CTA, puede ir DENTRO del <nav> o entre nav y burger
+       4. .burger            — SIEMPRE el ÚLTIMO elemento del header
+
+     TRAMPA CRÍTICA DE CLASE: el CTA debe tener clase "nav-cta" (sin prefijos,
+     sin puntos, sin espacios raros). NUNCA uses "main-nav .nav-cta" ni
+     "nav .nav-cta" como valor de class="..." en el HTML — eso asignaría
+     las clases "main-nav" y ".nav-cta" al botón, haciéndolo heredar
+     position:fixed y z-index del nav → overlay invisible que bloquea TODOS
+     los clicks (burger y floating-cta incluidos).
+
+     Regla del logo: SIEMPRE margin-right: auto en .logo.
+     Esto garantiza que en móvil (cuando el nav queda position:fixed fuera
+     del flujo flex) el burger se empuje automáticamente al extremo derecho.
+     Sin este margin, el burger aparece pegado al logo.
+
+     En móvil:
+       - .logo y .burger quedan visibles en la barra superior
+       - nav se convierte en panel full-screen (z-index: 90)
+       - header mantiene z-index: 100 → burger siempre clickable
+       - .nav-cta dentro del panel móvil aparece como enlace grande
+  ============================================================ */
+
+  header {
+    position: sticky; top: 0;
+    z-index: 100; /* SIEMPRE mayor que el nav overlay (z-index: 90) */
+    background: rgba(20, 10, 5, 0.92); /* adaptar al proyecto */
+    backdrop-filter: blur(10px);
+    display: flex; align-items: center;
+    padding: 1.2rem 2rem; gap: 1rem;
+    transition: padding .3s ease, box-shadow .3s ease;
+  }
+  header.scrolled { padding: .8rem 2rem; box-shadow: 0 2px 16px rgba(0,0,0,.3); }
+
+  /* Logo — siempre a la izquierda */
+  .logo {
+    font-weight: 800; font-size: 1.3rem; color: #fff; /* SIEMPRE color explícito */
+    text-decoration: none; margin-right: auto; /* empuja todo lo demás a la derecha */
+  }
+
+  /* Nav — enlaces de escritorio */
+  nav ul { list-style: none; padding: 0; display: flex; gap: 2rem; }
+  nav a {
+    text-decoration: none;
+    color: rgba(255,255,255,.75); /* SIEMPRE color explícito */
+    font-weight: 500; font-size: .95rem;
+    transition: color .2s;
+  }
+  nav a:hover { color: #fff; }
+
+  /* Botón CTA en el header (ej. "Llamar", "Reservar") */
+  /* IMPORTANTE: usa "header .header-cta" o "nav .header-cta" con selector
+     más específico que cualquier regla "nav a" para evitar que el color
+     sea sobreescrito por el selector de enlaces generales del nav. */
+  .header-cta,
+  nav .header-cta {
+    display: inline-flex; align-items: center; gap: .5rem;
+    background: #e07a3f; /* adaptar al color de acento del proyecto */
+    color: #fff;         /* SIEMPRE #fff sobre fondo oscuro — NUNCA inherit */
+    padding: .6rem 1.3rem; border-radius: 8px;
+    text-decoration: none; font-weight: 700; font-size: .9rem;
+    border: none; cursor: pointer;
+    transition: background .2s, transform .2s;
+    white-space: nowrap;
+  }
+  .header-cta:hover { background: #c86a2f; transform: translateY(-1px); }
+
+  /* Burger — SIEMPRE el último elemento, SIEMPRE oculto en escritorio.
+     CRÍTICO: position:relative es OBLIGATORIO para que z-index funcione
+     correctamente en todos los navegadores. Sin él, en ciertos contextos
+     de stacking el z-index de un flex item no aplica y el nav cubre el burger. */
+  .burger {
+    display: none; /* oculto en escritorio */
+    flex-direction: column; gap: 5px;
+    background: none; border: none; cursor: pointer;
+    padding: 6px;
+    position: relative; /* OBLIGATORIO — activa z-index en todos los contextos */
+    z-index: 110;       /* por encima del nav (z-index: 90) */
+    flex-shrink: 0;
+  }
+  .burger span {
+    width: 26px; height: 2.5px;
+    background: #fff; /* SIEMPRE color explícito */
+    border-radius: 2px;
+    transition: transform .3s ease, opacity .3s ease;
+    display: block;
+  }
+  .burger.activo span:nth-child(1) { transform: translateY(7.5px) rotate(45deg); }
+  .burger.activo span:nth-child(2) { opacity: 0; }
+  .burger.activo span:nth-child(3) { transform: translateY(-7.5px) rotate(-45deg); }
+
+  /* ── Móvil ── */
+  @media (max-width: 768px) {
+    /* Mostrar burger */
+    .burger { display: flex; }
+
+    /* Ocultar CTA del header en móvil (hay floating-cta) */
+    .header-cta { display: none; }
+
+    /* CRÍTICO: el header tiene backdrop-filter (efecto cristal). Un elemento
+       con backdrop-filter/filter/transform se convierte en el CONTENEDOR de
+       sus descendientes position:fixed → el nav full-screen quedaría atrapado
+       dentro de la barra del header (~60px) en vez de cubrir la pantalla.
+       Por eso se DESACTIVA el backdrop-filter del header en móvil. */
+    header { backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+    /* Nav se convierte en panel full-screen */
+    nav {
+      position: fixed; inset: 0;
+      z-index: 90; /* SIEMPRE menor que el header (z-index: 100) para que el burger quede clickable */
+      background: #14090a; /* mismo tono que el header, adaptar */
+      transform: translateX(100%);
+      transition: transform .35s cubic-bezier(.22,1,.36,1);
+      display: flex; align-items: center; justify-content: center;
+    }
+    nav.abierto { transform: translateX(0); }
+
+    nav ul {
+      flex-direction: column; align-items: center;
+      gap: 2.5rem; font-size: 1.6rem;
+    }
+    nav a { color: #fff; font-size: 1.5rem; font-weight: 700; }
+
+    /* Prevenir scroll del body mientras el menú está abierto */
+    body.menu-abierto { overflow: hidden; }
+  }
+
+  /* Demo */
+  .hero { height: 80vh; display: grid; place-items: center; text-align: center;
+    background: #1a0d0a; color: #fff; }
+  .hero h1 { font-size: 3rem; }
+  main { padding: 4rem 2rem; text-align: center; color: #888; }
+
+  @media (prefers-reduced-motion: reduce) {
+    header, .burger span, nav { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+  <header id="header">
+    <a href="#" class="logo">Bar Roma</a>          <!-- 1. Logo -->
+
+    <nav id="nav">                                  <!-- 2. Nav -->
+      <ul>
+        <li><a href="#inicio"    onclick="cerrarMenu()">Inicio</a></li>
+        <li><a href="#carta"     onclick="cerrarMenu()">Carta</a></li>
+        <li><a href="#nosotros"  onclick="cerrarMenu()">Nosotros</a></li>
+        <li><a href="#contacto"  onclick="cerrarMenu()">Contacto</a></li>
+      </ul>
+    </nav>
+
+    <a href="tel:961011350" class="header-cta">     <!-- 3. CTA -->
+      📞 Llamar
+    </a>
+
+    <button class="burger" id="burger"              <!-- 4. Burger (ÚLTIMO) -->
+            aria-label="Abrir menú" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+
+  <div class="hero" id="inicio"><h1>Hero section</h1></div>
+  <main><p>Haz scroll y reduce la ventana para probar el header.</p></main>
+
+<script>
+  const burger = document.getElementById('burger');
+  const nav    = document.getElementById('nav');
+  const header = document.getElementById('header');
+
+  function cerrarMenu() {
+    burger.classList.remove('activo');
+    nav.classList.remove('abierto');
+    document.body.classList.remove('menu-abierto');
+    burger.setAttribute('aria-expanded', 'false');
+    burger.setAttribute('aria-label', 'Abrir menú');
+  }
+
+  burger.addEventListener('click', () => {
+    const abierto = burger.classList.toggle('activo');
+    nav.classList.toggle('abierto', abierto);
+    document.body.classList.toggle('menu-abierto', abierto);
+    burger.setAttribute('aria-expanded', String(abierto));
+    burger.setAttribute('aria-label', abierto ? 'Cerrar menú' : 'Abrir menú');
+  });
+
+  // Cerrar con Escape
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarMenu(); });
+
+  // Header sticky compacto
+  window.addEventListener('scroll', () => {
+    header.classList.toggle('scrolled', window.scrollY > 60);
+  }, { passive: true });
+</script>
+</body>
+</html>

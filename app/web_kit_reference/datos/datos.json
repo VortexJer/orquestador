@@ -1,0 +1,8 @@
+[
+  { "id": 1, "nombre": "Monstera", "categoria": "Interior", "precio": 24.90, "stock": 12, "imagen": "🌿" },
+  { "id": 2, "nombre": "Cactus San Pedro", "categoria": "Suculenta", "precio": 14.50, "stock": 30, "imagen": "🌵" },
+  { "id": 3, "nombre": "Orquídea blanca", "categoria": "Flor", "precio": 32.00, "stock": 5, "imagen": "🌸" },
+  { "id": 4, "nombre": "Pothos", "categoria": "Interior", "precio": 11.90, "stock": 25, "imagen": "🪴" },
+  { "id": 5, "nombre": "Lavanda", "categoria": "Aromática", "precio": 9.50, "stock": 18, "imagen": "💜" },
+  { "id": 6, "nombre": "Helecho", "categoria": "Interior", "precio": 16.00, "stock": 0, "imagen": "🌿" }
+]

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Masonry (tipo Pinterest)</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #fafafa; padding: 2rem; color: #18181b; }
+  h1 { margin-bottom: 1.5rem; }
+
+  /* === Masonry con CSS columns (la forma más simple, sin JS) ===
+     Los items se reparten en columnas y cada uno conserva su altura natural,
+     creando el efecto de ladrillos desiguales. break-inside evita que un
+     item se parta entre dos columnas. */
+  .masonry {
+    column-count: 3;
+    column-gap: 1rem;
+  }
+  @media (max-width: 800px) { .masonry { column-count: 2; } }
+  @media (max-width: 500px) { .masonry { column-count: 1; } }
+
+  .item {
+    break-inside: avoid;
+    margin-bottom: 1rem;
+    border-radius: 12px;
+    padding: 1.5rem;
+    color: #fff;
+    font-weight: 600;
+    display: flex;
+    align-items: flex-end;
+  }
+</style>
+</head>
+<body>
+  <h1>Galería masonry</h1>
+  <div class="masonry" id="masonry"></div>
+
+<script>
+  // genera items de alturas y colores variados para ver el efecto
+  const colores = ['#6366f1','#ec4899','#f59e0b','#10b981','#06b6d4','#8b5cf6','#ef4444','#14b8a6'];
+  const masonry = document.getElementById('masonry');
+  for (let i = 1; i <= 12; i++) {
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.style.background = colores[i % colores.length];
+    div.style.height = (120 + Math.random() * 160) + 'px'; // altura aleatoria
+    div.textContent = 'Item ' + i;
+    masonry.appendChild(div);
+  }
+</script>
+</body>
+</html>

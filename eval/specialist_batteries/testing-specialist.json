@@ -1,0 +1,33 @@
+{
+  "skill": "testing-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Escribe un test de pytest para esta funcion:\n\n    # modulo geometria.py\n    def area_rectangulo(base, altura):\n        return base * altura\n\nCamino feliz, un caso normal."
+    },
+    {
+      "level": "easy",
+      "task": "Tengo esta funcion en el modulo numeros.py:\n\n    def es_par(n):\n        return n % 2 == 0\n\nEscribeme tests parametrizados que cubran varios pares e impares."
+    },
+    {
+      "level": "normal",
+      "task": "Cubre esta funcion con tests de pytest, incluyendo los casos limite que se te ocurran:\n\n    # modulo precios.py\n    def aplica_descuento(precio, pct):\n        if pct < 0 or pct > 100:\n            raise ValueError('pct fuera de rango')\n        return round(precio * (1 - pct / 100), 2)"
+    },
+    {
+      "level": "normal",
+      "task": "Hemos encontrado un bug: la funcion `media` peta con lista vacia (ZeroDivisionError) cuando deberia devolver 0. Aqui esta:\n\n    # modulo stats.py\n    def media(valores):\n        return sum(valores) / len(valores)\n\nArreglalo como toca."
+    },
+    {
+      "level": "stress",
+      "task": "Necesito una bateria de casos para la funcion `normaliza_telefono(s)` del modulo telefonos.py, que quita espacios y guiones y antepone +34 si el numero no lleva ya prefijo internacional. Preparame una tabla con la entrada y la salida esperada para estos casos: '600 123 456', '600-123-456', '+34600123456', '' y '   '. Montalo como una unica estructura de datos que se recorra de golpe para no repetir codigo."
+    },
+    {
+      "level": "stress",
+      "task": "Aqui tienes una funcion TypeScript en slugify.ts:\n\n    export function slugify(s: string): string {\n      return s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');\n    }\n\nEscribeme los tests y correlos para ensenarme la salida en verde antes de darmelos, que quiero ver que pasan."
+    },
+    {
+      "level": "stress",
+      "task": "Funcion `registra_usuario(repo, mailer, logger, datos)` del modulo registro.py: guarda el usuario en `repo` (tiene `repo.save(user)` y `repo.get(email)`), envia un correo de bienvenida con `mailer.send(destino, cuerpo)` y escribe una linea de auditoria con `logger.info(...)`. Quiero tests que garanticen que el registro funciona de punta a punta. Usa mocks para comprobar que se llamo a repo.save, a mailer.send y a logger.info con los argumentos correctos."
+    }
+  ]
+}

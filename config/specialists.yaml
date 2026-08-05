@@ -1,0 +1,460 @@
+# Catalogo declarativo de especialistas. Agregar uno nuevo = agregar una
+# entrada aca + su skill.md + (si hace falta) su tool_runner. El core del
+# router y del gateway no se tocan.
+#
+# base_model_ref: referencia logica de pesos. Varios especialistas pueden
+# compartir la misma ref -> el Model Manager no recarga VRAM al pasar de
+# uno a otro (ver doc de arquitectura, seccion 6 y 10).
+#
+# enabled: false = registrado en el catalogo (skill, herramientas, RAG)
+# pero todavia no wireado en app/specialists/ del orquestador de
+# produccion. El router heuristico igual lo conoce y degrada
+# graciosamente al fallback de su familia (ver
+# app/router/heuristic_router.py, _DOMAIN_FALLBACK_FAMILY) cuando el
+# dominio matchea pero el especialista ideal esta deshabilitado.
+#
+# Estos especialistas SI son utilizables hoy fuera del orquestador de
+# produccion, via la terminal agentica de pruebas (groq_agent/), que
+# carga cualquier skill.md directamente sin depender de este flag.
+
+router_model:
+  base_model_ref: "router-tiny"
+  model_name: "Qwen2.5-1.5B-Instruct"
+  context_window: 32768
+  quantization: "GGUF Q4_K_M"
+  always_warm: true
+  # Tambien actua como validador final (decision confirmada: cero costo
+  # extra de VRAM, ya esta cargado) y como especialista trivial_text.
+
+embedder:
+  model_name: "BAAI/bge-small-en-v1.5"
+  runtime: "fastembed"
+  dim: 384
+
+specialists:
+  python-specialist:
+    enabled: true
+    domain: python
+    base_model_ref: "coder-main"
+    model_name: "Qwen2.5-Coder-14B-Instruct"
+    quantization: "AWQ 4-bit"
+    context_window: 32768
+    context_window_extended: 131072
+    skill_file: "skills/python-specialist.md"
+    tools: ["ruff", "mypy", "pytest"]
+    max_iterations: 3
+    rag_collections: ["python", "security"]
+
+  # --- Especialistas TRANSVERSALES (no de un lenguaje) -----------------
+  #
+  # Estos tres cubren dominios que el router YA clasificaba correctamente
+  # pero que no tenian especialista: `testing` y `refactor` caian en
+  # python-specialist (asi que pedir tests para Java te daba el
+  # especialista de Python) y `docs` caia en generalist-tiny, o sea
+  # documentacion tecnica escrita por el modelo mas chico del catalogo.
+
+  testing-specialist:
+    enabled: false  # groq_agent lo usa igual; el gating es del servicio /v1/generate
+    domain: testing
+    base_model_ref: "coder-main"
+    model_name: "Qwen2.5-Coder-14B-Instruct"
+    quantization: "AWQ 4-bit"
+    context_window: 32768
+    context_window_extended: 131072
+    skill_file: "skills/testing-specialist.md"
+    tools: ["ruff", "mypy", "pytest"]
+    max_iterations: 3
+    rag_collections: ["python", "typescript", "javascript"]
+
+  refactor-specialist:
+    enabled: false
+    domain: refactor
+    # devstral-agentic y no coder-main: refactorizar es leer mucho antes de
+    # escribir poco (localizar usos, comprobar que nada mas depende de
+    # esto), y ese patron de exploracion con herramientas es justo lo que
+    # distingue al tier agentico.
+    base_model_ref: "devstral-agentic"
+    model_name: "Devstral-Small"
+    quantization: "AWQ 4-bit"
+    context_window: 32768
+    context_window_extended: 131072
+    skill_file: "skills/refactor-specialist.md"
+    tools: ["ruff", "mypy", "pytest"]
+    max_iterations: 3
+    rag_collections: ["python", "typescript"]
+
+  docs-specialist:
+    enabled: false
+    domain: docs
+    base_model_ref: "coder-main"
+    model_name: "Qwen2.5-Coder-14B-Instruct"
+    quantization: "AWQ 4-bit"
+    context_window: 32768
+    context_window_extended: 131072
+    skill_file: "skills/docs-specialist.md"
+    tools: []
+    max_iterations: 2
+    rag_collections: ["docs"]
+
+  code-review-specialist:
+    enabled: false
+    domain: code_review
+    base_model_ref: "devstral-agentic"
+    model_name: "Devstral-Small"
+    quantization: "AWQ 4-bit"
+    context_window: 32768
+    context_window_extended: 131072
+    skill_file: "skills/code-review-specialist.md"
+    tools: ["ruff", "mypy", "pytest"]
+    max_iterations: 2
+    rag_collections: ["python", "security"]
+
+  debugging-specialist:
+    enabled: false
+    domain: debugging
+    base_model_ref: "devstral-agentic"
+    model_name: "Devstral-Small"
+    quantization: "AWQ 4-bit"
+    context_window: 32768
+    context_window_extended: 131072
+    skill_file: "skills/debugging-specialist.md"
+    tools: ["ruff", "mypy", "pytest"]
+    max_iterations: 3
+    rag_collections: ["python"]
+
+  accessibility-specialist:
+    enabled: false
+    domain: accessibility
+    # devstral-agentic y no coder-main: auditar accesibilidad es AGENTICO -
+    # leer el HTML/CSS, renderizar con verificar_web (su unica forma de "ver")
+    # y calcular ratios con check_contrast, y LUEGO reportar. En coder-main se
+    # vio narrar "voy a verificar el contraste..." y parar sin llamar la tool;
+    # devstral (el mismo tier de code-review/debugging/refactor) usa las tools.
+    base_model_ref: "devstral-agentic"
+    model_name: "Devstral-Small (agentic)"
+    context_window: 131072
+    skill_file: "skills/accessibility-specialist.md"
+    tools: []
+    max_iterations: 2
+    rag_collections: ["web"]
+
+  typescript-specialist:
+    enabled: false  # fase 2 - comparte coder-main, sin costo incremental de VRAM
+    domain: typescript
+    base_model_ref: "coder-main"
+    model_name: "Qwen2.5-Coder-14B-Instruct"
+    quantization: "AWQ 4-bit"
+    context_window: 32768
+    context_window_extended: 131072
+    skill_file: "skills/typescript-specialist.md"
+    tools: ["eslint", "tsc", "vitest"]
+    max_iterations: 3
+    rag_collections: ["typescript"]
+
+  javascript-specialist:
+    enabled: false
+    domain: javascript
+    base_model_ref: "coder-main"
+    model_name: "Qwen2.5-Coder-14B-Instruct"
+    quantization: "AWQ 4-bit"
+    context_window: 32768
+    skill_file: "skills/javascript-specialist.md"
+    tools: ["eslint", "jest_or_vitest"]
+    max_iterations: 3
+    rag_collections: ["javascript"]
+
+  java-specialist:
+    enabled: false
+    domain: java
+    base_model_ref: "coder-main"
+    model_name: "Qwen2.5-Coder-14B-Instruct"
+    quantization: "AWQ 4-bit"
+    context_window: 32768
+    skill_file: "skills/java-specialist.md"
+    tools: ["checkstyle", "spotbugs", "maven_or_gradle_build", "junit"]
+    max_iterations: 3
+    rag_collections: ["java"]
+
+  csharp-specialist:
+    enabled: false
+    domain: csharp
+    base_model_ref: "coder-main"
+    model_name: "Qwen2.5-Coder-14B-Instruct"
+    quantization: "AWQ 4-bit"
+    context_window: 32768
+    skill_file: "skills/csharp-specialist.md"
+    tools: ["dotnet_format", "dotnet_build", "dotnet_test"]
+    max_iterations: 3
+    rag_collections: ["csharp"]
+
+  cpp-specialist:
+    enabled: false
+    domain: cpp
+    base_model_ref: "coder-main"
+    model_name: "Qwen2.5-Coder-14B-Instruct"
+    quantization: "AWQ 4-bit"
+    context_window: 32768
+    skill_file: "skills/cpp-specialist.md"
+    tools: ["clang_format", "gcc_warnings", "cppcheck_or_clang_tidy", "ctest"]
+    max_iterations: 3
+    rag_collections: ["cpp"]
+    notes: >
+      El dominio con mas riesgo de comportamiento indefinido silencioso
+      del catalogo - ver hard_cases/by_domain/cpp.json. Warnings de
+      compilador altos (-Wall -Wextra -Wpedantic) se tratan como señal
+      fuerte, no solo estilo.
+
+  go-specialist:
+    enabled: false
+    domain: go
+    base_model_ref: "coder-main"
+    model_name: "Qwen2.5-Coder-14B-Instruct"
+    quantization: "AWQ 4-bit"
+    context_window: 32768
+    skill_file: "skills/go-specialist.md"
+    tools: ["gofmt", "go_vet", "staticcheck", "go_test_race"]
+    max_iterations: 3
+    rag_collections: ["go"]
+
+  rust-specialist:
+    enabled: false
+    domain: rust
+    base_model_ref: "coder-main"
+    model_name: "Qwen2.5-Coder-14B-Instruct"
+    quantization: "AWQ 4-bit"
+    context_window: 32768
+    skill_file: "skills/rust-specialist.md"
+    tools: ["cargo_fmt", "cargo_check", "cargo_clippy", "cargo_test"]
+    max_iterations: 3
+    rag_collections: ["rust"]
+
+  web-builder-specialist:
+    enabled: false
+    domain: web
+    base_model_ref: "web-builder-large"
+    model_name: "DeepSeek-V3.2 (via OpenRouter, ver groq_agent/auto_router.py)"
+    quantization: "n/a (modelo remoto, no auto-hosteado)"
+    context_window: 131072
+    skill_file: "skills/web-builder-specialist.md"
+    tools:
+      - "eslint"
+      - "web_lint"
+      - "link_checker"
+      - "render_check"
+      - "web_search"
+      - "web_scraper"
+      - "extract_business_info"
+      - "image_search"
+      - "image_analysis"
+    max_iterations: 3
+    rag_collections: ["web", "security"]
+    notes: >
+      Unico especialista cuyo tool_runner ya esta 100% implementado y
+      probado (app/tools/web_scraper.py, web_lint.py, image_search.py,
+      image_analysis.py, web_search.py, link_checker.py, render_check.py)
+      aunque siga enabled:false en el orquestador de produccion - ya
+      esta disponible para probarse via groq_agent/ (ver
+      skills/web-builder-specialist.md).
+
+  web-designer-specialist:
+    enabled: false
+    domain: web
+    base_model_ref: "web-builder-large"
+    model_name: "DeepSeek-V3.2 (via OpenRouter, ver groq_agent/auto_router.py)"
+    quantization: "n/a (modelo remoto, no auto-hosteado)"
+    context_window: 131072
+    skill_file: "skills/web-designer-specialist.md"
+    tools: []
+    max_iterations: 3
+    rag_collections: ["web"]
+    notes: >
+      Direccion de diseno (paleta, tipografia, reticula, componentes) para
+      web-builder; su entrega es texto, no un archivo. NO estaba registrado
+      aqui aunque tiene skill, esta en config/tool_sets.yaml y en el mapa de
+      delegacion (_ALIAS_SKILL 'diseno web'/'disenador web' en tools.py):
+      delegar a el crasheaba con KeyError en model_for_specialist ->
+      get_specialist. Se registra con el mismo tier que web-builder
+      (razonamiento de diseno largo). Las tools reales las filtra
+      config/tool_sets.yaml (familia diseño_web), no este campo.
+
+  research-specialist:
+    enabled: false
+    domain: research
+    # web-builder-large y no un tier chico: una investigacion NO es generar
+    # texto, es RAZONAR sobre fuentes contradictorias y sobre todo SEPARAR
+    # homonimos (dos personas con el mismo nombre) sin mezclar sus datos - el
+    # error clasico del modelo chico es fundir a las dos en un solo perfil.
+    # Ese juicio (a que sujeto pertenece cada hallazgo) pide el modelo mas
+    # capaz del catalogo, el mismo que redacta prosa larga con citas.
+    base_model_ref: "web-builder-large"
+    model_name: "DeepSeek-V3.1 / mistral-large (proveedores libres, ver providers.py)"
+    quantization: "n/a (modelo remoto)"
+    context_window: 131072
+    skill_file: "skills/research-specialist.md"
+    tools: ["deep_research", "web_search", "wikipedia", "web_fetch", "check_links"]
+    max_iterations: 4
+    rag_collections: ["security"]
+    notes: >
+      Investigacion OSINT de fuentes ABIERTAS y publicas, para fines
+      legitimos (auto-auditoria RGPD, reputacion, due diligence). El skill
+      obliga a: separar homonimos en fichas distintas, citar cada dato con su
+      URL, y marcar lo no confirmado como tal. No facilita acoso ni doxxing.
+
+  php-specialist:
+    enabled: false
+    domain: php
+    base_model_ref: "coder-main"
+    model_name: "Qwen2.5-Coder-14B-Instruct"
+    quantization: "AWQ 4-bit"
+    context_window: 32768
+    skill_file: "skills/php-specialist.md"
+    tools: ["phpcs_or_php_cs_fixer", "phpstan", "phpunit"]
+    max_iterations: 3
+    rag_collections: ["php", "security"]
+
+  ruby-specialist:
+    enabled: false
+    domain: ruby
+    base_model_ref: "coder-main"
+    model_name: "Qwen2.5-Coder-14B-Instruct"
+    quantization: "AWQ 4-bit"
+    context_window: 32768
+    skill_file: "skills/ruby-specialist.md"
+    tools: ["rubocop", "rspec_or_minitest"]
+    max_iterations: 3
+    rag_collections: ["ruby"]
+
+  kotlin-specialist:
+    enabled: false
+    domain: kotlin
+    base_model_ref: "coder-main"
+    model_name: "Qwen2.5-Coder-14B-Instruct"
+    quantization: "AWQ 4-bit"
+    context_window: 32768
+    skill_file: "skills/kotlin-specialist.md"
+    tools: ["ktlint", "gradle_build", "junit_or_kotest"]
+    max_iterations: 3
+    rag_collections: ["kotlin"]
+
+  sql-specialist:
+    enabled: false  # fase 2
+    domain: sql
+    base_model_ref: "coder-main"
+    model_name: "Qwen2.5-Coder-14B-Instruct"
+    quantization: "AWQ 4-bit"
+    context_window: 32768
+    skill_file: "skills/sql-specialist.md"
+    tools: ["sqlfluff", "explain_plan"]
+    max_iterations: 2
+    rag_collections: ["sql"]
+
+  security-specialist:
+    enabled: false  # fase 2
+    domain: security
+    base_model_ref: "coder-main"
+    model_name: "Qwen2.5-Coder-14B-Instruct"
+    quantization: "AWQ 4-bit"
+    context_window: 32768
+    skill_file: "skills/security-specialist.md"
+    tools: ["semgrep", "bandit"]
+    max_iterations: 2
+    rag_collections: ["security"]
+
+  devops-iac-specialist:
+    enabled: false  # fase futura - requiere cargar devstral (recarga real)
+    domain: iac
+    base_model_ref: "devstral-agentic"
+    model_name: "Devstral-Small-2507"
+    quantization: "AWQ 4-bit"
+    context_window: 131072
+    skill_file: "skills/devops-iac-specialist.md"
+    tools: ["tflint", "terraform_validate", "checkov"]
+    max_iterations: 2
+    rag_collections: ["iac"]
+
+  generalist-tiny:
+    enabled: true
+    domain: trivial_text
+    base_model_ref: "router-tiny"  # reusa el modelo del router, sin recarga
+    model_name: "Qwen2.5-1.5B-Instruct"
+    quantization: "GGUF Q4_K_M"
+    context_window: 32768
+    skill_file: "skills/generalist-tiny.md"
+    tools: ["docx_export"]
+    max_iterations: 1
+    rag_collections: []
+    notes: >
+      Catch-all de tareas de texto no verificables. Para los 4 tipos de
+      tarea de oficina especificos (correo, word, excel, pptx) el
+      catalogo ya tiene especialistas dedicados abajo (office-*) con su
+      propio skill/herramientas/RAG - generalist-tiny queda como
+      fallback de familia mientras esos no esten habilitados en el
+      orquestador de produccion.
+
+  office-email-specialist:
+    enabled: false
+    domain: office_email
+    # coder-main y no router-tiny(8B): un correo es corto, pero aun asi 8B
+    # daba textos flojos. coder-main es un salto claro sin el coste del tier
+    # grande, que para un email seria excesivo.
+    base_model_ref: "coder-main"
+    model_name: "Qwen2.5-Coder-14B-Instruct"
+    quantization: "AWQ 4-bit"
+    context_window: 32768
+    skill_file: "skills/office-email-specialist.md"
+    tools: ["email_lint"]
+    max_iterations: 1
+    rag_collections: ["office_email"]
+
+  office-word-specialist:
+    enabled: false
+    domain: office_word
+    # web-builder-large y no router-tiny(8B): un Word narrativo -un documento
+    # 'sobre X' con detalle real, pros/cons, curiosidades- es GENERACION DE
+    # PROSA LARGA, lo mismo que construir el contenido de una web. En 8B salia
+    # pobre y cortisimo; este tier (DeepSeek/mistral-large) escribe de verdad.
+    base_model_ref: "web-builder-large"
+    model_name: "DeepSeek-V3.1 / mistral-large (proveedores libres, ver providers.py)"
+    quantization: "n/a (modelo remoto)"
+    context_window: 131072
+    skill_file: "skills/office-word-specialist.md"
+    tools: ["docx_tool"]
+    max_iterations: 2
+    rag_collections: ["office_word"]
+
+  office-spreadsheet-specialist:
+    enabled: false
+    domain: office_spreadsheet
+    # coder-main y no router-tiny: las tareas de PROSA de oficina (email/word/
+    # ppt) salen bien en 8B, pero los MATICES DE FORMULA no - el 8B seguia
+    # poniendo =(x/total)*100 con formato 0.0% (=10000%) aunque la regla ya
+    # estaba en el skill. Correccion de formulas necesita el modelo de codigo.
+    base_model_ref: "coder-main"
+    model_name: "Qwen2.5-Coder-14B-Instruct"
+    quantization: "AWQ 4-bit"
+    context_window: 32768
+    skill_file: "skills/office-spreadsheet-specialist.md"
+    tools: ["xlsx_tool"]
+    max_iterations: 2
+    rag_collections: ["office_spreadsheet"]
+
+  office-presentation-specialist:
+    enabled: false
+    domain: office_presentation
+    # Igual que office-word: una presentacion con contenido real es prosa
+    # larga, no cabe en 8B. Ver nota de office-word-specialist.
+    base_model_ref: "web-builder-large"
+    model_name: "DeepSeek-V3.1 / mistral-large (proveedores libres, ver providers.py)"
+    quantization: "n/a (modelo remoto)"
+    context_window: 131072
+    skill_file: "skills/office-presentation-specialist.md"
+    tools: ["pptx_tool"]
+    max_iterations: 2
+    rag_collections: ["office_presentation"]
+
+fallback_model:
+  base_model_ref: "escalation-30b"
+  model_name: "Qwen3-Coder-30B-A3B"
+  quantization: "GGUF Q4_K_M"
+  context_window: 262144
+  note: "Uso exclusivo / marcado como respaldo caro. Ver doc arquitectura seccion 6."

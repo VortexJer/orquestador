@@ -1,0 +1,79 @@
+[
+  {
+    "id": "sql-implicit-cross-join",
+    "language_or_domain": "sql",
+    "tags": ["joins", "performance", "sql"],
+    "problem_description": "Sintaxis FROM a, b WHERE ... con una condicion de join incompleta o mal escrita produce un producto cartesiano silencioso - sin error, solo un dataset explosivamente grande e incorrecto.",
+    "why_small_models_fail": "No hay señal sintactica de error: la query es valida. El modelo genera esto con mas frecuencia al traducir pseudo-codigo o specs ambiguas a SQL, y no ve el problema sin ejecutar contra datos reales.",
+    "correct_approach": "Usar siempre JOIN ... ON explicito y, en el ciclo de herramientas, correr EXPLAIN para detectar nested loops/seq scans con cardinalidad sospechosamente alta.",
+    "bad_example": "SELECT * FROM orders o, customers c WHERE o.status = 'paid';",
+    "good_example": "SELECT * FROM orders o JOIN customers c ON c.id = o.customer_id WHERE o.status = 'paid';",
+    "source": "Postgres docs - Joins Between Tables"
+  },
+  {
+    "id": "sql-null-not-in-subquery",
+    "language_or_domain": "sql",
+    "tags": ["null-semantics", "subquery", "sql"],
+    "problem_description": "WHERE x NOT IN (SELECT y FROM t) devuelve cero filas si la subquery contiene algun NULL, por la logica de tres valores de SQL (TRUE/FALSE/UNKNOWN).",
+    "why_small_models_fail": "El patron aparece masivamente en el corpus sobre tablas de ejemplo sin NULLs, donde funciona bien; el modelo no generaliza la excepcion.",
+    "correct_approach": "Reemplazar por NOT EXISTS correlacionado, o filtrar explicitamente los NULL en la subquery antes del NOT IN.",
+    "bad_example": "SELECT * FROM orders WHERE customer_id NOT IN (SELECT customer_id FROM blocked_customers);",
+    "good_example": "SELECT * FROM orders o WHERE NOT EXISTS (SELECT 1 FROM blocked_customers b WHERE b.customer_id = o.customer_id);",
+    "source": "SQL:1999 semantica de NULL; Postgres docs 9.24.5"
+  },
+  {
+    "id": "sql-group-by-non-aggregated-column-nondeterministic",
+    "language_or_domain": "sql",
+    "tags": ["group-by", "aggregation", "sql"],
+    "problem_description": "En modos no estrictos (ej. MySQL sin ONLY_FULL_GROUP_BY), seleccionar una columna que no esta ni en el GROUP BY ni dentro de una funcion de agregacion es sintacticamente aceptado, pero el motor devuelve un valor ARBITRARIO de esa columna dentro de cada grupo, no necesariamente el que el usuario esperaria (ej. no es 'el primero' de forma confiable).",
+    "why_small_models_fail": "El modelo genera la query mas corta y legible (SELECT columna_no_agregada, COUNT(*) ... GROUP BY otra_columna) porque en algunos motores/configuraciones eso 'funciona' sin error, sin modelar que el resultado no esta garantizado y puede cambiar entre ejecuciones.",
+    "correct_approach": "Incluir en el GROUP BY toda columna no agregada del SELECT, o envolverla explicitamente en una funcion de agregacion (MIN, MAX, ARRAY_AGG) que exprese la intencion real.",
+    "bad_example": "SELECT customer_id, order_date, COUNT(*) FROM orders GROUP BY customer_id;\n-- order_date es arbitrario dentro de cada grupo, no 'el mas reciente' ni 'el primero'",
+    "good_example": "SELECT customer_id, MAX(order_date) AS ultima_orden, COUNT(*) FROM orders GROUP BY customer_id;",
+    "source": "MySQL docs - 'MySQL Handling of GROUP BY', ONLY_FULL_GROUP_BY"
+  },
+  {
+    "id": "sql-update-delete-missing-where-clause",
+    "language_or_domain": "sql",
+    "tags": ["data-safety", "sql"],
+    "problem_description": "Un UPDATE o DELETE sin clausula WHERE es sintacticamente valido y afecta a TODAS las filas de la tabla - un simple olvido de la condicion de filtro (ej. al generar la query dinamicamente a partir de una plantilla) puede borrar o sobreescribir una tabla completa en produccion sin ningun error ni advertencia del motor.",
+    "why_small_models_fail": "El modelo genera la sentencia base correctamente pero, al ensamblar la query dinamicamente (ej. construyendo el WHERE a partir de parametros opcionales), puede dejar el WHERE vacio si ningun filtro fue provisto, sin agregar una salvaguarda explicita contra ese caso.",
+    "correct_approach": "En cualquier UPDATE/DELETE generado dinamicamente, validar explicitamente que la clausula WHERE resultante no este vacia antes de ejecutar, y en el ciclo de herramientas, tratar un UPDATE/DELETE sin WHERE detectado estaticamente como un fallo que bloquea la ejecucion salvo confirmacion explicita.",
+    "bad_example": "-- construida dinamicamente a partir de filtros opcionales, ninguno provisto:\nDELETE FROM sesiones;\n-- borra la tabla COMPLETA, no solo las sesiones esperadas",
+    "good_example": "DELETE FROM sesiones WHERE expirada_en < NOW();\n-- y ademas, validar en la capa de aplicacion que el WHERE nunca quede vacio antes de ejecutar",
+    "source": "Practica estandar de seguridad de datos; PostgreSQL docs - DELETE, advertencia sobre WHERE"
+  },
+  {
+    "id": "sql-read-committed-non-repeatable-reads",
+    "language_or_domain": "sql",
+    "tags": ["transactions", "isolation-levels", "sql"],
+    "problem_description": "El nivel de aislamiento READ COMMITTED (el default en Postgres y SQL Server) NO garantiza que dos SELECT identicos dentro de la MISMA transaccion devuelvan el mismo resultado: otra transaccion puede confirmar (commit) cambios entre medio, produciendo lecturas no repetibles o filas fantasma. Asumir que 'estar en una transaccion' implica una foto consistente de toda la base de datos durante toda su duracion es incorrecto salvo que se use REPEATABLE READ o SERIALIZABLE.",
+    "why_small_models_fail": "El modelo trata 'transaccion' como sinonimo de 'snapshot aislado y consistente durante toda su duracion', que es el comportamiento de SERIALIZABLE/SNAPSHOT pero no el del nivel por defecto en la mayoria de los motores.",
+    "correct_approach": "Si la logica de negocio depende de que los datos leidos no cambien durante la transaccion (ej. leer un balance y despues decidir si descontar), usar explicitamente REPEATABLE READ/SERIALIZABLE, o un lock explicito (SELECT ... FOR UPDATE) sobre las filas relevantes.",
+    "bad_example": "BEGIN;\nSELECT saldo FROM cuentas WHERE id = 1; -- lee 100\n-- ... logica de negocio que asume que 100 sigue siendo verdad ...\nUPDATE cuentas SET saldo = saldo - 50 WHERE id = 1; -- otra transaccion pudo haber cambiado el saldo entre medio\nCOMMIT;",
+    "good_example": "BEGIN;\nSELECT saldo FROM cuentas WHERE id = 1 FOR UPDATE; -- lockea la fila, otras transacciones esperan\nUPDATE cuentas SET saldo = saldo - 50 WHERE id = 1;\nCOMMIT;",
+    "source": "PostgreSQL docs - 'Transaction Isolation'; ANSI SQL isolation levels"
+  },
+  {
+    "id": "sql-function-on-indexed-column-prevents-index-use",
+    "language_or_domain": "sql",
+    "tags": ["performance", "indexes", "sql"],
+    "problem_description": "Envolver una columna indexada en una funcion dentro del WHERE (ej. WHERE YEAR(fecha_creacion) = 2024, o WHERE LOWER(email) = 'x') impide que el motor use el indice normal sobre esa columna (salvo que exista un indice funcional especifico para esa expresion), forzando un full table scan silencioso - la query sigue devolviendo el resultado correcto, solo mucho mas lenta de lo esperado a medida que la tabla crece.",
+    "why_small_models_fail": "El modelo prioriza la forma mas legible de expresar la condicion (aplicar la funcion directamente sobre la columna), sin modelar que eso rompe el sargability (capacidad de usar el indice) de la query - un problema de rendimiento invisible en un dataset de prueba chico.",
+    "correct_approach": "Reescribir la condicion para que la columna quede 'desnuda' del lado izquierdo (ej. comparar contra un rango de fechas en vez de aplicar YEAR()), o crear un indice funcional/expresion si el motor lo soporta y la consulta con funcion es inevitable.",
+    "bad_example": "SELECT * FROM pedidos WHERE YEAR(fecha_creacion) = 2024; -- no usa el indice de fecha_creacion",
+    "good_example": "SELECT * FROM pedidos WHERE fecha_creacion >= '2024-01-01' AND fecha_creacion < '2025-01-01'; -- si usa el indice",
+    "source": "Use The Index, Luke! - 'Functions and Sargability'"
+  },
+  {
+    "id": "sql-column-alias-not-usable-in-where",
+    "language_or_domain": "sql",
+    "tags": ["query-execution-order", "sql"],
+    "problem_description": "Un alias definido en el SELECT (ej. SELECT precio * cantidad AS total) no puede referenciarse en el WHERE de esa misma query, por el orden logico de ejecucion de SQL: FROM/JOIN, luego WHERE, luego GROUP BY, y recien despues SELECT (donde se calculan los alias). Muchos motores si permiten usar el alias en ORDER BY o HAVING (que se evaluan despues del SELECT), lo que genera inconsistencia aparente entre clausulas de la misma query.",
+    "why_small_models_fail": "El modelo asume que un alias, una vez 'nombrado' en la query, esta disponible para el resto de la sentencia en cualquier clausula, sin modelar el orden logico de evaluacion interno de SQL que determina cuando cada alias realmente existe.",
+    "correct_approach": "Repetir la expresion completa en el WHERE (no el alias), o envolver la query en una subconsulta/CTE que exponga el alias como una columna real de la capa externa, donde si se puede filtrar por el.",
+    "bad_example": "SELECT precio * cantidad AS total FROM pedidos WHERE total > 100; -- error: 'total' no existe todavia en el momento en que se evalua WHERE",
+    "good_example": "SELECT * FROM (\n  SELECT precio * cantidad AS total FROM pedidos\n) sub WHERE total > 100; -- aca 'total' ya es una columna real de la subconsulta externa",
+    "source": "SQL standard - orden logico de procesamiento de consultas (logical query processing order)"
+  }
+]

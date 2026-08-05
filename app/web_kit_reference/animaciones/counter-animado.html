@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contadores animados</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #0f1629; color: #fff;
+         min-height: 100vh; display: flex; flex-direction: column;
+         align-items: center; justify-content: center; gap: 5rem; padding: 4rem 2rem; }
+
+  /* === Sección de stats ===
+     data-counter="numero"  → valor final
+     data-prefix="+"        → prefijo (opcional)
+     data-suffix="%"        → sufijo (opcional)
+     data-duration="1500"   → duración en ms (opcional, default 1500) */
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 3rem;
+    width: 100%;
+    max-width: 900px;
+    text-align: center;
+  }
+
+  .stat-item {}
+  .stat-numero {
+    font-size: clamp(3rem, 7vw, 5rem);
+    font-weight: 800;
+    line-height: 1;
+    color: #fff;
+    display: block;
+    /* El valor se inyecta desde JS */
+  }
+  .stat-etiqueta {
+    display: block;
+    margin-top: .75rem;
+    color: rgba(255,255,255,.45);
+    font-size: .9rem;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+  }
+
+  /* Línea de acento debajo del número */
+  .stat-item::after {
+    content: '';
+    display: block;
+    width: 32px; height: 3px;
+    background: #3b6ef5;
+    border-radius: 2px;
+    margin: 1rem auto 0;
+  }
+
+  /* ── Variante: sobre fondo claro ── */
+  .stats-claro {
+    background: #f5f7fa;
+    border-radius: 20px;
+    padding: 3rem 2rem;
+    width: 100%;
+    max-width: 900px;
+  }
+  .stats-claro .stat-numero { color: #0f1629; }
+  .stats-claro .stat-etiqueta { color: #64748b; }
+  .stats-claro .stat-item::after { background: #e07a3f; }
+
+  @media (prefers-reduced-motion: reduce) {
+    /* Mostrar el valor final directamente sin animación */
+    [data-counter] { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- Variante oscura -->
+  <div class="stats-grid" data-stagger-counters>
+    <div class="stat-item">
+      <span class="stat-numero" data-counter="1200" data-suffix="+">0</span>
+      <span class="stat-etiqueta">Clientes satisfechos</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-numero" data-counter="98" data-suffix="%">0</span>
+      <span class="stat-etiqueta">Tasa de retención</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-numero" data-counter="15" data-prefix="" data-suffix=" años">0</span>
+      <span class="stat-etiqueta">De experiencia</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-numero" data-counter="47" data-suffix=" países">0</span>
+      <span class="stat-etiqueta">Presencia global</span>
+    </div>
+  </div>
+
+  <!-- Variante clara -->
+  <div class="stats-claro">
+    <div class="stats-grid" data-stagger-counters>
+      <div class="stat-item">
+        <span class="stat-numero" data-counter="350" data-suffix="K">0</span>
+        <span class="stat-etiqueta">Usuarios activos</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-numero" data-counter="4.9" data-suffix="★" data-decimales="1">0</span>
+        <span class="stat-etiqueta">Valoración media</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-numero" data-counter="24" data-suffix="/7">0</span>
+        <span class="stat-etiqueta">Soporte</span>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Función de easing (ease-out-cubic para desaceleración natural)
+  function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+  function animarContador(el) {
+    const destino  = parseFloat(el.dataset.counter);
+    const prefijo  = el.dataset.prefix  || '';
+    const sufijo   = el.dataset.suffix  || '';
+    const decimals = parseInt(el.dataset.decimales) || 0;
+    const duracion = parseInt(el.dataset.duration)  || 1500;
+
+    let inicio = null;
+
+    function paso(timestamp) {
+      if (!inicio) inicio = timestamp;
+      const progreso = Math.min((timestamp - inicio) / duracion, 1);
+      const valor = easeOutCubic(progreso) * destino;
+      el.textContent = prefijo + valor.toFixed(decimals) + sufijo;
+      if (progreso < 1) requestAnimationFrame(paso);
+    }
+
+    requestAnimationFrame(paso);
+  }
+
+  // Disparar cuando la sección de stats entra en el viewport
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.querySelectorAll('[data-counter]').forEach(animarContador);
+        obs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.3 });
+
+  document.querySelectorAll('[data-stagger-counters]').forEach(el => obs.observe(el));
+
+  // Accesibilidad: sin animación si el usuario lo prefiere
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.querySelectorAll('[data-counter]').forEach(el => {
+      const p = el.dataset.prefix || '';
+      const s = el.dataset.suffix || '';
+      const d = parseInt(el.dataset.decimales) || 0;
+      el.textContent = p + parseFloat(el.dataset.counter).toFixed(d) + s;
+    });
+  }
+</script>
+</body>
+</html>

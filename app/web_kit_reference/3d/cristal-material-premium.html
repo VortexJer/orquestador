@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Material de cristal/refracción — objeto premium con transmisión real (15.15)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body { font-family: system-ui, sans-serif; color: #fff; overflow: hidden; }
+
+  /* ================================================================
+     CRISTAL DE VERDAD — MeshPhysicalMaterial con 'transmission' (luz
+     que atraviesa el objeto, no solo transparencia con opacity) - el
+     material que separa un render "premium" de uno generico. La
+     opacity normal solo difumina el color; la transmision real dobla
+     y filtra lo que hay DETRAS del objeto, como cristal/agua/gema.
+
+     CUÁNDO usarlo: mood F (elegante/premium) - joyeria, perfumeria,
+     alta cosmetica, bebidas premium (una copa/botella), estudio de
+     diseño. Es CARO de renderizar (el motor tiene que dibujar la
+     escena dos veces por cada objeto con transmission) - un solo
+     objeto de cristal por escena, nunca varios a la vez.
+
+     Para que la transmision se note hace falta algo INTERESANTE detras
+     del objeto que refractar - este demo pone unos planos de color
+     detras a proposito (ver 'FONDO PARA REFRACTAR'). Sin eso, el
+     cristal se veria casi invisible (correctamente fisico, pero
+     aburrido visualmente).
+
+     AUTOALOJAR: mismo proceso que hero-objeto-flotante.html.
+  ================================================================ */
+
+  .seccion-cristal {
+    position: relative; height: 100%;
+    background: #0b0d14;
+    display: grid; place-items: center; text-align: center;
+  }
+  #cristal-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .contenido { position: relative; z-index: 1; padding: 2rem; pointer-events: none; }
+  .contenido h1 { font-size: clamp(2.2rem, 6vw, 4rem); font-weight: 300; letter-spacing: .02em;
+    text-shadow: 0 4px 30px rgba(0,0,0,.7); }
+</style>
+</head>
+<body>
+  <section class="seccion-cristal">
+    <canvas id="cristal-3d"></canvas>
+    <div class="contenido"><h1>Transparencia real</h1></div>
+  </section>
+
+  <script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+  <script type="module">
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const canvas = document.getElementById('cristal-3d');
+    if (reduce) {
+      canvas.style.display = 'none';
+    } else {
+      const THREE = await import('three');
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 100);
+      camera.position.set(0, 0, 7);
+
+      let renderer = null;
+      try {
+        renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      } catch (e) {
+        canvas.style.display = 'none';
+      }
+
+      if (renderer) {
+        renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+        renderer.setSize(innerWidth, innerHeight);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+        const luzClave = new THREE.DirectionalLight(0xffffff, 1.5);
+        luzClave.position.set(3, 4, 5);
+        scene.add(luzClave);
+
+        // ── FONDO PARA REFRACTAR: sin esto el cristal se ve casi
+        // invisible. Sustituye estos colores por acentos del proyecto ──
+        const colores = [0x8b6cff, 0x22d3a8, 0xff8a5b];
+        colores.forEach((color, i) => {
+          const plano = new THREE.Mesh(
+            new THREE.CircleGeometry(1.1, 32),
+            new THREE.MeshBasicMaterial({ color })
+          );
+          plano.position.set((i - 1) * 1.3, Math.sin(i) * 0.6, -3.5);
+          scene.add(plano);
+        });
+
+        const geometria = new THREE.IcosahedronGeometry(1.5, 4);
+        const material = new THREE.MeshPhysicalMaterial({
+          color: 0xffffff,
+          metalness: 0,
+          roughness: 0.06,        // muy pulido = reflejos nitidos
+          transmission: 1,        // ← LA clave: deja pasar luz de verdad, no es opacity
+          thickness: 1.2,         // grosor "interno" simulado, afecta cuanto se curva la luz
+          ior: 1.5,                // indice de refraccion (1.5 = vidrio; 2.4 = diamante)
+          envMapIntensity: 1,
+          clearcoat: 1,
+          clearcoatRoughness: 0.1,
+        });
+        const cristal = new THREE.Mesh(geometria, material);
+        scene.add(cristal);
+
+        let targetX = 0, targetY = 0;
+        addEventListener('pointermove', (e) => {
+          targetX = (e.clientX / innerWidth - 0.5) * 2;
+          targetY = (e.clientY / innerHeight - 0.5) * 2;
+        });
+        addEventListener('resize', () => {
+          camera.aspect = innerWidth / innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(innerWidth, innerHeight);
+        });
+
+        const reloj = new THREE.Clock();
+        (function animar() {
+          requestAnimationFrame(animar);
+          const t = reloj.getElapsedTime();
+
+          cristal.rotation.y += (targetX * 0.6 - cristal.rotation.y) * 0.03;
+          cristal.rotation.x += (targetY * 0.4 - cristal.rotation.x) * 0.03;
+          cristal.rotation.y += 0.0015; // giro propio lentísimo, siempre presente
+          cristal.position.y = Math.sin(t * 0.5) * 0.12;
+
+          renderer.render(scene, camera);
+        })();
+      }
+    }
+  </script>
+</body>
+</html>

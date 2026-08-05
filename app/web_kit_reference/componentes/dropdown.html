@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dropdown</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #f1f5f9; padding: 4rem 2rem; color: #0f172a; }
+  .dropdown { position: relative; display: inline-block; }
+  .disparador { padding: .7rem 1.2rem; background: #334155; color: #fff; border: none;
+    border-radius: 8px; cursor: pointer; font: inherit; display: flex; align-items: center; gap: .5rem; }
+  .disparador .flecha { transition: transform .2s ease; }
+  .disparador[aria-expanded="true"] .flecha { transform: rotate(180deg); }
+
+  .menu { position: absolute; top: calc(100% + 6px); left: 0; min-width: 200px;
+    background: #fff; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.12);
+    padding: .4rem; opacity: 0; visibility: hidden; transform: translateY(-8px);
+    transition: opacity .2s ease, transform .2s ease, visibility .2s; z-index: 10; }
+  .menu.abierto { opacity: 1; visibility: visible; transform: translateY(0); }
+  .menu a { display: block; padding: .65rem .8rem; text-decoration: none; color: #334155;
+    border-radius: 6px; }
+  .menu a:hover { background: #f1f5f9; }
+
+  @media (prefers-reduced-motion: reduce) { .menu, .flecha { transition: none; } }
+</style>
+</head>
+<body>
+  <div class="dropdown">
+    <button class="disparador" id="disparador" aria-expanded="false" aria-haspopup="true">
+      Opciones <span class="flecha">▾</span>
+    </button>
+    <div class="menu" id="menu" role="menu">
+      <a href="#" role="menuitem">Editar perfil</a>
+      <a href="#" role="menuitem">Configuración</a>
+      <a href="#" role="menuitem">Ayuda</a>
+      <a href="#" role="menuitem">Cerrar sesión</a>
+    </div>
+  </div>
+
+<script>
+  const disparador = document.getElementById('disparador');
+  const menu = document.getElementById('menu');
+
+  function alternar(forzar) {
+    const abierto = forzar !== undefined ? forzar : !menu.classList.contains('abierto');
+    menu.classList.toggle('abierto', abierto);
+    disparador.setAttribute('aria-expanded', String(abierto));
+  }
+
+  disparador.addEventListener('click', (e) => { e.stopPropagation(); alternar(); });
+  // cerrar al hacer clic fuera
+  document.addEventListener('click', () => alternar(false));
+  // cerrar con Escape
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') alternar(false); });
+</script>
+</body>
+</html>

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Elementos decorativos animados</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #0d0d0d; color: #fff; }
+  .seccion { min-height: 50vh; display: flex; align-items: center; justify-content: center; gap: 4rem; flex-wrap: wrap; padding: 4rem 2rem; border-bottom: 1px solid #1a1a1a; position: relative; overflow: hidden; }
+  .label { position: absolute; top: 1rem; left: 1.5rem; font-size: .7rem; color: #555; letter-spacing: .1em; text-transform: uppercase; }
+  .desc { max-width: 300px; }
+  .desc h3 { font-size: 1.2rem; margin-bottom: .5rem; }
+  .desc p  { font-size: .85rem; color: #888; line-height: 1.6; }
+
+  /* ─── 1. Flotador ─────────────────────────────────────────────────────────
+     Cualquier elemento que flota suavemente en bucle.
+     Usa esto en logos, iconos, imágenes decorativas. */
+  .flotar { animation: flotar 4s ease-in-out infinite; }
+  @keyframes flotar {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-16px); }
+  }
+  .caja-flotante {
+    width: 160px; height: 160px; border-radius: 24px;
+    background: linear-gradient(135deg, #9333ea, #3b82f6);
+    display: grid; place-items: center; font-size: 3rem;
+    box-shadow: 0 20px 40px rgba(147,51,234,.4);
+  }
+
+  /* ─── 2. Línea que se dibuja sola (SVG stroke-dashoffset) ────────────────── */
+  .linea-svg { width: 200px; }
+  .linea-svg path {
+    stroke: #e07a3f; stroke-width: 2; fill: none;
+    stroke-dasharray: 300; stroke-dashoffset: 300;
+    animation: dibujar 2.5s ease forwards;
+  }
+  .linea-svg.reiniciar path { stroke-dashoffset: 0; }
+  @keyframes dibujar {
+    to { stroke-dashoffset: 0; }
+  }
+  /* Para activar en scroll: añade clase .visible al svg en IntersectionObserver
+     y reinicia la animación quitando/añadiendo la clase */
+
+  /* ─── 3. Cursor parpadeante / indicador activo ────────────────────────────── */
+  .cursor-parpadeo {
+    display: inline-flex; align-items: center; gap: .2rem;
+    font-size: 2rem; font-family: monospace;
+  }
+  .cursor-parpadeo .cursor {
+    width: 3px; height: 1.2em; background: #4ade80;
+    animation: parpadeo .8s step-end infinite;
+  }
+  @keyframes parpadeo { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+  /* ─── 4. Número que cuenta (decorativo, sin función) ─────────────────────── */
+  .num-deco {
+    font-size: clamp(6rem, 15vw, 12rem); font-weight: 900; line-height: 1;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(255,255,255,.15);
+    position: relative; user-select: none;
+    animation: numFlicker 6s ease-in-out infinite;
+  }
+  @keyframes numFlicker {
+    0%, 90%, 100% { -webkit-text-stroke-color: rgba(255,255,255,.15); }
+    95%            { -webkit-text-stroke-color: rgba(255,255,255,.4); }
+  }
+
+  /* ─── 5. Overlay de acento al hover (tarjeta de peix / producto) ─────────── */
+  .card-hover {
+    width: 220px; height: 280px; border-radius: 16px;
+    background: linear-gradient(135deg, #1a3328, #2a5a3a);
+    position: relative; overflow: hidden; cursor: pointer;
+    display: grid; place-items: center;
+  }
+  .card-hover .placeholder { font-size: 4rem; opacity: .3; }
+  .card-hover .overlay {
+    position: absolute; inset: 0;
+    background: rgba(45,122,122,.7);
+    display: grid; place-items: center;
+    opacity: 0;
+    transition: opacity .35s ease;
+    font-weight: 700; font-size: 1.1rem; letter-spacing: .05em;
+  }
+  .card-hover:hover .overlay { opacity: 1; }
+
+  /* ─── 6. Punto de estado pulsante ────────────────────────────────────────── */
+  .estado {
+    display: inline-flex; align-items: center; gap: .6rem;
+    padding: .6rem 1.2rem; border-radius: 100px;
+    background: rgba(74,222,128,.1); border: 1px solid rgba(74,222,128,.3);
+    font-size: .9rem; font-weight: 600; color: #4ade80;
+  }
+  .dot-pulsante {
+    width: 8px; height: 8px; border-radius: 50%; background: #4ade80;
+    animation: pulseDot 1.5s ease-in-out infinite;
+  }
+  @keyframes pulseDot {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(74,222,128,.5); }
+    50%       { box-shadow: 0 0 0 8px rgba(74,222,128,0); }
+  }
+
+  /* ─── 7. Texto brillante (shimmer) ───────────────────────────────────────── */
+  .shimmer-text {
+    font-size: 3rem; font-weight: 800;
+    background: linear-gradient(90deg, #888 0%, #fff 40%, #888 60%, #fff 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 3s linear infinite;
+  }
+  @keyframes shimmer { to { background-position: 200% center; } }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+</head>
+<body>
+
+  <div class="seccion">
+    <div class="label">1 · Flotador</div>
+    <div class="caja-flotante flotar">✦</div>
+    <div class="desc">
+      <h3>Elemento flotante</h3>
+      <p>Cualquier elemento que se mueve arriba y abajo suavemente. <code>animation: flotar 4s ease-in-out infinite</code>. Ideal para logos, imágenes, iconos SVG del hero.</p>
+    </div>
+  </div>
+
+  <div class="seccion">
+    <div class="label">2 · Línea que se dibuja</div>
+    <svg class="linea-svg" viewBox="0 0 200 100">
+      <path d="M 10 90 Q 60 10 100 50 Q 140 90 190 20"/>
+    </svg>
+    <div class="desc">
+      <h3>Trazo SVG animado</h3>
+      <p><code>stroke-dasharray</code> + <code>stroke-dashoffset</code> → la línea se dibuja sola. Actívalo en scroll con IntersectionObserver añadiendo una clase.</p>
+    </div>
+  </div>
+
+  <div class="seccion">
+    <div class="label">3 · Cursor parpadeante</div>
+    <div class="cursor-parpadeo">
+      Hola<span class="cursor"></span>
+    </div>
+    <div class="desc">
+      <h3>Cursor tipo terminal</h3>
+      <p>Un <code>span</code> de 3px con <code>animation: parpadeo step-end infinite</code>. Perfecto para webs tech, creativas o para un claim del hero.</p>
+    </div>
+  </div>
+
+  <div class="seccion">
+    <div class="label">4 · Número decorativo outline</div>
+    <div class="num-deco">4.6</div>
+    <div class="desc">
+      <h3>Número/texto outline</h3>
+      <p><code>-webkit-text-stroke</code> con color semi-transparente. El número existe como grafismo, no como dato. El parpadeo sutil lo hace vivo.</p>
+    </div>
+  </div>
+
+  <div class="seccion">
+    <div class="label">5 · Overlay al hover</div>
+    <div class="card-hover">
+      <span class="placeholder">🐟</span>
+      <div class="overlay">Ver más</div>
+    </div>
+    <div class="desc">
+      <h3>Overlay de color al hover</h3>
+      <p>Un <code>div.overlay</code> con <code>position:absolute; inset:0</code> y <code>opacity:0</code> que transita a <code>opacity:1</code> en hover. Aplica a tarjetas de platos, servicios, galería.</p>
+    </div>
+  </div>
+
+  <div class="seccion">
+    <div class="label">6 · Punto pulsante</div>
+    <div class="estado">
+      <span class="dot-pulsante"></span>
+      Abierto ahora
+    </div>
+    <div class="desc">
+      <h3>Indicador pulsante</h3>
+      <p><code>box-shadow</code> que crece y desaparece en bucle. Comunica estado "en vivo". También decorativo en cualquier elemento que quieras destacar.</p>
+    </div>
+  </div>
+
+  <div class="seccion">
+    <div class="label">7 · Texto shimmer</div>
+    <div class="shimmer-text">Peix fresc</div>
+    <div class="desc">
+      <h3>Texto con brillo que pasa</h3>
+      <p><code>background-clip: text</code> con un gradiente animado de <code>background-position</code>. Muy efectivo en un claim, el nombre del restaurante o un número clave.</p>
+    </div>
+  </div>
+
+</body>
+</html>

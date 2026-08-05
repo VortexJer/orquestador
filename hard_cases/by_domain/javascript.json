@@ -1,0 +1,79 @@
+[
+  {
+    "id": "js-equality-type-coercion",
+    "language_or_domain": "javascript",
+    "tags": ["type-coercion", "javascript"],
+    "problem_description": "== hace coercion de tipos con reglas poco intuitivas antes de comparar: '0' == 0 es true, [] == false es true, null == undefined es true pero null == 0 es false. Usarlo para comparar valores de origen variable (input de usuario, JSON externo) produce bugs dificiles de reproducir.",
+    "why_small_models_fail": "El modelo aprendio == como comparacion generica de muchos lenguajes donde no hay coercion implicita entre tipos tan distintos, y no internaliza la tabla de coercion especifica de JS.",
+    "correct_approach": "Usar === (y !==) siempre salvo un caso deliberado y comentado que dependa de la coercion (ej. == null para cubrir null y undefined a la vez).",
+    "bad_example": "if (userId == 0) { /* tambien entra si userId es '' o false o [] */ }",
+    "good_example": "if (userId === 0) { /* solo el numero 0 */ }",
+    "source": "MDN - Equality comparisons and sameness"
+  },
+  {
+    "id": "js-this-binding-lost-in-callback",
+    "language_or_domain": "javascript",
+    "tags": ["this-binding", "javascript"],
+    "problem_description": "Pasar un metodo de un objeto como callback (ej. array.forEach(obj.metodo)) desconecta 'this' del objeto original; dentro del metodo, this pasa a ser undefined (modo estricto) o el objeto global, no obj.",
+    "why_small_models_fail": "El modelo trata la referencia a una funcion como si llevara consigo su contexto de objeto, como pasaria con un metodo enlazado en otros lenguajes orientados a objetos.",
+    "correct_approach": "Usar .bind(obj), una arrow function que capture this lexicamente, o pasar una funcion anonima que llame al metodo explicitamente sobre obj.",
+    "bad_example": "class Counter {\n  count = 0;\n  increment() { this.count++; }\n}\nbutton.addEventListener(\"click\", counter.increment); // this es undefined adentro",
+    "good_example": "button.addEventListener(\"click\", () => counter.increment());\n// o: button.addEventListener(\"click\", counter.increment.bind(counter));",
+    "source": "MDN - this, perdida de contexto al pasar metodos como callbacks"
+  },
+  {
+    "id": "js-var-function-scope-hoisting",
+    "language_or_domain": "javascript",
+    "tags": ["scoping", "hoisting", "javascript"],
+    "problem_description": "var tiene scope de funcion, no de bloque: una variable declarada con var dentro de un if o un for 'se escapa' y sigue viva (aunque undefined hasta la asignacion) fuera del bloque, a diferencia de let/const.",
+    "why_small_models_fail": "El modelo aplica intuicion de scope de bloque (la de casi cualquier lenguaje moderno, incluido let/const del propio JS) a var, que tiene semantica distinta y mas antigua.",
+    "correct_approach": "Usar siempre let/const en codigo nuevo; reservar var solo si hay que mantener compatibilidad explicita con un patron existente que dependa de su hoisting.",
+    "bad_example": "if (true) {\n  var x = 10;\n}\nconsole.log(x); // 10 - x nunca estuvo confinada al bloque",
+    "good_example": "if (true) {\n  let x = 10;\n}\nconsole.log(x); // ReferenceError - x no existe fuera del bloque, como se esperaria",
+    "source": "MDN - var, differences with let/const scoping"
+  },
+  {
+    "id": "js-nan-self-inequality",
+    "language_or_domain": "javascript",
+    "tags": ["numerics", "javascript"],
+    "problem_description": "NaN === NaN es false (y NaN == NaN tambien), asi que buscar NaN con indexOf o comparaciones directas nunca lo encuentra; ademas typeof NaN es 'number', lo que puede pasar validaciones de tipo sin detectar el valor invalido.",
+    "why_small_models_fail": "El modelo asume igualdad reflexiva (x === x siempre true) porque es valido para practicamente todos los demas valores de JS; NaN es la unica excepcion del estandar IEEE 754.",
+    "correct_approach": "Usar Number.isNaN(x) para detectar NaN especificamente, o Array.prototype.includes (que si detecta NaN) en vez de indexOf.",
+    "bad_example": "const result = parseInt(input);\nif (result !== NaN) { use(result); } // siempre true, NaN !== NaN",
+    "good_example": "const result = parseInt(input);\nif (!Number.isNaN(result)) { use(result); }",
+    "source": "MDN - NaN, Number.isNaN"
+  },
+  {
+    "id": "js-array-sort-lexicographic-default",
+    "language_or_domain": "javascript",
+    "tags": ["arrays", "javascript"],
+    "problem_description": "Array.prototype.sort() sin comparador convierte los elementos a string y ordena lexicograficamente, no numericamente: [10, 2, 1].sort() da [1, 10, 2], no [1, 2, 10].",
+    "why_small_models_fail": "El modelo asume que sort() ordena numeros de forma numerica por default, como en la mayoria de los lenguajes con sobrecarga de tipos en sus funciones de ordenamiento.",
+    "correct_approach": "Pasar siempre un comparador explicito cuando se ordenan numeros: (a, b) => a - b.",
+    "bad_example": "[10, 2, 1].sort(); // [1, 10, 2]",
+    "good_example": "[10, 2, 1].sort((a, b) => a - b); // [1, 2, 10]",
+    "source": "MDN - Array.prototype.sort, default comparison"
+  },
+  {
+    "id": "js-json-stringify-drops-values",
+    "language_or_domain": "javascript",
+    "tags": ["json", "serialization", "javascript"],
+    "problem_description": "JSON.stringify omite silenciosamente las claves de un objeto cuyo valor es undefined, una funcion, o un Symbol (no lanza error ni advertencia); en un array, esos mismos valores se convierten en null en vez de desaparecer, lo cual es una inconsistencia adicional.",
+    "why_small_models_fail": "El modelo espera que serializar 'refleje fielmente' el objeto, sin modelar las reglas especificas y asimetricas de JSON.stringify para estos tres tipos de valor.",
+    "correct_approach": "Si un campo puede ser undefined y necesita persistir esa distincion (vs. no tener el campo), convertirlo explicitamente a null antes de serializar, y no asumir que un round-trip stringify/parse preserva undefined/funciones.",
+    "bad_example": "JSON.stringify({ a: 1, b: undefined, c: () => 1 });\n// '{\"a\":1}' - b y c desaparecieron sin aviso",
+    "good_example": "JSON.stringify({ a: 1, b: null }); // '{\"a\":1,\"b\":null}' - explicito y preservado",
+    "source": "MDN - JSON.stringify, description of undefined/Function/Symbol handling"
+  },
+  {
+    "id": "js-floating-promise-unhandled-rejection",
+    "language_or_domain": "javascript",
+    "tags": ["async", "error-handling", "javascript"],
+    "problem_description": "Llamar a una funcion async sin await ni .catch() en un contexto sincrono crea una 'floating promise'; si esa promesa rechaza, se convierte en un unhandled rejection que en Node con configuraciones estrictas puede terminar el proceso, y en el navegador solo aparece como un warning en consola facil de pasar por alto.",
+    "why_small_models_fail": "El modelo trata 'llamar a una funcion async' como equivalente a llamar a una funcion sincrona normal cuando el resultado no se necesita, sin considerar que los errores dentro de esa promesa ya no tienen un try/catch que los intercepte.",
+    "correct_approach": "Si no se puede o no tiene sentido usar await (ej. dentro de un handler de evento sincrono), encadenar un .catch() explicito o envolver la llamada en una funcion async inmediata con su propio try/catch.",
+    "bad_example": "button.addEventListener(\"click\", () => {\n  saveData(); // async function, si rechaza es un unhandled rejection\n});",
+    "good_example": "button.addEventListener(\"click\", () => {\n  saveData().catch((err) => showError(err));\n});",
+    "source": "MDN - Promise, unhandled rejections; Node.js docs - unhandledRejection event"
+  }
+]

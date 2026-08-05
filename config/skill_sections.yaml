@@ -1,0 +1,84 @@
+# Carga progresiva de skills grandes.
+#
+# EL PROBLEMA QUE RESUELVE
+# El system prompt de web-builder-specialist son ~95.000 caracteres
+# (~24.000 tokens) y se reenvia ENTERO en cada vuelta del ciclo agentico.
+# Una tarea web de 15 turnos gasta ~360.000 tokens solo en repetir el
+# prompt. Y no es solo coste: ya estaba documentado en auto_router que los
+# modelos que caben en 24GB "caen en defaults genericos (fondo blanco,
+# explorar toda la libreria en vez de decidir)" con un prompt tan largo -
+# se ahogan en el.
+#
+# COMO FUNCIONA
+# El .md sigue siendo la fuente unica de verdad: no se borra ni se duplica
+# nada. skills_loader parte el documento por sus encabezados de nivel 2
+# (`## `), mete en el prompt base solo las secciones listadas en `core`, y
+# publica el resto como un INDICE con instrucciones de cuando cargarlas.
+# El especialista las pide con la tool `load_skill_section`.
+#
+# REGLA PARA AÑADIR SECCIONES A `core`
+# Va en core lo que se necesita en CADA turno (el manual de operaciones,
+# las reglas no negociables, el formato de salida) o lo que es tan corto
+# que no compensa una llamada. Todo lo demas - referencia de consulta que
+# solo importa en una fase concreta - va a demanda con una pista clara de
+# CUANDO cargarla. Una pista vaga es peor que no partir la seccion: el
+# modelo no la carga y trabaja sin ella.
+#
+# Un skill que no aparezca en este archivo se carga entero, como siempre.
+# Los ~20 skills de ~2KB no necesitan nada de esto.
+
+web-builder-specialist:
+  # Prefijos de encabezado `## ` que van SIEMPRE en el prompt base.
+  core:
+    # El manual de operaciones: las fases se referencian entre si y el
+    # modelo necesita el plan completo desde el turno 0. Es la seccion mas
+    # grande (~23KB) y aun asi va en core - partirla romperia el plan.
+    - "0."
+    - "1."      # Stack tecnico: decide como escribe cada archivo
+    - "4."      # Patrones de fallo conocidos: barato y evita retrabajo
+    - "7."      # Reglas de header y navegacion (cortas, se aplican siempre)
+    - "8."      # Reglas de mapa
+    - "9."      # Reglas de color en elementos interactivos
+    - "12."     # Convenciones de codigo
+    - "Sobre este sistema"
+    - "Formato de salida"
+
+  # Secciones a demanda. La pista dice CUANDO cargarla - es la parte que
+  # hace que el mecanismo funcione o no.
+  on_demand:
+    "2.": >-
+      Sistema de diseño completo: color, tipografia, espaciado, paletas por
+      sector, design moods, breakpoints de movil, singularidad visual y
+      principios de composicion. CÁRGALA EN LA FASE 0, antes de elegir
+      paleta o mood - sin ella caes en el default generico (fondo blanco,
+      tipografia de sistema) que es exactamente el fallo que este skill
+      existe para evitar.
+    "3.": >-
+      Interactividad y animacion (scroll reveal, hovers, transiciones,
+      microinteracciones). CÁRGALA EN LA FASE 4, antes de escribir el JS.
+    "5.": >-
+      Capa cinematografica avanzada (opcional). Solo si el brief pide algo
+      espectacular o el mood elegido en la Fase 0 lo justifica. No la
+      cargues por defecto.
+    "6.": >-
+      Referencia detallada de las herramientas de web (fetch de negocio,
+      busqueda y analisis de imagenes, render_check, web-kit). Los esquemas
+      de las tools ya te dicen los parametros: carga esto solo si necesitas
+      el criterio de CUAL usar o el detalle de que devuelve cada una.
+    "10.": >-
+      Contenido, copywriting y que hacer con datos que no conoces.
+      CÁRGALA cuando vayas a escribir los textos reales de la web.
+    "11.": >-
+      Rendimiento, accesibilidad y SEO basico. CÁRGALA EN LA FASE 6, con
+      la seccion 14.
+    "13.": >-
+      Estandar de calidad de agencia: el nivel contra el que se juzga el
+      resultado. Util en la Fase 0 (para apuntar alto) y en la Fase 6.
+    "14.": >-
+      Checklist final, punto por punto y contra el codigo real.
+      CÁRGALA EN LA FASE 6 - es la lista con la que se audita el trabajo.
+
+# 13KB: mucho menos grave que web-builder, pero el mismo patron aplica.
+# Se deja entero por ahora y se parte si se ve que estorba; anotado aca
+# para que quede claro que fue una decision y no un olvido.
+# web-designer-specialist: (sin partir, 13KB)

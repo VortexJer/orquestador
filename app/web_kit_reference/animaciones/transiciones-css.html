@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transiciones y keyframes reutilizables</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0;
+         padding: 3rem; }
+  h1 { font-weight: 600; margin-bottom: .3rem; }
+  .sub { color: #94a3b8; margin-bottom: 2.5rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1.5rem; }
+  .card { background: #1e293b; border-radius: 14px; padding: 2rem 1rem; text-align: center;
+          cursor: pointer; }
+  .card .box { width: 56px; height: 56px; border-radius: 12px; background: #38bdf8;
+               margin: 0 auto 1rem; }
+  .card span { font-size: .85rem; color: #94a3b8; }
+  .card:hover .box { animation-play-state: running; }
+
+  /* ============================================================
+     BIBLIOTECA DE KEYFRAMES — copia los que necesites a tu CSS.
+     Para usarlos: .miElemento { animation: nombre .6s ease forwards; }
+     ============================================================ */
+
+  @keyframes fadeIn      { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes fadeInUp    { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeInDown  { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideInLeft { from { opacity: 0; transform: translateX(-50px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes zoomIn      { from { opacity: 0; transform: scale(.8); } to { opacity: 1; transform: scale(1); } }
+  @keyframes bounce      { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-18px); } }
+  @keyframes pulse       { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+  @keyframes shake       { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-8px); } 40%,80% { transform: translateX(8px); } }
+  @keyframes float       { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+  @keyframes flip        { from { transform: rotateY(0); } to { transform: rotateY(360deg); } }
+
+  /* las demos: la animación está pausada hasta el hover */
+  .demo-anim .box { animation-duration: 1s; animation-iteration-count: infinite; animation-play-state: paused; }
+  .a-fade   .box { animation-name: fadeIn; }
+  .a-up     .box { animation-name: fadeInUp; }
+  .a-left   .box { animation-name: slideInLeft; }
+  .a-zoom   .box { animation-name: zoomIn; }
+  .a-bounce .box { animation-name: bounce; }
+  .a-pulse  .box { animation-name: pulse; }
+  .a-shake  .box { animation-name: shake; }
+  .a-float  .box { animation-name: float; }
+  .a-flip   .box { animation-name: flip; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .demo-anim .box { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+  <h1>Keyframes reutilizables</h1>
+  <p class="sub">Pasa el ratón sobre cada tarjeta para ver la animación. Copia los <code>@keyframes</code> del CSS a tu proyecto.</p>
+  <div class="grid">
+    <div class="card demo-anim a-fade"><div class="box"></div><span>fadeIn</span></div>
+    <div class="card demo-anim a-up"><div class="box"></div><span>fadeInUp</span></div>
+    <div class="card demo-anim a-left"><div class="box"></div><span>slideInLeft</span></div>
+    <div class="card demo-anim a-zoom"><div class="box"></div><span>zoomIn</span></div>
+    <div class="card demo-anim a-bounce"><div class="box"></div><span>bounce</span></div>
+    <div class="card demo-anim a-pulse"><div class="box"></div><span>pulse</span></div>
+    <div class="card demo-anim a-shake"><div class="box"></div><span>shake</span></div>
+    <div class="card demo-anim a-float"><div class="box"></div><span>float</span></div>
+    <div class="card demo-anim a-flip"><div class="box"></div><span>flip</span></div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,33 @@
+{
+  "skill": "office-word-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Escribe un documento breve sobre los beneficios del teletrabajo. Con una introduccion y un par de secciones."
+    },
+    {
+      "level": "easy",
+      "task": "Necesito un documento con los pasos para preparar un cafe de filtro: moler el grano, calentar el agua a 92 grados, verter en circulos, esperar cuatro minutos y servir. Que quede como una lista ordenada."
+    },
+    {
+      "level": "normal",
+      "task": "Redacta un informe interno sobre la evolucion de la escritura, desde los pictogramas hasta el alfabeto. Quiero una introduccion, tres secciones tematicas con su detalle y una conclusion. Que sea un documento navegable."
+    },
+    {
+      "level": "normal",
+      "task": "Prepara un documento que compare tres planes de suscripcion de una app: Basico, Pro y Empresa. Para cada uno hay que indicar el precio mensual, el numero de usuarios incluidos y el tipo de soporte. Ponlo en una tabla y añade un parrafo con la recomendacion segun el tamaño del equipo."
+    },
+    {
+      "level": "stress",
+      "task": "Redacta las bases legales de un sorteo de una tienda online. Quiero un titulo principal bien grande y, colgando directo de el, un apartado que resalte mucho mas que los demas con los 'Requisitos de participacion', cuyas condiciones vayan enumeradas en orden (la primera, la segunda, la tercera...). Debajo, con menos importancia, los apartados de premios y de plazos. A lo largo de todo el texto habla de la persona que entra en el sorteo. Que quede formal y listo para publicar."
+    },
+    {
+      "level": "stress",
+      "task": "Necesito una ficha tecnica del BMW 118d F40. Que lleve una introduccion, una tabla de especificaciones con muchas filas (codigo de motor, potencia, par, cambio, consumo, emisiones) que probablemente ocupe mas de una pagina al imprimir, una foto del coche y una linea divisoria horizontal que separe la introduccion de la tabla. Que los datos sean los reales del modelo, no aproximados."
+    },
+    {
+      "level": "stress",
+      "task": "Hazme el resumen ejecutivo de un proyecto de migracion a la nube para presentarlo a direccion. Ponme el titulo en negrita grande y llamativo, los cuatro puntos clave con sus viñetas, y separa bien los parrafos de cada apartado con saltos de linea para que respire. Formatealo bonito con lo que haga falta para que se lea profesional."
+    }
+  ]
+}

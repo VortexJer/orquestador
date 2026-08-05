@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blob orgánico morphing — superficie líquida animada con shader (15.14)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body { font-family: system-ui, sans-serif; color: #fff; overflow: hidden; }
+
+  /* ================================================================
+     BLOB ORGÁNICO — una esfera cuya superficie "respira" y muta como
+     un líquido, desplazando cada vértice a lo largo de su normal con
+     una función dependiente del tiempo y la posición (en el VERTEX
+     SHADER, via 'onBeforeCompile' sobre un MeshStandardMaterial normal
+     - no hace falta un ShaderMaterial completo desde cero).
+
+     CUÁNDO usarlo: mood D (orgánico/cálido) o F (elegante) como pieza
+     central del hero de un negocio de belleza/wellness/cosmética/
+     bebidas artesanales - cualquier cosa donde "fluido, vivo, orgánico"
+     sea parte del caracter de la marca. NO en mood E/B (industrial/
+     bold), ahí desentona.
+
+     NOTA TÉCNICA HONESTA: el desplazamiento mueve la POSICIÓN de cada
+     vértice pero reusa la NORMAL original de la esfera (recalcularla
+     con precisión en el shader requiere derivadas parciales, fuera del
+     alcance de este demo) - con la amplitud usada aquí (sutil) el
+     resultado se ve correcto, pero si subes mucho 'uAmplitud' el
+     sombreado empieza a notarse "plano" respecto a la superficie real.
+     Para producción de alto presupuesto, sustituye la función seno por
+     ruido simplex 3D (ver glsl-noise) - la técnica de inyección es la
+     misma, solo cambia la función de desplazamiento.
+
+     AUTOALOJAR: mismo proceso que hero-objeto-flotante.html.
+  ================================================================ */
+
+  .seccion-blob {
+    position: relative; height: 100%;
+    background: radial-gradient(circle at 50% 45%, #241a2e, #0d0810);
+    display: grid; place-items: center; text-align: center;
+  }
+  #blob-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .contenido { position: relative; z-index: 1; padding: 2rem; pointer-events: none; }
+  .contenido h1 { font-size: clamp(2.2rem, 6vw, 4rem); font-weight: 700; text-shadow: 0 4px 30px rgba(0,0,0,.6); }
+</style>
+</head>
+<body>
+  <section class="seccion-blob">
+    <canvas id="blob-3d"></canvas>
+    <div class="contenido"><h1>Fluido, vivo, real</h1></div>
+  </section>
+
+  <script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+  <script type="module">
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const canvas = document.getElementById('blob-3d');
+    if (reduce) {
+      canvas.style.display = 'none';
+    } else {
+      const THREE = await import('three');
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 100);
+      camera.position.set(0, 0, 6);
+
+      let renderer = null;
+      try {
+        renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      } catch (e) {
+        canvas.style.display = 'none';
+      }
+
+      if (renderer) {
+        renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+        renderer.setSize(innerWidth, innerHeight);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+        const luzClave = new THREE.DirectionalLight(0xffffff, 1.2);
+        luzClave.position.set(3, 4, 5);
+        scene.add(luzClave);
+        const luzAcento = new THREE.PointLight(0xd15ba8, 8, 20); // ← --color-acento
+        luzAcento.position.set(-3, -2, 3);
+        scene.add(luzAcento);
+
+        const geometria = new THREE.IcosahedronGeometry(1.6, 64); // alta subdivision = superficie lisa al deformar
+        const material = new THREE.MeshStandardMaterial({
+          color: 0xd15ba8,     // ← --color-acento
+          metalness: 0.2,
+          roughness: 0.35,
+        });
+
+        // ── Inyección del desplazamiento en el vertex shader estándar
+        // de Three.js, justo donde arranca a construir la posición ──
+        material.onBeforeCompile = (shader) => {
+          shader.uniforms.uTime = { value: 0 };
+          shader.vertexShader = 'uniform float uTime;\n' + shader.vertexShader;
+          shader.vertexShader = shader.vertexShader.replace(
+            '#include <begin_vertex>',
+            `
+            #include <begin_vertex>
+            float uAmplitud = 0.16;
+            float uDisp = sin(position.x * 2.0 + uTime) * uAmplitud
+                        + sin(position.y * 3.0 + uTime * 1.3) * uAmplitud * 0.75
+                        + sin(position.z * 2.5 + uTime * 0.7) * uAmplitud * 0.6;
+            transformed += normal * uDisp;
+            `
+          );
+          material.userData.shader = shader; // guardado para actualizar uTime cada frame
+        };
+
+        const blob = new THREE.Mesh(geometria, material);
+        scene.add(blob);
+
+        let targetX = 0, targetY = 0;
+        addEventListener('pointermove', (e) => {
+          targetX = (e.clientX / innerWidth - 0.5) * 2;
+          targetY = (e.clientY / innerHeight - 0.5) * 2;
+        });
+        addEventListener('resize', () => {
+          camera.aspect = innerWidth / innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(innerWidth, innerHeight);
+        });
+
+        const reloj = new THREE.Clock();
+        (function animar() {
+          requestAnimationFrame(animar);
+          const t = reloj.getElapsedTime();
+
+          if (material.userData.shader) {
+            material.userData.shader.uniforms.uTime.value = t;
+          }
+          blob.rotation.y += (targetX * 0.4 - blob.rotation.y) * 0.03;
+          blob.rotation.x += (targetY * 0.3 - blob.rotation.x) * 0.03;
+          blob.rotation.z = t * 0.05;
+
+          renderer.render(scene, camera);
+        })();
+      }
+    }
+  </script>
+</body>
+</html>

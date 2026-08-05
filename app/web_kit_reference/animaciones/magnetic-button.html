@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Botón magnético</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #0d0d0d; color: #eee;
+         min-height: 100vh; display: flex; flex-direction: column;
+         align-items: center; justify-content: center; gap: 3rem; padding: 2rem; }
+
+  h1 { font-size: 1.5rem; color: #888; font-weight: 400; text-align: center; }
+
+  /* === El truco: el texto del botón se mueve con el ratón
+     pero el botón en sí también se desplaza un poco (magnético).
+     La clase .mag-btn marca el contenedor; .mag-texto es lo que se mueve dentro. */
+  .mag-btn {
+    position: relative; display: inline-flex; align-items: center;
+    justify-content: center; padding: 1rem 2.5rem; border-radius: 100px;
+    border: none; font-size: 1.1rem; font-weight: 600; cursor: pointer;
+    transition: transform .3s cubic-bezier(.23,1,.32,1);
+    overflow: visible;
+  }
+  .mag-btn.oscuro  { background: #fff; color: #000; }
+  .mag-btn.claro   { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,.4); }
+  .mag-btn.acento  { background: #e07a3f; color: #fff; }
+
+  .mag-texto {
+    display: block; pointer-events: none;
+    transition: transform .3s cubic-bezier(.23,1,.32,1);
+  }
+
+  /* Sombra que aparece al levantar el botón */
+  .mag-btn.oscuro:hover  { box-shadow: 0 20px 60px rgba(255,255,255,.15); }
+  .mag-btn.acento:hover  { box-shadow: 0 20px 60px rgba(224,122,63,.4); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mag-btn, .mag-texto { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <h1>Pasa el ratón por los botones</h1>
+
+  <button class="mag-btn oscuro">
+    <span class="mag-texto">Empezar ahora</span>
+  </button>
+
+  <button class="mag-btn claro">
+    <span class="mag-texto">Ver proyectos</span>
+  </button>
+
+  <button class="mag-btn acento">
+    <span class="mag-texto">Contactar</span>
+  </button>
+
+<script>
+  // Factor de atracción: cuánto se desplaza el botón (0-1) y el texto (0-1)
+  const FUERZA_BTN   = 0.35;
+  const FUERZA_TEXTO = 0.55;
+
+  document.querySelectorAll('.mag-btn').forEach(btn => {
+    const texto = btn.querySelector('.mag-texto');
+
+    btn.addEventListener('mousemove', e => {
+      const r  = btn.getBoundingClientRect();
+      const cx = r.left + r.width  / 2;
+      const cy = r.top  + r.height / 2;
+      const dx = e.clientX - cx;
+      const dy = e.clientY - cy;
+
+      btn.style.transform   = `translate(${dx * FUERZA_BTN}px, ${dy * FUERZA_BTN}px)`;
+      texto.style.transform = `translate(${dx * FUERZA_TEXTO}px, ${dy * FUERZA_TEXTO}px)`;
+    });
+
+    btn.addEventListener('mouseleave', () => {
+      btn.style.transform   = '';
+      texto.style.transform = '';
+    });
+  });
+</script>
+</body>
+</html>

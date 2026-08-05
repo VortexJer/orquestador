@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cargar un modelo 3D real (.glb) — patrón correcto con GLTFLoader (15.17)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body { font-family: system-ui, sans-serif; color: #fff; overflow: hidden; }
+
+  /* ================================================================
+     CARGAR UN MODELO 3D REAL — el resto de la carpeta 3d/ construye
+     geometria con primitivas del core (cubos, esferas, texto). Para un
+     producto/objeto con forma compleja de verdad (un mueble, un plato,
+     un dispositivo, un personaje/mascota de marca), lo correcto es un
+     archivo .glb/.gltf real - exportado desde Blender, comprado en un
+     marketplace (Sketchfab con licencia adecuada, etc.), o generado -
+     NUNCA intentar "dibujar" una forma compleja a mano con primitivas,
+     el resultado nunca se acerca a un modelo real.
+
+     EL KIT YA INCLUYE MODELOS REALES: la carpeta modelos/ trae una
+     coleccion fotorrealista CC0 (ver modelos/LICENCIA.md y el
+     escaparate catalogo-modelos.html), y cargador-3d.js empaqueta la
+     receta completa para que se vean a nivel foto (HDRI + ACES +
+     sombras) - para USAR modelos, ve por ahi. El valor de ESTE
+     archivo es el PATRON DE CARGA a pelo: progreso, centrado/
+     escalado automatico, y sobre todo MANEJO DE ERROR con un
+     fallback honesto en vez de una pantalla en negro si el archivo
+     no existe o falla la red (un .gltf local NO carga con doble
+     clic - fetch bloqueado en file:// - asi que este demo cae al
+     fallback salvo que lo abras con un servidor local).
+
+     Modelos grandes (>5-10MB) se benefician de compresión DRACO -
+     ver la nota comentada en el bloque de carga, requiere ademas
+     DRACOLoader + los decoders .wasm (otro addon aparte, solo hace
+     falta si el .glb pesa mucho).
+
+     AUTOALOJAR: mismo proceso de import map que texto-3d-extruido.html
+     (three + three/addons/), mas el propio archivo .glb del proyecto
+     en assets/modelos/.
+  ================================================================ */
+
+  .seccion-modelo {
+    position: relative; height: 100%;
+    background: radial-gradient(circle at 50% 55%, #1c1f2e, #0b0d14);
+    display: grid; place-items: center; text-align: center;
+  }
+  #modelo-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+  #modelo-3d.arrastrando { cursor: grabbing; }
+  .contenido { position: relative; z-index: 1; padding: 2rem; pointer-events: none; }
+  .contenido h1 { font-size: clamp(2rem, 6vw, 3.5rem); font-weight: 800; text-shadow: 0 4px 30px rgba(0,0,0,.7); }
+  #estado-carga { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); z-index: 2;
+    font-size: .8rem; color: #999; letter-spacing: .05em; }
+</style>
+</head>
+<body>
+  <section class="seccion-modelo">
+    <canvas id="modelo-3d"></canvas>
+    <div class="contenido"><h1>Tu producto real</h1></div>
+  </section>
+  <p id="estado-carga">cargando modelo…</p>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+    // ← EN PRODUCCIÓN: ruta al .glb/.gltf del proyecto. Aquí, uno real
+    // del propio kit. Con doble clic (file://) NO puede cargar (fetch
+    // bloqueado) y cae al fallback honesto de abajo - que es justo el
+    // comportamiento que este archivo enseña; con Live Server, carga.
+    const MODEL_URL = 'modelos/Camera_01/Camera_01_1k.gltf';
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const canvas = document.getElementById('modelo-3d');
+    const estado = document.getElementById('estado-carga');
+    if (reduce) {
+      canvas.style.display = 'none';
+      estado.style.display = 'none';
+    } else {
+      const THREE = await import('three');
+      const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+      // Para modelos comprimidos con DRACO (habitual en exports optimizados):
+      //   import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+      //   const draco = new DRACOLoader();
+      //   draco.setDecoderPath('assets/js/lib/addons/libs/draco/'); // decoders .wasm autoalojados
+      //   loader.setDRACOLoader(draco);
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 100);
+      camera.position.set(0, 0.6, 6);
+
+      let renderer = null;
+      try {
+        renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      } catch (e) {
+        canvas.style.display = 'none';
+        estado.style.display = 'none';
+      }
+
+      if (renderer) {
+        renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+        renderer.setSize(innerWidth, innerHeight);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+        const luzClave = new THREE.DirectionalLight(0xffffff, 1.4);
+        luzClave.position.set(3, 5, 4);
+        scene.add(luzClave);
+        const luzRelleno = new THREE.DirectionalLight(0x8b6cff, 0.5);
+        luzRelleno.position.set(-4, 1, 2);
+        scene.add(luzRelleno);
+
+        let objeto;
+
+        function centrarYEscalar(obj) {
+          // ── Un modelo real puede venir en cualquier escala/origen -
+          // SIEMPRE centrar y normalizar el tamaño, nunca asumir que
+          // "ya viene bien" del archivo exportado ──
+          const caja = new THREE.Box3().setFromObject(obj);
+          const centro = caja.getCenter(new THREE.Vector3());
+          obj.position.sub(centro);
+          const tamano = caja.getSize(new THREE.Vector3());
+          const maxDim = Math.max(tamano.x, tamano.y, tamano.z) || 1;
+          obj.scale.setScalar(2.4 / maxDim); // normaliza a ~2.4 unidades de alto
+        }
+
+        function crearFallback() {
+          // FALLBACK honesto: sin modelo real, un placeholder simple
+          // con las mismas interacciones (arrastre, luz) - nunca una
+          // pantalla en negro ni un error visible al visitante final.
+          const grupo = new THREE.Group();
+          const caja = new THREE.Mesh(
+            new THREE.BoxGeometry(1.6, 1.6, 1.6),
+            new THREE.MeshStandardMaterial({ color: 0x2a2f42, metalness: 0.3, roughness: 0.5, wireframe: true })
+          );
+          grupo.add(caja);
+          return grupo;
+        }
+
+        if (MODEL_URL) {
+          try {
+            const gltf = await new GLTFLoader().loadAsync(MODEL_URL, (progreso) => {
+              if (progreso.total) {
+                estado.textContent = `cargando modelo… ${Math.round((progreso.loaded / progreso.total) * 100)}%`;
+              }
+            });
+            objeto = gltf.scene;
+            centrarYEscalar(objeto);
+            estado.textContent = 'arrastra para girar';
+          } catch (e) {
+            console.warn('No se pudo cargar el modelo real, usando fallback:', e);
+            objeto = crearFallback();
+            estado.textContent = 'arrastra para girar (placeholder - falta el modelo real)';
+          }
+        } else {
+          objeto = crearFallback();
+          estado.textContent = 'arrastra para girar (placeholder - falta el modelo real)';
+        }
+
+        scene.add(objeto);
+
+        // ── Mismo trackball con quaternions que producto-configurador-drag.html
+        // (ver su comentario para el detalle) - gira en los tres ejes
+        // segun la direccion real del gesto, no solo horizontal ──
+        let arrastrando = false;
+        let ultimoX = 0, ultimoY = 0;
+        const spin = new THREE.Quaternion();
+        const idIdentidad = new THREE.Quaternion();
+        const idle = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0.003);
+
+        function girarPorArrastre(dx, dy) {
+          if (dx === 0 && dy === 0) return;
+          const eje = new THREE.Vector3(dy, dx, 0).normalize();
+          const angulo = Math.sqrt(dx * dx + dy * dy) * 0.006;
+          spin.setFromAxisAngle(eje, angulo);
+          objeto.quaternion.premultiply(spin);
+        }
+
+        canvas.addEventListener('pointerdown', (e) => {
+          arrastrando = true; canvas.classList.add('arrastrando');
+          ultimoX = e.clientX; ultimoY = e.clientY;
+          canvas.setPointerCapture(e.pointerId);
+        });
+        canvas.addEventListener('pointermove', (e) => {
+          if (!arrastrando) return;
+          girarPorArrastre(e.clientX - ultimoX, e.clientY - ultimoY);
+          ultimoX = e.clientX; ultimoY = e.clientY;
+        });
+        const soltar = () => { arrastrando = false; canvas.classList.remove('arrastrando'); };
+        canvas.addEventListener('pointerup', soltar);
+        canvas.addEventListener('pointerleave', soltar);
+
+        addEventListener('resize', () => {
+          camera.aspect = innerWidth / innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(innerWidth, innerHeight);
+        });
+
+        (function animar() {
+          requestAnimationFrame(animar);
+          if (!arrastrando) {
+            const anguloRestante = 2 * Math.acos(Math.min(1, Math.abs(spin.w)));
+            if (anguloRestante > 0.0006) {
+              objeto.quaternion.premultiply(spin);
+              spin.slerp(idIdentidad, 0.06);
+            } else {
+              objeto.quaternion.premultiply(idle);
+            }
+          }
+          renderer.render(scene, camera);
+        })();
+      }
+    }
+  </script>
+</body>
+</html>

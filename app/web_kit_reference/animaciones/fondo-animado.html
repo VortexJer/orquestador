@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fondos animados — solo CSS</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; color: #fff; }
+  .etiqueta { background: #111; color: #888; padding: .4rem 1.5rem; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; }
+  .demo { min-height: 400px; display: grid; place-items: center; text-align: center; padding: 3rem; position: relative; overflow: hidden; }
+  .demo h2 { font-size: clamp(2rem, 5vw, 4rem); position: relative; z-index: 1; }
+  .demo p { opacity: .6; margin-top: 1rem; position: relative; z-index: 1; }
+
+  /* ─── 1. Gradiente que se desplaza ─────────────────────────────────────────
+     background-size más grande que el elemento + animation de background-position.
+     El gradiente se mueve como si fuera líquido. */
+  .demo-1 {
+    background: linear-gradient(135deg, #0f1629 0%, #1e3a5f 25%, #0f1629 50%, #2a1f4a 75%, #0f1629 100%);
+    background-size: 400% 400%;
+    animation: gradMove 8s ease infinite;
+  }
+  @keyframes gradMove {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  /* ─── 2. Blob de color que pulsa y muta ────────────────────────────────────
+     Un div absolute con border-radius animado.
+     Crea un efecto orgánico/fluido. */
+  .demo-2 { background: #0d1117; }
+  .blob {
+    position: absolute; width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(147,51,234,.5) 0%, transparent 70%);
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    animation: blobMorph 8s ease-in-out infinite, blobFloat 6s ease-in-out infinite;
+    filter: blur(40px);
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+  }
+  @keyframes blobMorph {
+    0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+    25%       { border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%; }
+    50%       { border-radius: 50% 50% 30% 70% / 50% 70% 30% 50%; }
+    75%       { border-radius: 70% 30% 50% 50% / 40% 60% 40% 60%; }
+  }
+  @keyframes blobFloat {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); }
+    50%       { transform: translate(-45%, -55%) scale(1.1); }
+  }
+
+  /* ─── 3. Partículas CSS (sin canvas) ───────────────────────────────────────
+     Múltiples puntos con position:absolute y animaciones escalonadas. */
+  .demo-3 { background: #1a1008; }
+  .particulas { position: absolute; inset: 0; overflow: hidden; }
+  .part {
+    position: absolute; border-radius: 50%;
+    background: rgba(200,100,40,.6);
+    animation: partFloat linear infinite;
+  }
+  /* Genera varias con distintos tamaños, posiciones y duraciones */
+  .part:nth-child(1)  { width:4px; height:4px; left:10%; animation-duration:6s;  animation-delay:0s;    bottom:-5px; }
+  .part:nth-child(2)  { width:6px; height:6px; left:25%; animation-duration:8s;  animation-delay:-2s;   bottom:-5px; }
+  .part:nth-child(3)  { width:3px; height:3px; left:40%; animation-duration:7s;  animation-delay:-4s;   bottom:-5px; }
+  .part:nth-child(4)  { width:5px; height:5px; left:55%; animation-duration:9s;  animation-delay:-1s;   bottom:-5px; }
+  .part:nth-child(5)  { width:4px; height:4px; left:70%; animation-duration:5s;  animation-delay:-3s;   bottom:-5px; }
+  .part:nth-child(6)  { width:7px; height:7px; left:85%; animation-duration:10s; animation-delay:-5s;   bottom:-5px; }
+  .part:nth-child(7)  { width:3px; height:3px; left:15%; animation-duration:7s;  animation-delay:-6s;   bottom:-5px; }
+  .part:nth-child(8)  { width:5px; height:5px; left:60%; animation-duration:6s;  animation-delay:-2.5s; bottom:-5px; }
+  @keyframes partFloat {
+    0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(-400px) rotate(720deg); opacity: 0; }
+  }
+
+  /* ─── 4. Grilla que respira ─────────────────────────────────────────────────
+     Una grilla de líneas cuya opacidad cambia en ola. */
+  .demo-4 { background: #0a0a0a; }
+  .grid-resp {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
+    background-size: 50px 50px;
+    animation: gridPulse 4s ease-in-out infinite;
+  }
+  @keyframes gridPulse {
+    0%, 100% { opacity: .5; }
+    50%       { opacity: 1; }
+  }
+
+  /* ─── 5. Ruido de fondo animado (sin imagen) ────────────────────────────────
+     Dos capas de gradiente que se mueven en dirección opuesta → sensación de textura. */
+  .demo-5 {
+    background-color: #1c2535;
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(45,122,122,.3) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(247,244,239,.05) 0%, transparent 40%);
+    animation: noiseDrift 10s ease-in-out infinite alternate;
+  }
+  @keyframes noiseDrift {
+    0%   { background-position: 0% 0%, 100% 100%; }
+    100% { background-position: 100% 50%, 0% 0%; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="etiqueta">1 · Gradiente que se desplaza (background-position animado)</div>
+  <div class="demo demo-1">
+    <div><h2>Fondo líquido</h2><p>Solo CSS — animation: gradMove 8s ease infinite</p></div>
+  </div>
+
+  <div class="etiqueta">2 · Blob de color que pulsa y muta (border-radius + blur animados)</div>
+  <div class="demo demo-2">
+    <div class="blob"></div>
+    <div><h2>Blob orgánico</h2><p>border-radius: 60% 40% 30% 70% animado + filter:blur</p></div>
+  </div>
+
+  <div class="etiqueta">3 · Partículas flotantes (divs con position:absolute, sin canvas)</div>
+  <div class="demo demo-3">
+    <div class="particulas">
+      <div class="part"></div><div class="part"></div><div class="part"></div>
+      <div class="part"></div><div class="part"></div><div class="part"></div>
+      <div class="part"></div><div class="part"></div>
+    </div>
+    <div><h2>Partículas CSS</h2><p>Sin canvas. Div + animation-delay escalonado.</p></div>
+  </div>
+
+  <div class="etiqueta">4 · Grilla que respira (opacidad pulsante)</div>
+  <div class="demo demo-4">
+    <div class="grid-resp"></div>
+    <div><h2>Grid vivo</h2><p>background-image: linear-gradient + animation opacity</p></div>
+  </div>
+
+  <div class="etiqueta">5 · Radiales que se deslizan (fondos en capas animados)</div>
+  <div class="demo demo-5">
+    <div><h2>Textura de luz</h2><p>2 radial-gradients con background-position animado</p></div>
+  </div>
+
+</body>
+</html>

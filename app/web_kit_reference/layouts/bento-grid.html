@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bento grid</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #0d0d0d; color: #fff;
+         min-height: 100vh; padding: 3rem 2rem; }
+
+  /* === Bento grid ===
+     Layout tipo "dashboard Apple" donde las celdas tienen tamaños distintos.
+     Todas comparten la misma unidad base (--col) para que encajen perfectamente.
+     Adapta el contenido de cada celda al proyecto; los spans son el esqueleto. */
+
+  .bento {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: 180px;
+    gap: 1rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .cell {
+    border-radius: 20px;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    overflow: hidden;
+    position: relative;
+    transition: transform .3s ease, box-shadow .3s ease;
+  }
+  .cell:hover { transform: scale(1.01); }
+
+  /* Tamaños */
+  .c-wide    { grid-column: span 2; }           /* 2 columnas */
+  .c-tall    { grid-row:    span 2; }           /* 2 filas */
+  .c-big     { grid-column: span 2; grid-row: span 2; } /* 2×2 */
+  .c-full    { grid-column: span 4; }           /* fila completa */
+
+  /* Colores de celda */
+  .bg-oscuro   { background: #1a1a1a; border: 1px solid #2a2a2a; }
+  .bg-acento   { background: #e07a3f; }
+  .bg-azul     { background: #1e3a5f; }
+  .bg-claro    { background: #f0e9dc; color: #1a1a1a; }
+  .bg-verde    { background: #1a3328; }
+  .bg-media    { background: #262626; border: 1px solid #333; }
+
+  /* Tipografía de celda */
+  .cell-label {
+    font-size: .7rem; letter-spacing: .12em; text-transform: uppercase;
+    opacity: .5; margin-bottom: .5rem;
+  }
+  .cell-titulo { font-size: clamp(1.2rem, 2.5vw, 2rem); font-weight: 700; line-height: 1.2; }
+  .cell-sub    { margin-top: .5rem; opacity: .6; font-size: .9rem; }
+
+  /* Número grande decorativo */
+  .cell-num {
+    font-size: clamp(4rem, 10vw, 7rem); font-weight: 900; line-height: 1;
+    opacity: .12; position: absolute; top: 1rem; right: 1.5rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Icono grande */
+  .cell-icon {
+    font-size: 3.5rem; position: absolute; top: 1.5rem; left: 2rem; opacity: .15;
+  }
+  .cell-icon-visible { opacity: 1; font-size: 2.5rem; margin-bottom: 1rem; }
+
+  /* Etiqueta pill */
+  .pill {
+    display: inline-flex; align-items: center; gap: .4rem;
+    background: rgba(255,255,255,.1); border-radius: 100px;
+    padding: .3rem .8rem; font-size: .8rem;
+    border: 1px solid rgba(255,255,255,.15);
+    width: fit-content; margin-bottom: .75rem;
+  }
+  .pill .dot { width: 6px; height: 6px; background: #4ade80; border-radius: 50%; }
+
+  /* Responsive: en móvil todo es 1 columna */
+  @media (max-width: 700px) {
+    .bento { grid-template-columns: 1fr; grid-auto-rows: auto; }
+    .c-wide, .c-tall, .c-big, .c-full { grid-column: span 1; grid-row: span 1; }
+    .cell { min-height: 160px; }
+  }
+  @media (min-width: 701px) and (max-width: 1000px) {
+    .bento { grid-template-columns: repeat(2, 1fr); }
+    .c-full { grid-column: span 2; }
+    .c-big  { grid-column: span 2; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bento">
+
+  <!-- Celda grande principal (hero de la sección) -->
+  <div class="cell c-big bg-azul">
+    <div class="cell-icon">◎</div>
+    <div class="pill"><span class="dot"></span> Disponible ahora</div>
+    <p class="cell-titulo">El producto<br>que necesitabas.</p>
+    <p class="cell-sub">Una descripción breve de la propuesta de valor.</p>
+  </div>
+
+  <!-- Celda ancha -->
+  <div class="cell c-wide bg-acento">
+    <div class="cell-num">01</div>
+    <p class="cell-label">Característica</p>
+    <p class="cell-titulo">Velocidad sin igual</p>
+  </div>
+
+  <!-- Celda normal -->
+  <div class="cell bg-oscuro">
+    <p class="cell-icon-visible">⚡</p>
+    <p class="cell-titulo">Rápido</p>
+    <p class="cell-sub">Optimizado para bajo consumo.</p>
+  </div>
+
+  <!-- Celda normal -->
+  <div class="cell bg-media">
+    <p class="cell-icon-visible">●</p>
+    <p class="cell-titulo">Seguro</p>
+    <p class="cell-sub">Cifrado de extremo a extremo.</p>
+  </div>
+
+  <!-- Celda alta (2 filas) -->
+  <div class="cell c-tall bg-verde">
+    <div class="cell-num">+98%</div>
+    <p class="cell-label">Satisfacción</p>
+    <p class="cell-titulo">Clientes que repiten</p>
+    <p class="cell-sub">Según encuesta anual 2025.</p>
+  </div>
+
+  <!-- Celda ancha -->
+  <div class="cell c-wide bg-claro">
+    <p class="cell-label">Fundada en 2018</p>
+    <p class="cell-titulo">7 años construyendo confianza</p>
+  </div>
+
+  <!-- Celda fila completa -->
+  <div class="cell c-full bg-media" style="justify-content:center; text-align:center; flex-direction:row; align-items:center; gap:2rem;">
+    <p style="font-size:1.5rem; font-weight:700; opacity:.5;">Confiado por:</p>
+    <span style="opacity:.3; font-weight:700;">Acme Corp</span>
+    <span style="opacity:.3; font-weight:700;">TechVision</span>
+    <span style="opacity:.3; font-weight:700;">Luminary</span>
+    <span style="opacity:.3; font-weight:700;">Meridian</span>
+    <span style="opacity:.3; font-weight:700;">Horizon</span>
+  </div>
+
+</div>
+
+</body>
+</html>

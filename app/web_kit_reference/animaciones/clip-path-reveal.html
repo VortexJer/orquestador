@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clip-path reveal — revelados cinematográficos</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #0d0d0d; color: #fff; overflow-x: hidden; }
+  .seccion { min-height: 100vh; display: grid; place-items: center; text-align: center;
+             padding: 4rem 2rem; position: relative; }
+  .label { position: absolute; top: 1.5rem; left: 2rem; font-size: .7rem; color: #555;
+           letter-spacing: .12em; text-transform: uppercase; }
+  h1 { font-size: clamp(3rem, 8vw, 6rem); font-weight: 800; }
+  h2 { font-size: clamp(2rem, 5vw, 4rem); font-weight: 700; margin-bottom: 1rem; }
+  p  { color: #888; max-width: 500px; margin: 0 auto; }
+
+  /* ================================================================
+     CLIP-PATH REVEAL — secciones que aparecen con formas animadas.
+
+     Clave: clip-path define la zona visible del elemento.
+     Animando clip-path entre dos estados, el elemento "se descubre"
+     con la forma que quieras: diagonal, círculo, cortina, polígono.
+
+     Importante: transition en clip-path funciona en Chrome/Firefox/Safari
+     siempre que ambos estados tengan el mismo tipo de función y el mismo
+     número de puntos (en polygon()).
+  ================================================================ */
+
+  /* ── 1. Cortina diagonal (izquierda → derecha) ── */
+  .reveal-diagonal {
+    clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+    transition: clip-path 1s cubic-bezier(0.77, 0, 0.18, 1);
+  }
+  .reveal-diagonal.visible {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+  }
+
+  /* ── 2. Cortina desde arriba ── */
+  .reveal-top {
+    clip-path: polygon(0 0, 100% 0, 100% 0, 0 0);
+    transition: clip-path 0.9s cubic-bezier(0.77, 0, 0.18, 1);
+  }
+  .reveal-top.visible {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+  }
+
+  /* ── 3. Círculo que crece desde el centro ── */
+  .reveal-circulo {
+    clip-path: circle(0% at 50% 50%);
+    transition: clip-path 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  .reveal-circulo.visible {
+    clip-path: circle(150% at 50% 50%);
+  }
+
+  /* ── 4. Iris (círculo desde el cursor) ── */
+  /* El clip-path se actualiza desde JS con la posición del botón */
+  .reveal-iris {
+    clip-path: circle(0% at 50% 50%);
+    transition: clip-path 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    position: fixed; inset: 0; z-index: 50;
+    background: #1a0a02; display: grid; place-items: center;
+  }
+  .reveal-iris.abierto { clip-path: circle(150% at 50% 50%); }
+  .reveal-iris.cerrado { clip-path: circle(0% at var(--ox, 50%) var(--oy, 50%)); }
+
+  /* ── 5. Polígono diagonal con dientes (zigzag) ── */
+  .reveal-zigzag {
+    clip-path: polygon(
+      0% 100%, 10% 100%, 10% 100%, 20% 100%, 20% 100%,
+      30% 100%, 30% 100%, 40% 100%, 40% 100%, 50% 100%,
+      50% 100%, 60% 100%, 60% 100%, 70% 100%, 70% 100%,
+      80% 100%, 80% 100%, 90% 100%, 90% 100%, 100% 100%,
+      100% 100%, 0% 100%
+    );
+    transition: clip-path 1.2s cubic-bezier(0.77, 0, 0.18, 1);
+  }
+  .reveal-zigzag.visible {
+    clip-path: polygon(
+      0% 0%, 10% 5%, 10% 0%, 20% 5%, 20% 0%,
+      30% 5%, 30% 0%, 40% 5%, 40% 0%, 50% 5%,
+      50% 0%, 60% 5%, 60% 0%, 70% 5%, 70% 0%,
+      80% 5%, 80% 0%, 90% 5%, 90% 0%, 100% 0%,
+      100% 100%, 0% 100%
+    );
+  }
+
+  /* Fondos de cada sección */
+  .s1 { background: #1a1a1a; }
+  .s2 { background: linear-gradient(135deg, #1c2535, #0f1629); }
+  .s3 { background: radial-gradient(circle at 50% 50%, #2c1f14 0%, #1a0a02 70%); }
+  .s4 { background: linear-gradient(135deg, #1a3328, #0d1f17); }
+  .s5 { background: #1a0d2e; }
+
+  /* Botón de transición iris */
+  .btn-iris {
+    padding: 1rem 2rem; background: #e07a3f; color: #fff; border: none;
+    border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer;
+    margin-top: 2rem; position: relative; z-index: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal-diagonal, .reveal-top, .reveal-circulo, .reveal-zigzag {
+      clip-path: none !important; transition: none !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <!-- 1. Cortina diagonal -->
+  <section class="seccion s1 reveal-diagonal" data-reveal>
+    <div class="label">1 · Cortina diagonal — izquierda a derecha</div>
+    <div><h1>La carta</h1><p>Haz scroll para ver cómo la siguiente sección se revela.</p></div>
+  </section>
+
+  <!-- 2. Cortina desde arriba -->
+  <section class="seccion s2 reveal-top" data-reveal>
+    <div class="label">2 · Cortina desde arriba</div>
+    <div><h2>Nuestros platos</h2><p>La sección aparece cayendo desde arriba.</p></div>
+  </section>
+
+  <!-- 3. Círculo que crece -->
+  <section class="seccion s3 reveal-circulo" data-reveal>
+    <div class="label">3 · Círculo que crece desde el centro</div>
+    <div><h2>Ca Pepe</h2><p>El contenido emerge como un iris que se abre.</p></div>
+  </section>
+
+  <!-- 4. Transición iris con botón (para entre páginas / secciones) -->
+  <section class="seccion s4">
+    <div class="label">4 · Iris interactivo — el círculo sale del botón</div>
+    <div>
+      <h2>Transición de página</h2>
+      <p>Al pulsar el botón, el iris sale desde él y cubre la pantalla.</p>
+      <button class="btn-iris" id="btnIris">Ver demo →</button>
+    </div>
+  </section>
+
+  <!-- Panel iris (overlay) -->
+  <div class="reveal-iris" id="irisPanel">
+    <div>
+      <h2>Nueva sección</h2>
+      <p style="color:#888;margin-top:1rem">Pulsa para cerrar</p>
+    </div>
+  </div>
+
+  <!-- 5. Borde zigzag -->
+  <section class="seccion s5 reveal-zigzag" data-reveal>
+    <div class="label">5 · Dientes en el borde superior (zigzag)</div>
+    <div><h2>Contacto</h2><p>El borde superior tiene un recorte en zigzag animado.</p></div>
+  </section>
+
+<script>
+  // ── Activar reveals con IntersectionObserver ────────────────────────────────
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        obs.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.15 });
+
+  document.querySelectorAll('[data-reveal]').forEach(el => obs.observe(el));
+
+  // ── Iris interactivo ────────────────────────────────────────────────────────
+  const btnIris   = document.getElementById('btnIris');
+  const irisPanel = document.getElementById('irisPanel');
+
+  btnIris.addEventListener('click', e => {
+    const rect = btnIris.getBoundingClientRect();
+    // Calcular posición del botón en % de la pantalla
+    const ox = ((rect.left + rect.width / 2) / window.innerWidth  * 100).toFixed(1) + '%';
+    const oy = ((rect.top  + rect.height/ 2) / window.innerHeight * 100).toFixed(1) + '%';
+    irisPanel.style.setProperty('--ox', ox);
+    irisPanel.style.setProperty('--oy', oy);
+
+    irisPanel.classList.remove('cerrado');
+    // El panel empieza en circle(0% at posición del botón)
+    irisPanel.style.clipPath = `circle(0% at ${ox} ${oy})`;
+
+    // Forzar reflow y activar
+    void irisPanel.offsetWidth;
+    irisPanel.style.clipPath = '';
+    irisPanel.classList.add('abierto');
+  });
+
+  irisPanel.addEventListener('click', () => {
+    irisPanel.classList.remove('abierto');
+    irisPanel.classList.add('cerrado');
+    setTimeout(() => irisPanel.classList.remove('cerrado'), 1200);
+  });
+</script>
+</body>
+</html>

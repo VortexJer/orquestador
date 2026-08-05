@@ -1,0 +1,68 @@
+[
+  {
+    "id": "kotlin-platform-type-npe-from-java-interop",
+    "language_or_domain": "kotlin",
+    "tags": ["null-safety", "java-interop", "kotlin"],
+    "problem_description": "Cuando Kotlin llama a codigo Java, el tipo de retorno se trata como un 'platform type' (notado internamente T!), que NO esta sujeto al chequeo de null-safety del compilador de Kotlin - Kotlin no sabe (ni puede saber via bytecode) si ese metodo Java puede devolver null. Si el metodo Java efectivamente devuelve null, el programa Kotlin explota con NullPointerException en runtime, exactamente el tipo de error que el sistema de tipos de Kotlin existe para prevenir.",
+    "why_small_models_fail": "El modelo confia en que 'todo en Kotlin es null-safe' de forma absoluta, sin modelar que esa garantia se rompe especificamente en la frontera de interop con Java, donde no hay anotaciones @Nullable/@NotNull en el codigo llamado.",
+    "correct_approach": "Tratar cualquier valor que venga de una API Java sin anotaciones de nulabilidad como potencialmente nulo: asignarlo explicitamente a un tipo Kotlin nullable (String?) y manejarlo con el operador seguro (?.) o un chequeo explicito, en vez de asumir non-null.",
+    "bad_example": "val nombre: String = objetoJava.getNombre() // platform type asumido non-null; si el Java real devuelve null, NPE aca mismo",
+    "good_example": "val nombre: String? = objetoJava.getNombre() // tratado explicitamente como nullable\nval nombreSeguro = nombre ?: \"desconocido\"",
+    "source": "Kotlin docs - 'Null Safety', Calling Java code from Kotlin, platform types"
+  },
+  {
+    "id": "kotlin-data-class-mutable-var-hashset-key",
+    "language_or_domain": "kotlin",
+    "tags": ["data-classes", "collections", "kotlin"],
+    "problem_description": "Una data class con una propiedad var usada como elemento de un HashSet (o clave de HashMap) calcula su hashCode a partir de esa propiedad. Si el valor se muta despues de insertarlo en el set, el hashCode cambia, pero el objeto sigue en el mismo bucket viejo del hash table - el objeto queda 'perdido': contains() y remove() ya no lo encuentran, aunque el objeto siga referenciado y visible al iterar.",
+    "why_small_models_fail": "El modelo genera data class con var por conveniencia (permite modificar el objeto despues) sin considerar que esa misma mutabilidad rompe el invariante de las estructuras hash si el objeto se usa como clave/elemento de un set o map.",
+    "correct_approach": "Usar val (inmutable) para las propiedades de cualquier data class que vaya a insertarse en un HashSet/HashMap, o usar una coleccion que no dependa de hashCode (una List) si el objeto necesita ser mutable.",
+    "bad_example": "data class Tarea(var titulo: String)\nval tareas = hashSetOf(Tarea(\"comprar pan\"))\ntareas.first().titulo = \"comprar leche\" // muta el hashCode del objeto ya insertado\ntareas.contains(Tarea(\"comprar leche\")) // false: el objeto quedo en el bucket viejo",
+    "good_example": "data class Tarea(val titulo: String) // val: inmutable, hashCode estable mientras este en el set\nval tareas = hashSetOf(Tarea(\"comprar pan\"))\n// para 'modificar', reemplazar por una copia: tareas.remove(vieja); tareas.add(vieja.copy(titulo = \"comprar leche\"))",
+    "source": "Kotlin docs - Data Classes; Effective Java (Bloch) Item 25 (aplica igual via la JVM)"
+  },
+  {
+    "id": "kotlin-lateinit-uninitialized-access-exception",
+    "language_or_domain": "kotlin",
+    "tags": ["null-safety", "kotlin"],
+    "problem_description": "lateinit var permite declarar una propiedad non-null sin inicializarla de inmediato, a cambio de asumir la responsabilidad de inicializarla antes de usarla. Acceder a ella antes de esa inicializacion (ej. en un callback de ciclo de vida que se dispara antes de lo esperado) lanza UninitializedPropertyAccessException en runtime - un crash que el sistema de tipos non-null no puede prevenir en este caso especifico.",
+    "why_small_models_fail": "El modelo usa lateinit para evitar declarar el tipo como nullable (String? con manejo explicito de null) porque es sintacticamente mas limpio, sin modelar que eso solo pospone el chequeo de nulidad a runtime y en un punto de fallo distinto.",
+    "correct_approach": "Usar lateinit solo cuando el orden de inicializacion esta genuinamente garantizado por el framework (ej. onCreate de Android antes de onResume); si el orden no es 100% seguro, usar un tipo nullable con inicializacion perezosa (by lazy) o un valor por defecto explicito.",
+    "bad_example": "class MiActivity {\n    lateinit var adaptador: Adaptador\n    fun onResume() {\n        adaptador.refrescar() // si onCreate (donde se asigna adaptador) no corrio antes por algun motivo, crash\n    }\n}",
+    "good_example": "class MiActivity {\n    val adaptador: Adaptador by lazy { crearAdaptador() } // se inicializa la primera vez que se usa, nunca 'uninitialized'\n    fun onResume() {\n        adaptador.refrescar()\n    }\n}",
+    "source": "Kotlin docs - 'lateinit', UninitializedPropertyAccessException"
+  },
+  {
+    "id": "kotlin-smart-cast-impossible-with-var-property",
+    "language_or_domain": "kotlin",
+    "tags": ["type-system", "smart-cast", "kotlin"],
+    "problem_description": "Kotlin normalmente 'angosta' (smart cast) el tipo de una variable despues de un chequeo null/is, pero esto NO funciona con propiedades var de una clase (a diferencia de variables locales) si son open, tienen un custom getter, o estan declaradas en otro modulo - porque el compilador no puede garantizar que otro hilo o un getter override no la cambio entre el chequeo y el uso. El resultado es un error de compilacion pidiendo un !! o una copia local, incluso despues de un chequeo que 'deberia' bastar.",
+    "why_small_models_fail": "El modelo aplica la misma expectativa de smart-cast que funciona con variables locales val/var simples a propiedades de clase, sin modelar las condiciones adicionales (visibilidad, open, custom accessor) que el compilador exige para permitirlo.",
+    "correct_approach": "Copiar la propiedad a una variable local (val) antes del chequeo y usar esa copia local, que si es elegible para smart-cast de forma segura.",
+    "bad_example": "class Formulario {\n    var email: String? = null\n    fun validar() {\n        if (email != null) {\n            enviar(email.length) // error de compilacion: smart cast no aplica a 'var' de clase\n        }\n    }\n}",
+    "good_example": "class Formulario {\n    var email: String? = null\n    fun validar() {\n        val emailLocal = email\n        if (emailLocal != null) {\n            enviar(emailLocal.length) // ok, emailLocal es una val local, smart-cast valido\n        }\n    }\n}",
+    "source": "Kotlin docs - 'Smart cast impossible' compiler error, condiciones de smart-casting"
+  },
+  {
+    "id": "kotlin-launch-vs-async-exception-and-globalscope-leak",
+    "language_or_domain": "kotlin",
+    "tags": ["coroutines", "concurrency", "kotlin"],
+    "problem_description": "Una excepcion lanzada dentro de una coroutine creada con launch se propaga INMEDIATAMENTE al padre (y sin manejo, puede crashear la app), mientras que con async queda encapsulada dentro del Deferred y solo se relanza cuando se llama a .await() - mezclar la expectativa de una con la otra hace que errores se pierdan silenciosamente (con async sin await) o crasheen inesperadamente (con launch sin un CoroutineExceptionHandler). Ademas, usar GlobalScope.launch para 'fire and forget' escapa de la concurrencia estructurada: esas coroutines no se cancelan cuando el scope logico del que 'deberian' depender (una pantalla, un request) termina, y pueden seguir vivas indefinidamente.",
+    "why_small_models_fail": "El modelo trata launch y async como intercambiables ('formas de lanzar codigo en background'), sin modelar la diferencia de propagacion de excepciones, y usa GlobalScope por default para simplificar el ejemplo sin considerar el ciclo de vida real de la aplicacion.",
+    "correct_approach": "Usar async solo cuando se necesita un resultado (y siempre llamar a await, envuelto en try/catch si puede fallar); lanzar coroutines de fire-and-forget dentro de un CoroutineScope atado al ciclo de vida real (viewModelScope, lifecycleScope, o un scope propio cancelable), nunca GlobalScope, y agregar un CoroutineExceptionHandler cuando se use launch sin querer que una excepcion crashee todo el proceso.",
+    "bad_example": "fun cargarDatos() {\n    GlobalScope.launch {\n        val datos = api.fetch() // si tira excepcion, crashea el proceso; y la coroutine no se cancela nunca al cerrar la pantalla\n        mostrar(datos)\n    }\n}",
+    "good_example": "fun cargarDatos(scope: CoroutineScope) {\n    scope.launch(CoroutineExceptionHandler { _, e -> logError(e) }) {\n        val datos = api.fetch()\n        mostrar(datos)\n    } // atado al scope de la pantalla/viewmodel: se cancela solo cuando corresponde\n}",
+    "source": "Kotlin coroutines docs - 'Coroutine exceptions handling'; 'Structured concurrency'"
+  },
+  {
+    "id": "kotlin-readonly-list-not-truly-immutable",
+    "language_or_domain": "kotlin",
+    "tags": ["collections", "type-system", "kotlin"],
+    "problem_description": "El tipo List<T> de Kotlin es de solo-lectura A NIVEL DE INTERFAZ (no expone add/remove), pero no garantiza inmutabilidad real: el objeto subyacente puede seguir siendo un MutableList en runtime. Un cast explicito (list as MutableList<T>).add(...) compila y funciona, mutando la coleccion 'de solo lectura' y afectando silenciosamente a cualquier otro codigo que sostenga una referencia a esa misma List creyendola inmutable.",
+    "why_small_models_fail": "El modelo trata List como garantia de inmutabilidad (como en lenguajes con colecciones persistentes reales), sin modelar que en Kotlin/JVM es solo una restriccion de tipo/interfaz, no una propiedad del objeto en memoria.",
+    "correct_approach": "Si se necesita inmutabilidad real (no solo una vista de solo lectura), usar una estructura verdaderamente inmutable (ej. kotlinx.collections.immutable) o copiar defensivamente con toList() al exponer la coleccion fuera de la clase que la controla.",
+    "bad_example": "class Configuracion {\n    private val _opciones = mutableListOf(\"a\", \"b\")\n    val opciones: List<String> get() = _opciones // \"solo lectura\", pero es el MISMO objeto mutable\n}\n(config.opciones as MutableList<String>).add(\"c\") // muta _opciones desde afuera, sin que Configuracion lo sepa",
+    "good_example": "class Configuracion {\n    private val _opciones = mutableListOf(\"a\", \"b\")\n    val opciones: List<String> get() = _opciones.toList() // copia real, inmutable frente a mutaciones externas\n}",
+    "source": "Kotlin docs - Collections overview, 'List is not necessarily immutable'"
+  }
+]

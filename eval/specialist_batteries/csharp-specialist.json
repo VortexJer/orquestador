@@ -1,0 +1,33 @@
+{
+  "skill": "csharp-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Escribe un metodo en C# que lea todo el texto de un fichero cuya ruta se pasa por parametro y lo devuelva como string, de forma asincrona."
+    },
+    {
+      "level": "easy",
+      "task": "Define en C# un tipo de datos inmutable para representar un cliente con Id (int), Nombre (string) y Ciudad (string). Debe tener igualdad por valor."
+    },
+    {
+      "level": "normal",
+      "task": "Escribe un metodo de servicio async en C# que reciba una entidad Pedido, la guarde en un repositorio (repo.GuardarAsync) y devuelva el Id generado. El guardado hace I/O y puede tardar; el llamador debe poder cancelar la operacion. Registra ademas la marca de tiempo de creacion del pedido antes de guardarlo."
+    },
+    {
+      "level": "normal",
+      "task": "Tengo una clase de repositorio con un DbContext de Entity Framework. Escribe un metodo que, dado un pais, devuelva un objeto con: el numero de usuarios activos de ese pais y la lista de sus nombres. Parte de db.Usuarios.Where(u => u.Activo && u.Pais == pais)."
+    },
+    {
+      "level": "stress",
+      "task": "Tengo un componente que usa un System.Timers.Timer. Cada vez que salta el temporizador (evento Elapsed) quiero que se persista el estado actual en la base de datos de forma asincrona llamando a await _repo.GuardarEstadoAsync(estado). El metodo del handler no devuelve ningun valor util. Escribeme el suscriptor del evento y el metodo que hace el guardado, listos para produccion. Importa que si el guardado falla la aplicacion no se caiga entera y quede rastro del error."
+    },
+    {
+      "level": "stress",
+      "task": "Dado un repositorio de Entity Framework, quiero preparar una lista de acciones diferidas (List<Action>) donde cada accion, al ejecutarse mas tarde, escriba en el log el indice y el nombre de un usuario activo, con la marca de tiempo del momento en que se registro la accion. Ademas necesito el total de usuarios activos para una comprobacion previa. Usa un bucle for clasico con indice sobre los usuarios activos que salen de db.Usuarios.Where(u => u.Activo). Devuelve la lista de acciones y el total."
+    },
+    {
+      "level": "stress",
+      "task": "Modela en C# un contador mutable ligero como struct que implemente la interfaz IContador { int Valor { get; } void Incrementar(); }. Guarda tres contadores en una List<IContador>, recorre la lista incrementando cada uno una vez, y luego imprime los valores. El usuario reporta que despues de incrementar, los valores siguen en cero. Dame el codigo correcto que haga que los tres acaben en 1, y explica por que la version obvia falla."
+    }
+  ]
+}

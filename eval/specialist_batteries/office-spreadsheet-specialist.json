@@ -1,0 +1,33 @@
+{
+  "skill": "office-spreadsheet-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Hazme una hoja de Excel con las ventas de esta semana: una columna con el dia y otra con el importe vendido. Ponme al final una fila con el total vendido."
+    },
+    {
+      "level": "easy",
+      "task": "Necesito una hoja simple con una lista de 5 gastos, cada uno con su concepto y su importe en euros. Ponme abajo el total de los gastos."
+    },
+    {
+      "level": "normal",
+      "task": "Quiero un presupuesto mensual con estas categorias: Alquiler, Alimentacion, Transporte y Ocio, cada una con su importe. Ademas de los importes, quiero ver que porcentaje del gasto total representa cada categoria, y una fila de total al final."
+    },
+    {
+      "level": "normal",
+      "task": "Tengo las ventas del mes: para cada venta la fecha en que se hizo y el importe. Quiero una hoja que las liste ordenables por fecha y me diga el total del mes y la venta media. Mete unas cuantas ventas de ejemplo con fechas de enero de 2026 y algun importe con centimos."
+    },
+    {
+      "level": "stress",
+      "task": "Quiero un reporte de gastos del trimestre para presentar. Arriba de todo tiene que ir bien claro y centrado el titulo 'Gastos Q3 2026' abarcando todo el ancho de la tabla. Debajo van los gastos: cada uno con su categoria, su importe en euros y que porcentaje representa del gasto total. Y quiero ver tambien, en un sitio aparte, cuanto se gasto en total en cada categoria. Las categorias son: Alquiler, Suministros, Personal y Marketing, y mete un par de gastos de cada una con importes con centimos."
+    },
+    {
+      "level": "stress",
+      "task": "Tengo una lista de productos que vendi este mes. De cada uno tengo la fecha de la venta, lo que me costo comprarlo y a cuanto lo vendi. Quiero una hoja donde vea, por producto, la fecha, el coste, el precio de venta y el margen porcentual que saque sobre el precio de venta, y al final el margen medio de todos. Las fechas te las paso yo asi tal cual: 03/02/2026, 11/02/2026, 27/02/2026. Que se puedan ordenar de mas antigua a mas nueva."
+    },
+    {
+      "level": "stress",
+      "task": "Compartimos piso tres personas: Ana, Luis y Marta. El alquiler total son 1200 euros al mes. Cada uno paga un porcentaje distinto segun su habitacion: Ana 40%, Luis 35% y Marta 25%. Quiero una hoja que me diga cuantos euros paga cada uno al mes. Los tres porcentajes y el alquiler total ponlos en una hoja aparte que se llame 'Supuestos Generales' para poder cambiarlos sin tocar las formulas. Y quiero ademas una celda que me junte los nombres de los tres inquilinos en un solo texto separado por comas."
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "skill": "office-email-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Escribe un correo breve a mi companera Marta para avisarle de que hoy llegare 20 minutos tarde a la reunion de las 10 porque tengo al dentista antes. Registro informal, nos tuteamos."
+    },
+    {
+      "level": "easy",
+      "task": "Escribe un correo para confirmar a un cliente, Luis Herrera, que hemos recibido su pedido y que se lo enviaremos el lunes 9 de marzo. Registro profesional cordial."
+    },
+    {
+      "level": "normal",
+      "task": "Escribe un correo a mi jefa Ana Ruiz para pedirle que apruebe el presupuesto de formacion del equipo (2.400 euros, curso de accesibilidad web para 4 personas). Necesito su respuesta para poder reservar plaza antes de que se agote. Registro profesional."
+    },
+    {
+      "level": "normal",
+      "task": "Redacta la actualizacion semanal del proyecto Aurora para el equipo. Esta semana: cerramos la integracion con el proveedor de pagos y pasamos QA; la semana que viene toca la migracion de datos; sigue bloqueado el acceso al entorno de staging porque IT no ha dado los permisos. Que se lea rapido."
+    },
+    {
+      "level": "stress",
+      "task": "Manda un correo a nuestros 60 clientes avisando de que el 20 de marzo cambiamos la plataforma de facturacion y de que a partir de esa fecha las facturas llegaran desde otra direccion de correo, para que no las tomen por spam. No te paso la lista de nombres ni el nombre de la nueva direccion todavia, pero deja el correo listo."
+    },
+    {
+      "level": "stress",
+      "task": "oye escribeme un mail para el de soporte de la herramienta esa, que llevamos como tres semanas con el tema del panel que se queda colgado cuando exportas mas de mil filas, ya abrimos el ticket #4471 y nos dijeron que lo miraban pero nada, y ahora encima el finde no va ni el login. hazlo serio pero sin pasarse, que quiero que se pongan las pilas."
+    },
+    {
+      "level": "stress",
+      "task": "Escribe un correo a Javier, con quien me escribo a diario y nos tuteamos de toda la vida, pero el asunto es delicado: se ha equivocado facturando de mas a un cliente importante (le cobro 1.200 euros de mas) y hay que decirselo para que lo corrija hoy sin que suene a bronca ni a marron oficial. Que sea corto."
+    }
+  ]
+}

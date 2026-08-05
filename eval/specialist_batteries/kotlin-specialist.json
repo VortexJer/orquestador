@@ -1,0 +1,33 @@
+{
+  "skill": "kotlin-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Escribe una funcion Kotlin `mediaSegura(notas: List<Double>): Double` que devuelva la media de una lista de notas, y 0.0 si la lista esta vacia."
+    },
+    {
+      "level": "easy",
+      "task": "Define una data class `Punto(val x: Int, val y: Int)` y una funcion que calcule la distancia euclidea entre dos puntos."
+    },
+    {
+      "level": "normal",
+      "task": "Modela el resultado de una peticion de red que puede estar Cargando, tener Exito con un dato, o Error con un mensaje. Escribe una funcion que reciba ese resultado y devuelva un texto para la UI segun el caso. Quiero que agregar un cuarto estado en el futuro rompa la compilacion si olvido tratarlo."
+    },
+    {
+      "level": "normal",
+      "task": "Un `RepositorioUsuarios` con un metodo suspend `buscar(id: Int): Usuario?` que consulta una base de datos (operacion de I/O bloqueante mediante `dao.findById(id)`) y devuelve el usuario o null. Expon ademas una lista de los ultimos ids consultados para la capa de logging, sin que quien la reciba pueda modificar el historial interno."
+    },
+    {
+      "level": "stress",
+      "task": "Integra esta API Java heredada, sin anotaciones de nulabilidad:\n\n    // Java\n    public class LegacyDirectory {\n        public String lookup(String key) { ... }\n    }\n\nEscribe una clase Kotlin `ContactCache` con una propiedad mutable `ultimoResultado` que guarde el ultimo valor consultado al directorio. Un metodo `resolver(key: String)` debe consultar el directorio, guardar lo devuelto en `ultimoResultado`, y despues devolver la longitud de ese ultimo resultado si existe, o 0 si no habia nada. Que sea robusto en produccion."
+    },
+    {
+      "level": "stress",
+      "task": "Un `GestorPlaylist` que mantiene una coleccion SIN duplicados de canciones. Cada cancion tiene un titulo y un contador de reproducciones. Necesito: agregar canciones, marcar una cancion como reproducida (que incremente su contador de reproducciones), y exponer las canciones para pintarlas en la UI. Que no se pierda ninguna cancion tras marcarla como reproducida, y que la capa de UI no pueda alterar la coleccion interna."
+    },
+    {
+      "level": "stress",
+      "task": "Un `MotorSync` con un metodo `sincronizar()` que se llama al abrir una pantalla. Debe: disparar el trabajo en segundo plano sin bloquear al que llama; descargar en paralelo el perfil y los ajustes desde una API remota (cada descarga es una llamada de red que tarda); combinar ambos y guardarlos; poder cancelarse limpiamente cuando la pantalla se cierra; y que un fallo de red de una descarga no tumbe la aplicacion. Asume `suspend fun api.perfil(): Perfil` y `suspend fun api.ajustes(): Ajustes`."
+    }
+  ]
+}

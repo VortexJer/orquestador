@@ -1,0 +1,79 @@
+[
+  {
+    "id": "rust-tokio-spawn-static-lifetime",
+    "language_or_domain": "rust",
+    "tags": ["async", "lifetimes", "rust", "concurrency"],
+    "problem_description": "tokio::spawn exige que el future sea 'static y Send; capturar una referencia prestada (en vez de un valor con ownership o un Arc) dentro del closure produce errores de lifetime que suelen 'resolverse' agregando 'static a mano en el sitio equivocado en vez de cambiar la estrategia de ownership.",
+    "why_small_models_fail": "El mensaje de error del borrow checker es generico y el modelo tiende a parchear el sintoma (anotaciones de lifetime) en vez de resolver la causa (falta de ownership propio en la tarea spawneada).",
+    "correct_approach": "Clonar un Arc<T> (o mover el valor) hacia el closure antes de spawn, en vez de capturar por referencia.",
+    "bad_example": "let data = vec![1, 2, 3];\ntokio::spawn(async {\n    process(&data);\n});",
+    "good_example": "let data = std::sync::Arc::new(vec![1, 2, 3]);\nlet data_clone = data.clone();\ntokio::spawn(async move {\n    process(&data_clone);\n});",
+    "source": "Tokio docs - spawn: 'static bound"
+  },
+  {
+    "id": "rust-mutex-reentrant-deadlock",
+    "language_or_domain": "rust",
+    "tags": ["concurrency", "deadlock", "rust"],
+    "problem_description": "std::sync::Mutex de Rust NO es reentrante: si un hilo que ya tiene el lock (el MutexGuard todavia esta vivo) intenta lockearlo de nuevo - por ejemplo llamando a un metodo que internamente vuelve a hacer .lock() sobre el mismo Mutex - el programa se queda bloqueado para siempre (deadlock), sin ningun error de compilacion que lo detecte.",
+    "why_small_models_fail": "El modelo no rastrea si un MutexGuard sigue vivo (en scope) en el momento de una segunda llamada a lock() sobre el mismo mutex, especialmente cuando esa segunda llamada ocurre dentro de una funcion auxiliar varias capas mas abajo.",
+    "correct_approach": "Liberar el guard explicitamente (drop(guard)) antes de llamar a codigo que pueda volver a lockear el mismo mutex, o restructurar para que ninguna funcion invocada mientras el lock esta tomado intente tomarlo de nuevo.",
+    "bad_example": "fn incrementar(contador: &Mutex<i32>) {\n    let mut guard = contador.lock().unwrap();\n    *guard += 1;\n    registrar(contador); // si registrar() tambien hace contador.lock(), deadlock\n}",
+    "good_example": "fn incrementar(contador: &Mutex<i32>) {\n    {\n        let mut guard = contador.lock().unwrap();\n        *guard += 1;\n    } // guard se libera aca, antes de llamar a registrar()\n    registrar(contador);\n}",
+    "source": "Rust std docs - std::sync::Mutex, 'not reentrant'"
+  },
+  {
+    "id": "rust-unwrap-panics-in-production-path",
+    "language_or_domain": "rust",
+    "tags": ["error-handling", "rust"],
+    "problem_description": "Usar .unwrap() o .expect() sobre un Option/Result en un camino de codigo alcanzable desde produccion (no solo en tests o prototipos) hace panic (crash del proceso, o del hilo si no se maneja) apenas ese valor es None/Err, en vez de propagar el error de forma recuperable.",
+    "why_small_models_fail": "El modelo usa .unwrap() por default para 'simplificar' el codigo de ejemplo y que compile rapido, sin distinguir entre codigo de prueba descartable y codigo de libreria/servicio que necesita manejo de errores real.",
+    "correct_approach": "Propagar el error con el operador ? (que requiere que la funcion devuelva Result) en vez de unwrap, reservando unwrap/expect solo para invariantes que el propio programa garantiza (y en ese caso, expect() con un mensaje explicito de por que es seguro).",
+    "bad_example": "fn leer_config() -> Config {\n    let texto = std::fs::read_to_string(\"config.toml\").unwrap(); // panic si el archivo no existe\n    toml::from_str(&texto).unwrap()\n}",
+    "good_example": "fn leer_config() -> Result<Config, Box<dyn std::error::Error>> {\n    let texto = std::fs::read_to_string(\"config.toml\")?;\n    Ok(toml::from_str(&texto)?)\n}",
+    "source": "The Rust Book - cap. 9, 'Error Handling', unwrap vs propagacion con ?"
+  },
+  {
+    "id": "rust-integer-overflow-debug-vs-release",
+    "language_or_domain": "rust",
+    "tags": ["numerics", "rust"],
+    "problem_description": "El comportamiento de overflow de enteros difiere segun el perfil de compilacion: en debug, un overflow hace panic inmediatamente; en release (por defecto), hace wraparound silencioso (complemento a dos) sin ningun error. Codigo que 'nunca fallo' en desarrollo puede estar produciendo resultados numericos incorrectos en produccion, o viceversa, codigo probado solo en release puede panicar sorpresivamente en debug.",
+    "why_small_models_fail": "El modelo asume un unico comportamiento consistente de overflow (como en la mayoria de los lenguajes, donde el build no cambia la semantica aritmetica), sin modelar que en Rust el perfil de compilacion cambia el comportamiento observable del programa.",
+    "correct_approach": "Si el overflow es una posibilidad real del dominio (contadores, sumas de montos), usar metodos explicitos como checked_add/checked_mul (devuelven Option), wrapping_add (wraparound intencional) o saturating_add, en vez de depender del comportamiento por perfil de compilacion.",
+    "bad_example": "let contador: u8 = 250;\nlet resultado = contador + 10; // panic en debug, wrapea a 4 en release - comportamiento distinto segun el build",
+    "good_example": "let contador: u8 = 250;\nlet resultado = contador.checked_add(10); // None de forma explicita y consistente en cualquier build, sin depender del perfil",
+    "source": "The Rust Book - cap. 3.2, 'Integer Overflow'"
+  },
+  {
+    "id": "rust-refcell-borrow-runtime-panic",
+    "language_or_domain": "rust",
+    "tags": ["interior-mutability", "runtime-checks", "rust"],
+    "problem_description": "RefCell<T> mueve las reglas de aliasing de Rust (una escritura exclusiva XOR multiples lecturas) del chequeo en tiempo de COMPILACION al chequeo en tiempo de EJECUCION. Llamar a borrow_mut() mientras otro borrow() (o borrow_mut()) del mismo RefCell sigue vivo no es un error de compilacion - compila perfecto - pero hace panic en runtime con 'already borrowed: BorrowMutError' apenas se ejecuta esa ruta.",
+    "why_small_models_fail": "El modelo, acostumbrado a que el borrow checker de Rust atrapa estos errores en compilacion, asume que 'si compila, el aliasing esta bien' - pero RefCell existe precisamente para casos donde esa garantia se pospuso a runtime, y el modelo no rastrea cuanto dura cada borrow en tiempo de ejecucion.",
+    "correct_approach": "Limitar el scope de cada borrow/borrow_mut lo mas posible (con bloques {}) para que se libere antes de que otra parte del codigo intente pedir el suyo, y evitar mantener un borrow vivo mientras se llama a codigo que podria, directa o indirectamente, pedir otro borrow del mismo RefCell.",
+    "bad_example": "let celda = RefCell::new(vec![1,2,3]);\nlet prestamo = celda.borrow(); // vivo hasta el final del scope\nceldas_relacionadas(&celda); // si esta funcion hace celda.borrow_mut() internamente: panic en runtime",
+    "good_example": "let celda = RefCell::new(vec![1,2,3]);\n{\n    let prestamo = celda.borrow();\n    usar(&prestamo);\n} // el borrow se libera aca\nceldas_relacionadas(&celda); // seguro, ya no hay un borrow activo",
+    "source": "The Rust Book - cap. 15.5, 'RefCell<T> and the Interior Mutability Pattern'"
+  },
+  {
+    "id": "rust-clone-overuse-hides-cost",
+    "language_or_domain": "rust",
+    "tags": ["performance", "ownership", "rust"],
+    "problem_description": "Ante un error del borrow checker, agregar .clone() casi siempre hace que el codigo compile - pero para estructuras de datos grandes o anidadas (Vec grandes, String largos, estructuras con muchos campos), eso implementa una copia profunda real en cada llamada, silenciosamente degradando el rendimiento sin que ningun test funcional lo detecte.",
+    "why_small_models_fail": "El modelo prioriza 'hacer que compile' sobre 'resolver el problema de ownership correctamente', y .clone() es la salida mas rapida y sintacticamente minima ante casi cualquier error de borrow checker, independientemente del costo real de la copia.",
+    "correct_approach": "Antes de clonar, considerar si una referencia (&T), un Rc/Arc (si se necesita ownership compartido barato), o una reestructuracion del flujo de ownership resuelve el error sin copiar datos.",
+    "bad_example": "fn procesar_todo(datos: Vec<RegistroGrande>) {\n    for _ in 0..3 {\n        procesar(datos.clone()); // clona TODO el Vec en cada una de las 3 iteraciones\n    }\n}",
+    "good_example": "fn procesar_todo(datos: &[RegistroGrande]) {\n    for _ in 0..3 {\n        procesar(datos); // pasa una referencia, sin copiar nada\n    }\n}",
+    "source": "The Rust Performance Book - 'Excessive cloning'"
+  },
+  {
+    "id": "rust-string-byte-index-not-char-boundary",
+    "language_or_domain": "rust",
+    "tags": ["strings", "unicode", "rust"],
+    "problem_description": "Los String de Rust son secuencias de bytes UTF-8. Indexar o slicear con &s[a..b] usa indices de BYTE, no de caracter; si a o b caen en medio de un caracter multi-byte (ej. tildes, emoji), el programa hace panic en runtime con 'byte index is not a char boundary', algo que no aparece con texto puramente ASCII en las pruebas.",
+    "why_small_models_fail": "El modelo prueba mentalmente (y a veces literalmente, en los ejemplos de entrenamiento) con strings ASCII donde byte-index y char-index coinciden siempre, y no generaliza el caso con texto en español/emoji donde divergen.",
+    "correct_approach": "Usar los metodos de iteracion sobre chars() (o graphemes de la crate unicode-segmentation si se necesita correctitud a nivel de grafema visual) en vez de indexar directamente por posicion de byte cuando el texto puede no ser ASCII puro.",
+    "bad_example": "let saludo = \"café con leche\";\nlet corte = &saludo[0..4]; // panic: el indice 4 cae en medio del caracter multi-byte 'é'",
+    "good_example": "let saludo = \"café con leche\";\nlet corte: String = saludo.chars().take(4).collect(); // \"café\", correcto por caracteres, no por bytes",
+    "source": "The Rust Book - cap. 8.2, 'Storing UTF-8 Encoded Text with Strings'"
+  }
+]

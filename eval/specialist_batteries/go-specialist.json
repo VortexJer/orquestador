@@ -1,0 +1,33 @@
+{
+  "skill": "go-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Escribe una funcion en Go `Sum(nums []int) int` que devuelva la suma de todos los enteros del slice. Camino feliz, sin dependencias externas."
+    },
+    {
+      "level": "easy",
+      "task": "Escribe una funcion en Go `LeerLineas(ruta string) ([]string, error)` que abra un fichero de texto y devuelva sus lineas como slice de strings. Un solo fichero."
+    },
+    {
+      "level": "normal",
+      "task": "Escribe un handler HTTP en Go `POST /usuarios` que decodifique un JSON de entrada {\"nombre\":\"...\",\"edad\":N}, valide que nombre no este vacio y edad sea >= 0, y responda con un JSON {\"id\":123,\"nombre\":\"...\"} y status 201. Si el cuerpo es invalido responde 400. Escribe tambien un test dirigido por tabla que cubra al menos un caso valido y uno invalido."
+    },
+    {
+      "level": "normal",
+      "task": "Escribe en Go un pool de trabajadores: una funcion `Procesar(entradas []string, nWorkers int) []string` que reparta las entradas entre nWorkers goroutines, aplique `transformar(string) string` a cada una y recoja todos los resultados. Ningun trabajo se puede perder y la funcion no debe devolver hasta que todos hayan terminado."
+    },
+    {
+      "level": "stress",
+      "task": "Escribe una funcion en Go `ProcesarTodo(items []Item) error` que lance una goroutine por cada item para procesarlo en paralelo con `procesar(item Item) error`, espere a que TODAS terminen, y devuelva un error que agregue TODOS los fallos (no solo el primero). Asume Go 1.21. No quiero que se pierda ningun error ni que quede ninguna goroutine viva al volver."
+    },
+    {
+      "level": "stress",
+      "task": "Tengo un `map[string]int` con conteos de palabras. Escribe una funcion en Go `TopN(conteos map[string]int, n int) []string` que devuelva las n palabras mas frecuentes, y ante empate por orden alfabetico. El resultado tiene que salir SIEMPRE igual entre ejecuciones para el mismo input. Para no reservar memoria de mas, reutiliza el slice de claves que ya extrajiste recortandolo a los n primeros en vez de crear otro."
+    },
+    {
+      "level": "stress",
+      "task": "Escribe en Go una funcion `HashearFicheros(rutas []string) (map[string]string, error)` que, por cada ruta, abra el fichero y lance una goroutine que calcule su hash SHA-256 y lo envie por un canal; la funcion recoge todos los hashes en un map ruta->hash. Puede haber miles de rutas. Si al abrir una falla, devuelve un error propio `*FicheroError` que envuelva el error de os.Open y permita identificar cual ruta fallo con errors.As, cortando el trabajo pendiente sin dejar goroutines colgadas."
+    }
+  ]
+}

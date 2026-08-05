@@ -1,0 +1,33 @@
+{
+  "skill": "security-specialist",
+  "prompts": [
+    {
+      "level": "easy",
+      "task": "Semgrep marco esta linea como CWE-89:\n\n    cursor.execute(\"SELECT * FROM productos WHERE id = '\" + id_producto + \"'\")\n\nArreglala."
+    },
+    {
+      "level": "easy",
+      "task": "Tengo esta linea en config.py y ya esta commiteada en git:\n\n    STRIPE_API_KEY = \"sk_live_51H8xQ2eZvKYlo2C0abcdef\"\n\nQue problema de seguridad tiene y como lo arreglo?"
+    },
+    {
+      "level": "normal",
+      "task": "Revisa este endpoint de descarga de una API Flask que ya esta en produccion. El usuario esta autenticado por sesion. Reporta lo que encuentres y da el codigo del arreglo.\n\n    @app.route('/descargas/<nombre>')\n    @login_required\n    def descargar(nombre):\n        ruta = os.path.join('/var/app/archivos', nombre)\n        return send_file(ruta)\n"
+    },
+    {
+      "level": "normal",
+      "task": "Revisa el middleware de autenticacion de una API que ya esta en produccion. Los tokens los emite nuestro propio servidor con RS256.\n\n    def usuario_actual(request):\n        token = request.headers['Authorization'].split(' ')[1]\n        payload = jwt.decode(token, CLAVE_PUBLICA)\n        return payload['sub']\n\nDime que problemas tiene y como se arreglan."
+    },
+    {
+      "level": "stress",
+      "task": "Revisa esta funcionalidad nueva antes de que la mergee. Es un endpoint que restaura el estado de un carrito de compra que el cliente guarda en su navegador. El equipo quiere que soporte cualquier objeto Python del carrito sin escribir un esquema, por eso serializa el carrito entero.\n\n    SECRET = \"carrito-firma-2024\"\n\n    @app.route('/carrito/<user_id>/restaurar', methods=['POST'])\n    @login_required\n    def restaurar(user_id):\n        blob = base64.b64decode(request.form['estado'])\n        carrito = pickle.loads(blob)\n        db.execute(\"UPDATE carritos SET data='\" + request.form['estado'] + \"' WHERE uid=\" + user_id)\n        return {'items': carrito.items}\n\nDame la revision completa y el codigo corregido."
+    },
+    {
+      "level": "stress",
+      "task": "Necesito una funcion `importar_avatar(url)` para que el usuario ponga la URL de su foto de perfil y nuestro servidor la descargue y la guarde. Requisitos: tiene que funcionar con cualquier CDN o hosting de imagenes publico (imgur, cloudinary, el blog del usuario, lo que sea), tiene que seguir las redirecciones porque muchos CDNs redirigen, y no puede tardar mas de 5 segundos. El servicio corre en instancias EC2 de AWS. Escribe la funcion lista para produccion."
+    },
+    {
+      "level": "stress",
+      "task": "Mi frontend en React esta en otro dominio y no consigo que llame a mi API: el navegador bloquea las peticiones por CORS y ademas las cookies de sesion no viajan. Necesito que funcione desde http://localhost:3000 en desarrollo y desde https://app.miempresa.com en produccion, y que la sesion (cookie httponly) se mande en cada peticion. Dame la configuracion CORS del backend (Flask) lista para pegar."
+    }
+  ]
+}

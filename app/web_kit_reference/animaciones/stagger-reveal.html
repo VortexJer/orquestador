@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stagger reveal — aparición escalonada</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #f5f4f0; color: #1a1a1a;
+         padding: 4rem 2rem; max-width: 1200px; margin: 0 auto; }
+
+  h1 { font-size: 1.8rem; margin-bottom: 4rem; color: #666; font-weight: 400; }
+
+  /* === Contenedor stagger ===
+     Cualquier hijo directo con clase .stagger-item arranca oculto.
+     Cuando el contenedor es visible, los hijos se animan en cascada
+     usando el índice como delay (0ms, 80ms, 160ms...). */
+  .stagger-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 5rem;
+  }
+
+  .stagger-item {
+    opacity: 0;
+    transform: translateY(30px);
+    /* El delay se asigna desde JS */
+    transition: opacity .5s ease, transform .5s cubic-bezier(.22,1,.36,1);
+  }
+  .stagger-item.visible { opacity: 1; transform: translateY(0); }
+
+  /* Variante: aparición desde la izquierda */
+  .stagger-item.desde-izq { transform: translateX(-30px); }
+  .stagger-item.desde-izq.visible { transform: translateX(0); }
+
+  /* Variante: zoom */
+  .stagger-item.zoom { transform: scale(.9); }
+  .stagger-item.zoom.visible { transform: scale(1); }
+
+  /* Cards de demo */
+  .card {
+    background: #fff; border-radius: 16px; padding: 2rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,.06);
+  }
+  .card .icono { font-size: 2rem; margin-bottom: 1rem; }
+  .card h3 { margin-bottom: .5rem; }
+  .card p { color: #888; font-size: .9rem; line-height: 1.6; }
+
+  /* Lista stagger */
+  .stagger-lista { list-style: none; padding: 0; display: flex; flex-direction: column; gap: .75rem; }
+  .stagger-lista li {
+    background: #fff; border-radius: 10px; padding: 1rem 1.5rem;
+    display: flex; align-items: center; gap: 1rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,.05);
+  }
+  .stagger-lista li .num {
+    width: 32px; height: 32px; border-radius: 50%; background: #e07a3f;
+    color: #fff; display: grid; place-items: center; font-weight: 700;
+    font-size: .85rem; flex-shrink: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .stagger-item { transition: opacity .3s ease; transform: none !important; }
+  }
+</style>
+</head>
+<body>
+
+  <h1>Aparición escalonada (stagger)</h1>
+
+  <!-- Grid de tarjetas → stagger desde abajo -->
+  <div class="stagger-grid" data-stagger data-stagger-delay="80">
+    <div class="card stagger-item">
+      <div class="icono">⚡</div>
+      <h3>Velocidad</h3>
+      <p>Cada tarjeta aparece 80ms después que la anterior.</p>
+    </div>
+    <div class="card stagger-item">
+      <div class="icono">✦</div>
+      <h3>Precisión</h3>
+      <p>El delay se calcula automáticamente por posición.</p>
+    </div>
+    <div class="card stagger-item">
+      <div class="icono">◎</div>
+      <h3>Flexibilidad</h3>
+      <p>Funciona con cualquier layout: grid, flex, lista...</p>
+    </div>
+    <div class="card stagger-item">
+      <div class="icono">▲</div>
+      <h3>Suavidad</h3>
+      <p>Curva cubic-bezier para entrada natural.</p>
+    </div>
+    <div class="card stagger-item">
+      <div class="icono">●</div>
+      <h3>Accesible</h3>
+      <p>Respeta prefers-reduced-motion.</p>
+    </div>
+    <div class="card stagger-item">
+      <div class="icono">□</div>
+      <h3>Sin librerías</h3>
+      <p>Solo IntersectionObserver y CSS transitions.</p>
+    </div>
+  </div>
+
+  <!-- Lista → stagger desde la izquierda -->
+  <ul class="stagger-lista" data-stagger data-stagger-delay="60">
+    <li class="stagger-item desde-izq"><span class="num">1</span> Primer elemento de la lista</li>
+    <li class="stagger-item desde-izq"><span class="num">2</span> Segundo elemento de la lista</li>
+    <li class="stagger-item desde-izq"><span class="num">3</span> Tercer elemento de la lista</li>
+    <li class="stagger-item desde-izq"><span class="num">4</span> Cuarto elemento de la lista</li>
+    <li class="stagger-item desde-izq"><span class="num">5</span> Quinto elemento de la lista</li>
+  </ul>
+
+<script>
+  // Para cada contenedor marcado con data-stagger,
+  // observa cuándo entra en el viewport y luego
+  // anima sus hijos .stagger-item en cascada.
+  document.querySelectorAll('[data-stagger]').forEach(contenedor => {
+    const delay = parseInt(contenedor.dataset.staggerDelay) || 80;
+    const items = contenedor.querySelectorAll('.stagger-item');
+
+    // Asignar delay inline a cada hijo
+    items.forEach((item, i) => {
+      item.style.transitionDelay = (i * delay) + 'ms';
+    });
+
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          items.forEach(item => item.classList.add('visible'));
+          obs.unobserve(contenedor);
+        }
+      });
+    }, { threshold: 0.1 });
+
+    obs.observe(contenedor);
+  });
+</script>
+</body>
+</html>

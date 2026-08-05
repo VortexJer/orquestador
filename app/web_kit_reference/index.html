@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Web Kit — índice</title>
+<style>
+  :root { --acento: #6366f1; }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #fafaf9; color: #1c1917;
+    max-width: 920px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+  header { margin-bottom: 3rem; }
+  h1 { font-size: 2.4rem; }
+  .lead { color: #57534e; margin-top: .6rem; max-width: 620px; line-height: 1.6; }
+  .nota { background: #eef2ff; border-left: 3px solid var(--acento); padding: 1rem 1.2rem;
+    border-radius: 0 8px 8px 0; margin-top: 1.5rem; font-size: .92rem; color: #3730a3; }
+
+  h2 { margin: 2.5rem 0 1rem; font-size: 1.3rem; display: flex; align-items: center; gap: .6rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 1rem; }
+  a.card { display: block; background: #fff; border: 1px solid #e7e5e4; border-radius: 12px;
+    padding: 1.2rem 1.3rem; text-decoration: none; color: inherit;
+    transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+  a.card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,.07); border-color: var(--acento); }
+  a.card h3 { font-size: 1rem; margin-bottom: .3rem; }
+  a.card p { font-size: .85rem; color: #78716c; line-height: 1.5; }
+
+  @media (prefers-reduced-motion: reduce) { a.card { transition: none; } }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Web Kit</h1>
+    <p class="lead">Librería de animaciones, componentes y patrones de datos ya
+    resueltos. Cada tarjeta abre un ejemplo funcional con el código comentado dentro.
+    Copia lo que necesites o pásaselo al modelo como referencia.</p>
+    <div class="nota">Consejo: para dárselo a la IA, dile algo como “usa el patrón de
+    <code>componentes/modal.html</code> para el modal de mi web”. Parte de algo que ya
+    funciona en vez de inventarlo de cero.</div>
+  </header>
+
+  <h2>🎬 Animaciones</h2>
+  <div class="grid">
+    <a class="card" href="animaciones/scroll-reveal.html"><h3>Scroll reveal</h3><p>Elementos que aparecen al entrar en pantalla (IntersectionObserver).</p></a>
+    <a class="card" href="animaciones/hover-efectos.html"><h3>Efectos hover</h3><p>Micro-interacciones al pasar el ratón: lift, subrayado, relleno, tilt, brillo.</p></a>
+    <a class="card" href="animaciones/loaders.html"><h3>Loaders</h3><p>Spinner, puntos, barra de progreso y skeleton screens.</p></a>
+    <a class="card" href="animaciones/transiciones-css.html"><h3>Keyframes</h3><p>Biblioteca de @keyframes reutilizables: fade, slide, zoom, bounce, pulse...</p></a>
+    <a class="card" href="animaciones/texto-animado.html"><h3>Texto animado</h3><p>Efecto máquina de escribir y contadores numéricos.</p></a>
+  </div>
+
+  <h2>✨ Nivel cine / vídeo IA <span style="font-size:.75rem;color:#a8a29e;font-weight:400">context.md §15</span></h2>
+  <div class="grid">
+    <a class="card" href="animaciones/fondo-shader-webgl.html"><h3>Fondo shader WebGL</h3><p>Ruido líquido animado con shader propio, sin librerías. Lo más "vídeo IA". (15.1)</p></a>
+    <a class="card" href="animaciones/gsap-scrolltrigger.html"><h3>GSAP ScrollTrigger</h3><p>GSAP autoalojado: scrub fino y pin atados al scroll. (15.2)</p></a>
+    <a class="card" href="animaciones/rotacion-3d-scroll.html"><h3>Giro 3D al scroll</h3><p>Efecto "Higgsfield": un objeto gira en 3D según cuánto scrolleas. (15.3)</p></a>
+    <a class="card" href="animaciones/scroll-driven-nativo.html"><h3>Scroll-driven nativo</h3><p>Fade, blur, escala y progreso atados al scroll con CERO JS. (15.4)</p></a>
+    <a class="card" href="animaciones/grano-pelicula.html"><h3>Grano de cine</h3><p>Textura SVG + color grading sutil: look de producción audiovisual. (15.5)</p></a>
+    <a class="card" href="animaciones/tipografia-variable.html"><h3>Tipografía variable</h3><p>El peso de la fuente respira fluido con hover y scroll. (15.6)</p></a>
+    <a class="card" href="animaciones/sonido-click.html"><h3>Sonido sutil</h3><p>Micro-click premium en CTAs con Web Audio, con botón de silenciar. (15.7)</p></a>
+  </div>
+
+  <h2>🧊 3D real (Three.js) <span style="font-size:.75rem;color:#a8a29e;font-weight:400">context.md §15.8-15.17</span></h2>
+  <div class="grid">
+    <a class="card" href="3d/hero-objeto-flotante.html"><h3>Objeto flotante</h3><p>Geometría, cámara y luz de verdad — sigue al puntero con inercia. (15.8)</p></a>
+    <a class="card" href="3d/particulas-atmosfera.html"><h3>Partículas 3D</h3><p>Campo de puntos con profundidad real en el espacio y parallax de cámara. (15.9)</p></a>
+    <a class="card" href="3d/producto-configurador-drag.html"><h3>Producto para arrastrar</h3><p>Arrastra con el ratón/dedo para girarlo, con inercia y auto-rotación. (15.10)</p></a>
+    <a class="card" href="3d/texto-3d-extruido.html"><h3>Tipografía 3D extruida</h3><p>El titular como objeto real con grosor, bisel y luz. (15.11)</p></a>
+    <a class="card" href="3d/galeria-tarjetas-flotantes.html"><h3>Galería flotante</h3><p>Tarjetas a distinta profundidad que reaccionan al hover con raycaster. (15.12)</p></a>
+    <a class="card" href="3d/globo-wireframe-red.html"><h3>Globo con red</h3><p>Planeta wireframe con nodos y arcos de conexión — presencia global. (15.13)</p></a>
+    <a class="card" href="3d/blob-liquido-organico.html"><h3>Blob orgánico</h3><p>Superficie que respira/muta como líquido, vía desplazamiento de vértices. (15.14)</p></a>
+    <a class="card" href="3d/cristal-material-premium.html"><h3>Material de cristal</h3><p>Transmisión real (no opacity) — look premium/joyería. (15.15)</p></a>
+    <a class="card" href="3d/constelacion-nodos-conexiones.html"><h3>Constelación de nodos</h3><p>Conceptos como nodos etiquetados y conectados en 3D. (15.16)</p></a>
+    <a class="card" href="3d/cargar-modelo-gltf.html"><h3>Cargar modelo .glb</h3><p>Patrón correcto con GLTFLoader: progreso, centrado y fallback honesto. (15.17)</p></a>
+  </div>
+
+  <h2>🧩 Componentes</h2>
+  <div class="grid">
+    <a class="card" href="componentes/modal.html"><h3>Modal</h3><p>Ventana emergente accesible: foco, Escape, cierre por fondo.</p></a>
+    <a class="card" href="componentes/acordeon.html"><h3>Acordeón / FAQ</h3><p>Secciones plegables con animación de altura limpia.</p></a>
+    <a class="card" href="componentes/tabs.html"><h3>Tabs</h3><p>Pestañas navegables con teclado.</p></a>
+    <a class="card" href="componentes/carrusel.html"><h3>Carrusel</h3><p>Slider con flechas, puntos y autoplay.</p></a>
+    <a class="card" href="componentes/menu-movil.html"><h3>Menú móvil</h3><p>Hamburguesa que se transforma en X y despliega el menú.</p></a>
+    <a class="card" href="componentes/dropdown.html"><h3>Dropdown</h3><p>Menú desplegable que cierra al hacer clic fuera o con Escape.</p></a>
+    <a class="card" href="componentes/tooltip.html"><h3>Tooltip</h3><p>Globos de ayuda en CSS puro con data-tip.</p></a>
+    <a class="card" href="componentes/header-sticky.html"><h3>Header sticky</h3><p>Cabecera que se encoge y gana sombra al hacer scroll.</p></a>
+    <a class="card" href="componentes/back-to-top.html"><h3>Volver arriba</h3><p>Botón flotante que aparece al bajar.</p></a>
+    <a class="card" href="componentes/dark-mode.html"><h3>Modo oscuro</h3><p>Interruptor de tema con preferencia guardada.</p></a>
+    <a class="card" href="componentes/formulario.html"><h3>Formulario</h3><p>Validación en vivo mientras se escribe.</p></a>
+  </div>
+
+  <h2>💾 Datos</h2>
+  <div class="grid">
+    <a class="card" href="datos/localstorage-crud.html"><h3>Base de datos local</h3><p>CRUD completo con localStorage: persiste al recargar.</p></a>
+    <a class="card" href="datos/json-render.html"><h3>Pintar desde datos</h3><p>Grid con buscador, filtro y orden a partir de un array.</p></a>
+  </div>
+
+  <h2>📐 Layouts</h2>
+  <div class="grid">
+    <a class="card" href="layouts/grid-responsive.html"><h3>Grid responsive</h3><p>Rejilla auto-fit y sistema de 12 columnas.</p></a>
+    <a class="card" href="layouts/hero-patrones.html"><h3>Patrones de hero</h3><p>Cuatro estilos de sección principal.</p></a>
+    <a class="card" href="layouts/masonry.html"><h3>Masonry</h3><p>Galería tipo Pinterest con CSS columns.</p></a>
+  </div>
+</body>
+</html>

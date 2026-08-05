@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Botón volver arriba</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; color: #333; }
+  .contenido { padding: 2rem; line-height: 1.8; max-width: 700px; margin: 0 auto; }
+  .alto { height: 200vh; }
+
+  .top { position: fixed; bottom: 2rem; right: 2rem; width: 48px; height: 48px;
+    border-radius: 50%; background: #2563eb; color: #fff; border: none; cursor: pointer;
+    font-size: 1.3rem; box-shadow: 0 4px 14px rgba(37,99,235,.4);
+    opacity: 0; visibility: hidden; transform: translateY(12px);
+    transition: opacity .3s ease, transform .3s ease, visibility .3s; }
+  .top.visible { opacity: 1; visibility: visible; transform: translateY(0); }
+  .top:hover { background: #1d4ed8; }
+
+  @media (prefers-reduced-motion: reduce) { .top { transition: opacity .3s; } }
+</style>
+</head>
+<body>
+  <div class="contenido">
+    <h1>Haz scroll hacia abajo</h1>
+    <p>El botón redondo de la esquina aparece cuando bajas un poco, y te lleva de vuelta arriba con scroll suave.</p>
+    <div class="alto"></div>
+    <p>Fin del contenido.</p>
+  </div>
+
+  <button class="top" id="top" aria-label="Volver arriba">↑</button>
+
+<script>
+  const boton = document.getElementById('top');
+  window.addEventListener('scroll', () => {
+    boton.classList.toggle('visible', window.scrollY > 300);
+  });
+  boton.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+</script>
+</body>
+</html>

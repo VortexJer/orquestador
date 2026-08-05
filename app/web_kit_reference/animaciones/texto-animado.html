@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Texto animado</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #fffdf7; color: #1c1917;
+         padding: 4rem 2rem; max-width: 700px; margin: 0 auto; }
+  section { margin-bottom: 4rem; }
+  h3 { color: #a8a29e; font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; }
+
+  /* Máquina de escribir: el cursor parpadeante es CSS, el texto lo escribe JS */
+  .typewriter { font-size: 1.8rem; font-weight: 600; }
+  .cursor { display: inline-block; width: 3px; background: #ea580c; margin-left: 2px;
+            animation: parpadeo 1s step-end infinite; }
+  @keyframes parpadeo { 50% { opacity: 0; } }
+
+  /* Contadores */
+  .contadores { display: flex; gap: 3rem; }
+  .num { font-size: 3rem; font-weight: 700; color: #ea580c; }
+  .num-label { color: #78716c; font-size: .9rem; }
+</style>
+</head>
+<body>
+  <section>
+    <h3>Efecto máquina de escribir</h3>
+    <div class="typewriter"><span id="typed"></span><span class="cursor">&nbsp;</span></div>
+  </section>
+
+  <section>
+    <h3>Contadores animados (suben al cargar)</h3>
+    <div class="contadores">
+      <div><div class="num" data-objetivo="1240">0</div><div class="num-label">Clientes</div></div>
+      <div><div class="num" data-objetivo="98">0</div><div class="num-label">% satisfacción</div></div>
+      <div><div class="num" data-objetivo="15">0</div><div class="num-label">Años</div></div>
+    </div>
+  </section>
+
+<script>
+  // --- Máquina de escribir ---
+  const frases = ['Hola, soy un texto animado.', 'Se escribe y se borra solo.', 'Cámbiame en el array de arriba.'];
+  const destino = document.getElementById('typed');
+  let iFrase = 0, iLetra = 0, borrando = false;
+
+  function escribir() {
+    const frase = frases[iFrase];
+    destino.textContent = borrando ? frase.substring(0, iLetra--) : frase.substring(0, iLetra++);
+    let velocidad = borrando ? 40 : 90;
+    if (!borrando && iLetra === frase.length + 1) { borrando = true; velocidad = 1600; }
+    else if (borrando && iLetra === 0) { borrando = false; iFrase = (iFrase + 1) % frases.length; velocidad = 400; }
+    setTimeout(escribir, velocidad);
+  }
+  escribir();
+
+  // --- Contadores ---
+  function animarContador(el) {
+    const objetivo = +el.dataset.objetivo;
+    const duracion = 1500;
+    const inicio = performance.now();
+    function paso(ahora) {
+      const progreso = Math.min((ahora - inicio) / duracion, 1);
+      el.textContent = Math.floor(progreso * objetivo).toLocaleString('es');
+      if (progreso < 1) requestAnimationFrame(paso);
+      else el.textContent = objetivo.toLocaleString('es');
+    }
+    requestAnimationFrame(paso);
+  }
+  document.querySelectorAll('.num').forEach(animarContador);
+</script>
+</body>
+</html>

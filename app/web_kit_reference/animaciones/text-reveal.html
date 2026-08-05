@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Text reveal — cortina de color</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #0d0d0d; color: #fff;
+         padding: 4rem 2rem; display: flex; flex-direction: column; gap: 5rem; }
+
+  .label { font-size: .7rem; color: #555; letter-spacing: .15em; text-transform: uppercase; margin-bottom: 2rem; }
+
+  /* ================================================================
+     TEXT REVEAL — el texto aparece deslizando una cortina de color.
+
+     Estructura obligatoria:
+       <div class="reveal-wrap">        ← overflow:hidden, posición relativa
+         <span class="reveal-texto">    ← el texto real
+         <span class="reveal-cortina">  ← el bloque de color que se desliza
+
+     La cortina entra desde la izquierda hasta cubrir el texto (scaleX 0→1),
+     luego sale hacia la derecha (scaleX 1→0), dejando el texto visible.
+     El texto empieza invisible (opacity:0) y se hace visible justo cuando
+     la cortina lo cubre.
+  ================================================================ */
+
+  .reveal-wrap {
+    position: relative;
+    display: inline-block;
+    overflow: hidden;
+    line-height: 1.1;
+  }
+
+  .reveal-texto {
+    display: block;
+    opacity: 0;
+    transition: opacity 0s 0.4s; /* se hace visible cuando la cortina llega a mitad */
+  }
+  .reveal-cortina {
+    position: absolute; inset: 0;
+    background: #e07a3f; /* color de la cortina — adaptar al proyecto */
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+
+  /* Activación: JS añade clase .animar al .reveal-wrap */
+  .reveal-wrap.animar .reveal-cortina {
+    animation: cortina 0.8s cubic-bezier(0.77, 0, 0.18, 1) forwards;
+  }
+  .reveal-wrap.animar .reveal-texto { opacity: 1; }
+
+  @keyframes cortina {
+    0%   { transform: scaleX(0); transform-origin: left; }
+    50%  { transform: scaleX(1); transform-origin: left; }
+    50.01% { transform-origin: right; }
+    100% { transform: scaleX(0); transform-origin: right; }
+  }
+
+  /* Delay escalonado para líneas múltiples */
+  .reveal-wrap:nth-child(2) .reveal-cortina { animation-delay: .15s; }
+  .reveal-wrap:nth-child(3) .reveal-cortina { animation-delay: .30s; }
+  .reveal-wrap:nth-child(4) .reveal-cortina { animation-delay: .45s; }
+  .reveal-wrap:nth-child(2) .reveal-texto { transition-delay: .55s; }
+  .reveal-wrap:nth-child(3) .reveal-texto { transition-delay: .70s; }
+  .reveal-wrap:nth-child(4) .reveal-texto { transition-delay: .85s; }
+
+  /* === Variante: cortina desde la derecha === */
+  .reveal-wrap.desde-der .reveal-cortina { transform-origin: right; }
+  @keyframes cortinaDer {
+    0%   { transform: scaleX(0); transform-origin: right; }
+    50%  { transform: scaleX(1); transform-origin: right; }
+    50.01% { transform-origin: left; }
+    100% { transform: scaleX(0); transform-origin: left; }
+  }
+  .reveal-wrap.desde-der.animar .reveal-cortina { animation-name: cortinaDer; }
+
+  /* === Variante: cortina con color de acento del proyecto === */
+  .cortina-acento   { background: #e07a3f; }
+  .cortina-oscura   { background: #1a1a1a; }
+  .cortina-blanca   { background: #f5f0e8; }
+
+  /* Estilos de demo */
+  h1 { font-size: clamp(3rem, 8vw, 6rem); font-weight: 800; line-height: 1.05; }
+  h2 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 700; }
+  p  { font-size: 1.2rem; color: #888; }
+
+  .btn-demo {
+    margin-top: 2rem; padding: .7rem 1.5rem; background: #333; color: #fff;
+    border: none; border-radius: 6px; cursor: pointer; font-size: 1rem;
+  }
+  .btn-demo:hover { background: #444; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal-cortina { display: none; }
+    .reveal-texto   { opacity: 1 !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+  <div>
+    <p class="label">Uso básico — texto aparece tras cortina de acento</p>
+
+    <div id="demo1" style="display:flex; flex-direction:column; gap:.3rem;">
+      <div class="reveal-wrap">
+        <h1 class="reveal-texto">Bienvenidos</h1>
+        <span class="reveal-cortina cortina-acento"></span>
+      </div>
+      <div class="reveal-wrap">
+        <h1 class="reveal-texto" style="color:#e07a3f;">al futuro.</h1>
+        <span class="reveal-cortina cortina-acento"></span>
+      </div>
+    </div>
+
+    <button class="btn-demo" onclick="lanzar('demo1')">▶ Reproducir</button>
+  </div>
+
+  <div>
+    <p class="label">Párrafo con cortina oscura — subtítulo o descripción</p>
+    <div id="demo2" style="display:flex; flex-direction:column; gap:.5rem; max-width:600px">
+      <div class="reveal-wrap">
+        <h2 class="reveal-texto">Cocina honesta</h2>
+        <span class="reveal-cortina cortina-oscura"></span>
+      </div>
+      <div class="reveal-wrap">
+        <p class="reveal-texto">El peix más fresco de la llotja, tratado sin artificios.</p>
+        <span class="reveal-cortina cortina-oscura"></span>
+      </div>
+    </div>
+    <button class="btn-demo" onclick="lanzar('demo2')">▶ Reproducir</button>
+  </div>
+
+  <div>
+    <p class="label">Cortina desde la derecha</p>
+    <div id="demo3">
+      <div class="reveal-wrap desde-der">
+        <h2 class="reveal-texto">Ca Pepe</h2>
+        <span class="reveal-cortina cortina-acento"></span>
+      </div>
+    </div>
+    <button class="btn-demo" onclick="lanzar('demo3')">▶ Reproducir</button>
+  </div>
+
+<script>
+  // Activa el reveal en todos los .reveal-wrap dentro de un contenedor
+  function lanzar(id) {
+    const cont = document.getElementById(id);
+    // Reiniciar
+    cont.querySelectorAll('.reveal-wrap').forEach(w => {
+      w.classList.remove('animar');
+      w.querySelectorAll('.reveal-texto').forEach(t => t.style.opacity = '0');
+    });
+    // Forzar reflow para que la animación se reinicie
+    void cont.offsetWidth;
+    setTimeout(() => {
+      cont.querySelectorAll('.reveal-wrap').forEach(w => w.classList.add('animar'));
+    }, 50);
+  }
+
+  // ---- Activación automática con IntersectionObserver ----
+  // Usa esto en producción (sin los botones de demo):
+  //
+  // const obs = new IntersectionObserver(entries => {
+  //   entries.forEach(entry => {
+  //     if (entry.isIntersecting) {
+  //       entry.target.querySelectorAll('.reveal-wrap').forEach(w => w.classList.add('animar'));
+  //       obs.unobserve(entry.target);
+  //     }
+  //   });
+  // }, { threshold: 0.2 });
+  //
+  // document.querySelectorAll('.seccion-con-reveal').forEach(s => obs.observe(s));
+</script>
+</body>
+</html>

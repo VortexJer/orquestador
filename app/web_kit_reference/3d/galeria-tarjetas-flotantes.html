@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Galería de tarjetas flotantes en 3D — profundidad real con hover (15.12)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body { font-family: system-ui, sans-serif; color: #fff; overflow: hidden; }
+
+  /* ================================================================
+     GALERÍA 3D — varias "tarjetas" (planos con textura) flotando a
+     distinta profundidad, que reaccionan al pasar el ratón por encima
+     (se acercan y brillan más) - portfolio/galería de producto/equipo
+     de nivel agencia, en vez de un grid CSS plano.
+
+     Las texturas de este demo son generadas con Canvas 2D (gradiente +
+     texto) para que funcione sin descargar imágenes - EN PRODUCCIÓN
+     sustituye 'crearTexturaTarjeta' por 'new THREE.TextureLoader().load(url)'
+     con las fotos reales del proyecto (de image_search o de Maps).
+
+     AUTOALOJAR: mismo proceso que hero-objeto-flotante.html.
+  ================================================================ */
+
+  .seccion-galeria {
+    position: relative; height: 100%;
+    background: #0b0d14;
+    display: grid; place-items: center; text-align: center;
+  }
+  #galeria-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: pointer; }
+  .contenido { position: relative; z-index: 1; padding: 2rem; pointer-events: none; }
+  .contenido h1 { font-size: clamp(2rem, 6vw, 3.5rem); font-weight: 900; text-shadow: 0 4px 30px rgba(0,0,0,.7); }
+</style>
+</head>
+<body>
+  <section class="seccion-galeria">
+    <canvas id="galeria-3d"></canvas>
+    <div class="contenido"><h1>Nuestro trabajo</h1></div>
+  </section>
+
+  <script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+  <script type="module">
+    // ← EN PRODUCCIÓN: array de fotos reales del proyecto (image_search / Maps)
+    const TARJETAS = [
+      { titulo: 'Proyecto 01', color: '#8b6cff' },
+      { titulo: 'Proyecto 02', color: '#22d3a8' },
+      { titulo: 'Proyecto 03', color: '#ff8a5b' },
+      { titulo: 'Proyecto 04', color: '#5b8aff' },
+      { titulo: 'Proyecto 05', color: '#d15ba8' },
+      { titulo: 'Proyecto 06', color: '#ffd15b' },
+    ];
+
+    function crearTexturaTarjeta(THREE, titulo, color) {
+      const c = document.createElement('canvas');
+      c.width = 512; c.height = 640;
+      const ctx = c.getContext('2d');
+      const grad = ctx.createLinearGradient(0, 0, 0, c.height);
+      grad.addColorStop(0, color);
+      grad.addColorStop(1, '#0b0d14');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.fillStyle = 'rgba(255,255,255,.92)';
+      ctx.font = '600 34px system-ui, sans-serif';
+      ctx.fillText(titulo, 32, c.height - 40);
+      return new THREE.CanvasTexture(c);
+    }
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const canvas = document.getElementById('galeria-3d');
+    if (reduce) {
+      canvas.style.display = 'none';
+    } else {
+      const THREE = await import('three');
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 100);
+      camera.position.set(0, 0, 9);
+
+      let renderer = null;
+      try {
+        renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      } catch (e) {
+        canvas.style.display = 'none';
+      }
+
+      if (renderer) {
+        renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+        renderer.setSize(innerWidth, innerHeight);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        scene.add(new THREE.DirectionalLight(0xffffff, 0.6));
+
+        const grupo = new THREE.Group();
+        const tarjetas = TARJETAS.map((t, i) => {
+          const ancho = 2.1, alto = ancho * (640 / 512);
+          const material = new THREE.MeshBasicMaterial({
+            map: crearTexturaTarjeta(THREE, t.titulo, t.color),
+            transparent: true,
+          });
+          const mesh = new THREE.Mesh(new THREE.PlaneGeometry(ancho, alto), material);
+          // disposición en arco suelto, cada una a su propia profundidad
+          const angulo = (i / TARJETAS.length) * Math.PI * 1.4 - Math.PI * 0.7;
+          mesh.position.set(Math.sin(angulo) * 4.2, Math.cos(i * 1.7) * 0.4, Math.cos(angulo) * 1.6 - 1.6);
+          mesh.userData.posBase = mesh.position.clone();
+          mesh.userData.escalaBase = 1;
+          grupo.add(mesh);
+          return mesh;
+        });
+        scene.add(grupo);
+
+        // ── Hover con raycaster: la tarjeta bajo el puntero se acerca
+        // y brilla, el resto vuelve a su posición base con inercia ──
+        const raycaster = new THREE.Raycaster();
+        const puntero = new THREE.Vector2(10, 10); // fuera de pantalla al inicio
+        addEventListener('pointermove', (e) => {
+          puntero.x = (e.clientX / innerWidth) * 2 - 1;
+          puntero.y = -(e.clientY / innerHeight) * 2 + 1;
+        });
+        addEventListener('resize', () => {
+          camera.aspect = innerWidth / innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(innerWidth, innerHeight);
+        });
+
+        const reloj = new THREE.Clock();
+        (function animar() {
+          requestAnimationFrame(animar);
+          const t = reloj.getElapsedTime();
+
+          grupo.rotation.y = Math.sin(t * 0.08) * 0.15; // deriva de conjunto lentísima
+
+          raycaster.setFromCamera(puntero, camera);
+          const hits = new Set(raycaster.intersectObjects(tarjetas).map((h) => h.object));
+
+          tarjetas.forEach((mesh) => {
+            const activa = hits.has(mesh);
+            const escalaObjetivo = activa ? 1.18 : 1;
+            const zObjetivo = mesh.userData.posBase.z + (activa ? 0.9 : 0);
+            mesh.scale.setScalar(mesh.scale.x + (escalaObjetivo - mesh.scale.x) * 0.15);
+            mesh.position.z += (zObjetivo - mesh.position.z) * 0.15;
+            mesh.material.opacity = activa ? 1 : 0.82;
+          });
+
+          renderer.render(scene, camera);
+        })();
+      }
+    }
+  </script>
+</body>
+</html>

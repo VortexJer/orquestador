@@ -1,0 +1,46 @@
+[
+  {
+    "id": "office-presentation-wall-of-text-slide",
+    "language_or_domain": "office_presentation",
+    "tags": ["pptx", "content-density"],
+    "problem_description": "Volcar parrafos completos de texto en una diapositiva (en vez de puntos concisos) hace que la audiencia lea la pantalla en silencio en vez de escuchar al presentador - una diapositiva de apoyo visual se convierte en un documento de lectura, derrotando el proposito del formato.",
+    "why_small_models_fail": "Al resumir un documento fuente para convertirlo en slides, el modelo preserva demasiado detalle textual del original en vez de condensarlo agresivamente a la idea minima por punto, porque 'preservar informacion' se siente mas seguro que 'resumir y arriesgarse a perder algo'.",
+    "correct_approach": "Reducir cada punto a una frase corta (idealmente menos de una linea) que sirva de recordatorio visual para el presentador, moviendo el detalle completo a las notas del orador en vez de a la diapositiva visible.",
+    "bad_example": "Diapositiva con un parrafo de 6 lineas explicando en detalle la estrategia de expansion regional, sus riesgos y su cronograma.",
+    "good_example": "Diapositiva:\n- Expansion regional: 3 mercados nuevos\n- Riesgo principal: regulacion local\n- Cronograma: Q2-Q4 2025\n(el detalle completo va en las notas del orador, no en la diapositiva)",
+    "source": "Buenas practicas de diseño de presentaciones - 'less text, more talking points'"
+  },
+  {
+    "id": "office-presentation-inconsistent-title-narrative",
+    "language_or_domain": "office_presentation",
+    "tags": ["pptx", "structure"],
+    "problem_description": "Si los titulos de las diapositivas no forman una secuencia logica cuando se leen solos (algunas diapositivas sin titulo, o titulos genericos como 'Diapositiva 5'), quien hojea rapido el deck (muy comun antes de una reunion) no puede entender el argumento general sin leer cada slide completa.",
+    "why_small_models_fail": "El modelo genera cada diapositiva individualmente enfocandose en su contenido propio, sin mantener consistentemente un hilo narrativo de titulos que, leidos en secuencia, cuenten la historia completa de la presentacion.",
+    "correct_approach": "Redactar los titulos de todas las diapositivas primero, como si fueran el indice/resumen ejecutivo de la presentacion, y verificar que leidos en orden cuenten una historia coherente antes de rellenar el contenido de cada una.",
+    "bad_example": "Titulos: 'Introduccion' / 'Datos' / 'Mas datos' / 'Conclusion' (no comunican nada del contenido real al leerse solos)",
+    "good_example": "Titulos: 'El problema: churn subio 15% en Q3' / 'Causa raiz: onboarding confuso' / 'Propuesta: rediseño en 2 sprints' / 'Impacto esperado: -8% de churn' (cuentan la historia completa solo con los titulos)",
+    "source": "Buenas practicas de diseño de presentaciones - 'titles that tell the story'"
+  },
+  {
+    "id": "office-presentation-too-many-bullets-cognitive-overload",
+    "language_or_domain": "office_presentation",
+    "tags": ["pptx", "content-density"],
+    "problem_description": "Poner mas de 5-6 puntos en una sola diapositiva excede lo que una audiencia puede procesar en el tiempo tipico que esa diapositiva permanece en pantalla - el exceso de informacion simultanea reduce la retencion de TODOS los puntos, no solo de los ultimos.",
+    "why_small_models_fail": "Al convertir una lista larga de un documento fuente (ej. 15 requisitos) en una diapositiva, el modelo vuelca todos los items en una sola slide para 'no perder ninguno', en vez de reestructurar en varias diapositivas o agrupar en categorias de nivel superior.",
+    "correct_approach": "Si una lista supera ~6 puntos, agruparla en categorias de nivel superior (con detalle en notas del orador o en un apendice) o repartirla en varias diapositivas con un subtitulo que indique que es continuacion.",
+    "bad_example": "Una sola diapositiva titulada 'Requisitos' con 15 bullets al mismo nivel.",
+    "good_example": "Diapositiva 'Requisitos: funcionales (4)' + diapositiva 'Requisitos: no funcionales (4)' + diapositiva 'Requisitos: de integracion (4)' - 12 puntos repartidos en 3 diapositivas categorizadas, cada una manejable de un vistazo.",
+    "source": "Buenas practicas de diseño de presentaciones - regla de 6x6 (max 6 bullets, 6 palabras por bullet, como guia orientativa)"
+  },
+  {
+    "id": "office-presentation-missing-speaker-notes-context",
+    "language_or_domain": "office_presentation",
+    "tags": ["pptx", "speaker-notes"],
+    "problem_description": "Diapositivas con bullets cortos y crípticos (correctas para el momento de la presentacion en vivo, donde el presentador da el contexto oralmente) se vuelven ininterpretables cuando el deck se comparte despues por correo o se archiva, si no llevan notas del orador que expliquen el contexto de cada punto.",
+    "why_small_models_fail": "El modelo optimiza el contenido VISIBLE de la diapositiva (que debe ser breve) pero omite generar las notas del orador que complementan ese contenido con el detalle necesario para que el deck sea autocontenido cuando se lee sin el presentador presente.",
+    "correct_approach": "Generar siempre notas del orador para cada diapositiva con el contexto/detalle completo que el bullet corto no puede llevar, especialmente si el deck se va a compartir o archivar (no solo presentar en vivo una vez).",
+    "bad_example": "Diapositiva: '- Migracion: fase 2 pospuesta' (sin notas del orador - quien lo lea despues no sabe por que, ni el impacto)",
+    "good_example": "Diapositiva: '- Migracion: fase 2 pospuesta'\nNotas del orador: 'La fase 2 se pospone 3 semanas por la dependencia con el equipo de infraestructura, que recien libera el ambiente de staging el 15/03. No afecta la fecha de lanzamiento final.'",
+    "source": "Buenas practicas de diseño de presentaciones - decks 'presenter-led' vs 'read-alone'"
+  }
+]

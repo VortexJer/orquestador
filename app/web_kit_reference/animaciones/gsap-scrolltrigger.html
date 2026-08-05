@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GSAP + ScrollTrigger autoalojados — animación atada al scroll</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #0b0b10; color: #fff; }
+  .label { position: fixed; top: 1rem; left: 1rem; z-index: 50; font-size: .7rem;
+           color: #666; letter-spacing: .15em; text-transform: uppercase; }
+  section { min-height: 90vh; display: grid; place-items: center; padding: 2rem; }
+  .panel { width: min(640px, 88vw); padding: 3rem; border-radius: 20px;
+    background: linear-gradient(135deg, #14182b, #0d1020); border: 1px solid rgba(120,150,255,.18); }
+  .panel h2 { font-size: clamp(1.8rem, 5vw, 3rem); font-weight: 800; }
+  .panel p { margin-top: .8rem; color: #9aa3c0; line-height: 1.6; }
+  .pin-card { width: min(420px, 80vw); aspect-ratio: 3/4; border-radius: 18px;
+    background: linear-gradient(135deg, #7c5cff, #22d3a8); display: grid; place-items: center;
+    font-size: 4rem; box-shadow: 0 40px 90px rgba(124,92,255,.35); }
+
+  /* ================================================================
+     GSAP + SCROLLTRIGGER AUTOALOJADOS.
+
+     GSAP es GRATIS desde 2024 (todos los plugins incluidos) y se sirve
+     EN LOCAL — no depende de ningún CDN. Por eso está permitido en la
+     metodología (única excepción a "sin librerías externas"): porque
+     se autoaloja, no añade una dependencia de red de terceros.
+
+     CUÁNDO usar GSAP en vez de las animaciones nativas:
+       - scrub fino con MÚLTIPLES keyframes
+       - sincronizar VARIOS elementos a la vez (timelines)
+       - PIN (fijar un elemento mientras el resto scrollea)
+       Para un simple fade/translate, usa scroll-driven nativo (más ligero).
+
+     ── AUTOALOJADO (hazlo así en cada proyecto) ──
+     1. Descarga gsap.min.js y ScrollTrigger.min.js de gsap.com/download
+        (o `npm i gsap` y copia desde node_modules/gsap/dist/).
+     2. Colócalos en  assets/js/lib/
+     3. Cárgalos ANTES de tu main.js:
+          <script src="assets/js/lib/gsap.min.js"></script>
+          <script src="assets/js/lib/ScrollTrigger.min.js"></script>
+        y registra el plugin:  gsap.registerPlugin(ScrollTrigger);
+
+     Lenis (scroll suave con inercia, MIT, gratis) se autoaloja igual y
+     sincroniza bien con ScrollTrigger — úsalo solo si 'smooth-scroll'
+     es la animación firma del proyecto.
+
+     NOTA DE ESTE DEMO: para que se vea sin descargar nada se carga GSAP
+     desde su CDN abajo. EN PRODUCCIÓN sustitúyelo por las rutas locales
+     de assets/js/lib/ — el código JS es idéntico.
+  ================================================================ */
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal, .pin-card { opacity: 1 !important; transform: none !important; }
+  }
+</style>
+</head>
+<body>
+  <p class="label">GSAP ScrollTrigger · scrub + pin</p>
+
+  <section>
+    <div class="panel reveal">
+      <h2>Atado al scroll</h2>
+      <p>GSAP gratis y autoalojado. Este panel aparece con un fade controlado por ScrollTrigger. En producción carga gsap desde assets/js/lib/.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="pin-card">📌</div>
+  </section>
+
+  <section>
+    <div class="panel reveal">
+      <h2>scrub: true</h2>
+      <p>La barra superior de progreso y el giro de la tarjeta van ligados 1:1 al scroll, no a una duración fija.</p>
+    </div>
+  </section>
+
+  <!-- DEMO ONLY: en producción → assets/js/lib/gsap.min.js + ScrollTrigger.min.js -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+  <script>
+    if (window.gsap && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      gsap.registerPlugin(ScrollTrigger);
+
+      // 1) Reveal con scrub: ligado al recorrido del elemento
+      gsap.utils.toArray('.reveal').forEach(el => {
+        gsap.from(el, {
+          opacity: 0, y: 80, ease: 'none',
+          scrollTrigger: { trigger: el, start: 'top 85%', end: 'top 45%', scrub: true }
+        });
+      });
+
+      // 2) PIN: fija la tarjeta y la gira mientras pasa su sección
+      gsap.to('.pin-card', {
+        rotation: 360, scale: 1.1, ease: 'none',
+        scrollTrigger: {
+          trigger: '.pin-card', start: 'center center', end: '+=600',
+          scrub: true, pin: true
+        }
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+[
+  {
+    "id": "office-email-missing-clear-subject-line",
+    "language_or_domain": "office_email",
+    "tags": ["email", "structure"],
+    "problem_description": "Un asunto ausente, generico ('Actualizacion', 'Info') o que no resume la accion esperada hace que el correo se pierda o se despriorice en una bandeja de entrada llena - la mayoria de la gente decide si abrir y cuando responder solo por el asunto.",
+    "why_small_models_fail": "El modelo se concentra en redactar bien el CUERPO del correo (que es lo que se le pidio explicitamente) y trata el asunto como un detalle menor o lo genera generico al final, sin modelar que el asunto es en si mismo la parte que determina si el correo se lee a tiempo.",
+    "correct_approach": "Generar siempre un asunto especifico que incluya el tema concreto y, si aplica, la accion o fecha esperada (ej. 'Aprobacion presupuesto Q3 - necesito respuesta antes del viernes').",
+    "bad_example": "Asunto: Info\n\nHola equipo, les escribo para...",
+    "good_example": "Asunto: Aprobacion del presupuesto Q3 - respuesta antes del viernes 12\n\nHola equipo, les escribo para...",
+    "source": "Buenas practicas de comunicacion escrita profesional - claridad de asunto"
+  },
+  {
+    "id": "office-email-buried-call-to-action",
+    "language_or_domain": "office_email",
+    "tags": ["email", "structure"],
+    "problem_description": "El pedido concreto (que se necesita que el destinatario haga) queda enterrado en medio de un parrafo largo en vez de estar explicito y facil de encontrar - la mayoria de los lectores escanean el correo, no lo leen palabra por palabra, y un pedido enterrado se pasa por alto.",
+    "why_small_models_fail": "El modelo redacta el correo como un texto narrativo continuo (contexto, luego pedido, luego mas contexto) que es una estructura natural para prosa pero mala para un lector que escanea buscando 'que necesito hacer'.",
+    "correct_approach": "Poner el pedido explicito cerca del principio o en una linea separada y destacada ('Necesito que:' seguido de la accion concreta), no disuelto dentro de un parrafo de contexto.",
+    "bad_example": "Como comentamos la semana pasada y considerando el contexto del proyecto, seria bueno que en algun momento antes de que termine el mes puedas revisar el documento adjunto y avisarme que te parece, ya que necesitamos avanzar.",
+    "good_example": "Necesito que revises el documento adjunto y me des tu aprobacion antes del 30 de este mes.\n\nContexto: como comentamos la semana pasada, este documento define...",
+    "source": "Buenas practicas de comunicacion escrita profesional - 'bottom line up front'"
+  },
+  {
+    "id": "office-email-tone-register-mismatch",
+    "language_or_domain": "office_email",
+    "tags": ["email", "tone"],
+    "problem_description": "Usar un registro que no corresponde a la relacion/contexto: demasiado formal y distante para un colega cercano (suena frio o pasivo-agresivo), o demasiado informal para un cliente externo o una autoridad (puede leerse como falta de profesionalismo).",
+    "why_small_models_fail": "El modelo, sin señales explicitas sobre la relacion entre emisor y destinatario, cae en un tono generico 'corporativo educado' por default, que puede no encajar con el contexto real que el usuario si conoce pero no siempre especifica en el pedido.",
+    "correct_approach": "Si el pedido no especifica el tono, usar el registro mas neutral-profesional posible pero preguntar (o asumir explicitamente y decirlo) si hay señales de informalidad en el contexto provisto (ej. el propio pedido del usuario esta escrito informalmente).",
+    "bad_example": "Estimado Juan, por medio de la presente me dirijo a usted para... (a un compañero con el que se tutea hace años)",
+    "good_example": "Hola Juan, te escribo para... (mismo destinatario, registro acorde a la relacion real)",
+    "source": "Buenas practicas de comunicacion escrita profesional - adecuacion de registro"
+  },
+  {
+    "id": "office-email-cc-bcc-privacy-scope-creep",
+    "language_or_domain": "office_email",
+    "tags": ["email", "privacy"],
+    "problem_description": "Redactar un correo que va a multiples destinatarios sin relacion entre si (ej. un aviso masivo) usando Para/CC en vez de CCO (BCC) expone las direcciones de correo de todos los destinatarios entre si - una fuga de privacidad real y comun, ademas de generar un hilo de 'responder a todos' no deseado.",
+    "why_small_models_fail": "El modelo genera el correo en si (el contenido) pero no siempre señala explicitamente COMO deberia enviarse (a quien en Para, quien en CC, quien en CCO), dejando esa decision de privacidad sin resolver o asumiendo Para/CC por default.",
+    "correct_approach": "Cuando el correo va a una lista de destinatarios sin relacion mutua esperada (clientes distintos, por ejemplo), señalar explicitamente que deberian ir en CCO, y reservar Para/CC solo para destinatarios que legitimamente necesitan verse entre si.",
+    "bad_example": "Para: cliente1@x.com, cliente2@y.com, cliente3@z.com\n(los tres ven las direcciones de correo de los demas, sin relacion entre ellos)",
+    "good_example": "Para: (la propia direccion del remitente, o vacio)\nCCO: cliente1@x.com, cliente2@y.com, cliente3@z.com\n(ningun destinatario ve las direcciones de los demas)",
+    "source": "Buenas practicas de privacidad en comunicacion masiva por correo"
+  },
+  {
+    "id": "office-email-leftover-template-placeholder",
+    "language_or_domain": "office_email",
+    "tags": ["email", "templates"],
+    "problem_description": "Dejar un placeholder de plantilla sin completar en el texto final (ej. [NOMBRE], {{empresa}}, [FECHA]) porque el modelo no tenia ese dato especifico disponible - y en vez de señalarlo explicitamente como informacion faltante, lo deja tal cual en el texto entregado, con riesgo de que se envie asi por error.",
+    "why_small_models_fail": "El modelo completa la estructura general de la plantilla pero, ante un campo cuyo valor real no le fue provisto, copia el placeholder literal en vez de detenerse a señalar que falta ese dato - prioriza 'completar la tarea' sobre 'avisar que hay informacion faltante'.",
+    "correct_approach": "Si un dato necesario para completar el correo no fue provisto, señalarlo explicitamente y por separado del cuerpo del correo (ej. 'Falta el nombre del destinatario - reemplaza [NOMBRE] antes de enviar'), nunca dejarlo mezclado silenciosamente en el texto final.",
+    "bad_example": "Hola [NOMBRE], te escribo de parte de {{empresa}} para...",
+    "good_example": "Hola Ana, te escribo de parte de Acme Corp para...\n\n(Nota: usé \"Acme Corp\" porque no se especificó el nombre de la empresa - confirma o reemplázalo antes de enviar.)",
+    "source": "Buena practica de generacion asistida de texto - no dejar artefactos de plantilla sin resolver"
+  },
+  {
+    "id": "office-email-missing-explicit-deadline-next-step",
+    "language_or_domain": "office_email",
+    "tags": ["email", "structure"],
+    "problem_description": "Un correo que pide algo pero no especifica ni un plazo ni cual es el proximo paso esperado se despriorizada indefinidamente - sin una fecha limite explicita, el pedido compite con todo lo demas en la bandeja del destinatario y pierde casi siempre.",
+    "why_small_models_fail": "El modelo genera el pedido en si, pero omite agregar una fecha/plazo cuando el usuario no la especifico explicitamente, en vez de proponer una fecha razonable por default o marcar explicitamente que falta definir una.",
+    "correct_approach": "Si no se dio un plazo explicito, proponer uno razonable segun el contexto (o preguntar) en vez de omitirlo; cerrar el correo con el proximo paso concreto esperado.",
+    "bad_example": "Cuando puedas, revisa el documento y decime que te parece. Gracias.",
+    "good_example": "Podrias revisar el documento y darme tu devolucion antes del jueves 14? Si necesitas mas tiempo, avisame y coordinamos.",
+    "source": "Buenas practicas de comunicacion escrita profesional - plazos explicitos"
+  }
+]
