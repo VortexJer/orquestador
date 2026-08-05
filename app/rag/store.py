@@ -17,17 +17,22 @@ en desarrollo (docker-compose ya trae el servicio `qdrant`).
 from __future__ import annotations
 
 from functools import lru_cache
-
-from qdrant_client import QdrantClient
-from qdrant_client.http import models as qm
+from typing import TYPE_CHECKING
 
 from app.config import get_embedder_config, get_settings
 
+if TYPE_CHECKING:  # solo para el type checker; en runtime se importa diferido
+    from qdrant_client import QdrantClient
+
 COLLECTION_NAME = "hard_cases"
+
+# Import DIFERIDO de qdrant_client: tarda ~1.1s en cargar. Arriba haría lento el
+# arranque de la terminal aunque no se use el RAG; aquí solo se paga al usarlo.
 
 
 @lru_cache
-def get_client() -> QdrantClient:
+def get_client() -> "QdrantClient":
+    from qdrant_client import QdrantClient
     settings = get_settings()
     if settings.qdrant_mode == "remote":
         return QdrantClient(url=settings.qdrant_url)
@@ -35,6 +40,7 @@ def get_client() -> QdrantClient:
 
 
 def ensure_collection() -> None:
+    from qdrant_client.http import models as qm
     client = get_client()
     dim = get_embedder_config()["dim"]
     if not client.collection_exists(COLLECTION_NAME):
@@ -45,6 +51,7 @@ def ensure_collection() -> None:
 
 
 def upsert_entries(entries: list[dict], vectors: list[list[float]]) -> None:
+    from qdrant_client.http import models as qm
     ensure_collection()
     client = get_client()
     points = [
@@ -61,6 +68,7 @@ def search(
     limit: int = 3,
     score_threshold: float = 0.35,
 ) -> list[dict]:
+    from qdrant_client.http import models as qm
     ensure_collection()
     client = get_client()
     must: list[qm.FieldCondition] = []
