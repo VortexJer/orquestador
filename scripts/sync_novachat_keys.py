@@ -20,7 +20,7 @@ from pathlib import Path
 
 import httpx
 
-NOVACHAT_URL = os.environ.get("NOVACHAT_URL", "https://nova-chat-joaquin-s-projects-e180d7d6.vercel.app")
+NOVACHAT_URL = os.environ.get("NOVACHAT_URL", "https://nova-chat-638n.onrender.com")
 ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
 
 # proveedor en NovaChat -> variable base en el .env del orquestador.
