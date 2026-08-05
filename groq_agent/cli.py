@@ -571,6 +571,14 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "-acc", "--account", action="store_true",
+        help=(
+            "Iniciar sesion en tu cuenta de NovaChat e importar sus API keys al .env "
+            "(suma las nuevas, sin duplicar). Guarda la sesion para que se sincronice "
+            "sola en cada arranque."
+        ),
+    )
+    parser.add_argument(
         "-gldn", "--goldentokens", action="store_true", dest="goldentokens",
         help=(
             "Configurar goldentokens: abre un selector para elegir el nivel "
@@ -673,6 +681,12 @@ def main() -> int:
     if args.list_keys:
         from groq_agent.config_wizard import run_list_keys
         return run_list_keys()
+
+    if args.account:
+        import subprocess
+        from pathlib import Path as _Path
+        script = _Path(__file__).resolve().parent.parent / "scripts" / "sync_novachat_keys.py"
+        return subprocess.call([sys.executable, str(script), "--login"])
 
     if args.commands:
         return _listar_comandos()

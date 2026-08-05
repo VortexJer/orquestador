@@ -20,9 +20,10 @@ orquestador --config      # añade tus API keys (gratis, sin tarjeta), una a una
 orquestador               # abre la terminal agéntica
 ```
 
-¿Ya usas **NovaChat**? Importa tus keys de la cuenta de golpe (suma, sin duplicar):
+¿Ya usas **NovaChat**? Inicia sesión una vez e importa tus keys de la cuenta
+(suma, sin duplicar; luego se sincronizan solas en cada arranque):
 ```
-python scripts/sync_novachat_keys.py
+orquestador --account       # (alias -acc)
 ```
 
 
