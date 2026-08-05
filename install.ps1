@@ -55,10 +55,17 @@ if (-not $prof -or ($prof -notmatch [regex]::Escape($marker))) {
     Write-Host "La funcion 'orquestador' ya estaba en tu perfil."
 }
 
+# 6) Login en NovaChat para importar las API keys (opcional, recomendado).
+#    Guarda la sesion; a partir de ahi el orquestador se sincroniza solo al arrancar.
+Write-Host ""
+$resp = Read-Host "Iniciar sesion en NovaChat para importar tus API keys ahora? [S/n]"
+if ($resp -eq "" -or $resp -match '^[sSyY]') {
+    & $py (Join-Path $Dest "scripts\sync_novachat_keys.py") --login
+}
+
 Write-Host ""
 Write-Host "LISTO. Abre una terminal NUEVA y ejecuta:" -ForegroundColor Green
-Write-Host "  orquestador --config      # anade tus API keys (gratis, sin tarjeta), una a una"
 Write-Host "  orquestador               # abre la terminal agentica"
 Write-Host ""
-Write-Host "O importa las keys de tu cuenta NovaChat de golpe:" -ForegroundColor Green
-Write-Host "  python scripts\sync_novachat_keys.py"
+Write-Host "Tus keys de NovaChat se importan solas en cada arranque (si iniciaste sesion)."
+Write-Host "Tambien puedes anadir keys a mano con:  orquestador --config"

@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+.novachat_session.json
 
 # --- Entornos y caches de Python ---
 .venv/

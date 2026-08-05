@@ -34,6 +34,16 @@ if (Test-Path $envFile) {
     Write-Warning "No hay .env en $repoRoot - corré: .\orquestador.ps1 --config  (te pide las API keys una a una)."
 }
 
+# Sincroniza en SEGUNDO PLANO las API keys de tu cuenta de NovaChat (si hay
+# sesion guardada de un login previo). NO retrasa el arranque: se lanza oculto y
+# el orquestador sigue de inmediato; las keys nuevas quedan listas para el proximo
+# arranque. Para configurar la sesion: python scripts\sync_novachat_keys.py --login
+$syncScript = Join-Path $repoRoot "scripts\sync_novachat_keys.py"
+$venvPy = Join-Path $repoRoot ".venv\Scripts\python.exe"
+if ((Test-Path $syncScript) -and (Test-Path $venvPy)) {
+    Start-Process -FilePath $venvPy -ArgumentList @($syncScript, "--background") -WindowStyle Hidden -ErrorAction SilentlyContinue | Out-Null
+}
+
 Push-Location $repoRoot
 try {
     python -m groq_agent.cli @args

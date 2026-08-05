@@ -47,6 +47,9 @@ LAUNCHER="$DEST/orquestador.sh"
 cat > "$LAUNCHER" <<EOF
 #!/usr/bin/env bash
 cd "$DEST"
+# Sincroniza en SEGUNDO PLANO las API keys de tu cuenta NovaChat (si hay sesion).
+# NO retrasa el arranque: se lanza en background y el orquestador sigue.
+[ -f scripts/sync_novachat_keys.py ] && ./.venv/bin/python scripts/sync_novachat_keys.py --background >/dev/null 2>&1 &
 set -a; [ -f .env ] && . ./.env; set +a
 exec ./.venv/bin/python -m groq_agent.cli "\$@"
 EOF
@@ -59,10 +62,17 @@ if ! grep -qF "$MARK" "$RC" 2>/dev/null; then
   echo "Anadido el alias 'orquestador' a $RC."
 fi
 
+# Login en NovaChat para importar las API keys (opcional, recomendado).
+echo ""
+printf "Iniciar sesion en NovaChat para importar tus API keys ahora? [S/n] "
+read -r resp </dev/tty || resp="n"
+case "$resp" in
+  ""|[sSyY]*) ./.venv/bin/python scripts/sync_novachat_keys.py --login ;;
+esac
+
 echo ""
 echo "LISTO. Abre una terminal NUEVA (o 'source $RC') y ejecuta:"
-echo "  orquestador --config      # anade tus API keys (gratis, sin tarjeta)"
 echo "  orquestador               # abre la terminal agentica"
 echo ""
-echo "O importa las keys de tu cuenta NovaChat:"
-echo "  ./.venv/bin/python scripts/sync_novachat_keys.py"
+echo "Tus keys de NovaChat se importan solas en cada arranque (si iniciaste sesion)."
+echo "Tambien puedes anadir keys a mano con:  orquestador --config"
