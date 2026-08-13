@@ -124,14 +124,15 @@ PROVIDERS: dict[str, Provider] = {
                 "facturacion.",
         notes="Muy rapido, pero sus 3 modelos piden pago.",
     ),
-    # Su catalogo bajo 24B mejoro desde que se dejo de usar: ya tiene
-    # qwen3-32b. Y 14.400 RPD en los 8B lo hace ideal para el router.
+    # Groq retiro llama-3.1-8b-instant; para el router se pasa a
+    # openai/gpt-oss-20b (su reemplazo recomendado). Cuota diaria del free tier
+    # menor que la del viejo 8B, pero el router solo se llama una vez por tarea.
     "groq": Provider(
         name="groq",
         base_url="https://api.groq.com/openai/v1",
         key_prefix="GROQ",
         min_interval_s=2.0,  # 30 RPM
-        notes="14.400 RPD en modelos 8B - el mejor para el router.",
+        notes="Rapido; gpt-oss-20b para el router (el 8b fue retirado).",
     ),
     "siliconflow": Provider(
         name="siliconflow",
@@ -546,10 +547,13 @@ def _c(provider: str, model: str) -> Candidate:
 
 
 # router-tiny: clasificar dominio y decidir CONTINUACION vs tarea nueva.
-# Groq primero por cuota (14.400 peticiones/dia en sus 8B) y porque este
-# tier se llama una vez por tarea.
+# Groq primero porque es rapido y este tier se llama una vez por tarea. Groq
+# RETIRO llama-3.1-8b-instant; su reemplazo recomendado es openai/gpt-oss-20b
+# (MoE ~3.6B activos, mas capaz que el 8B para elegir 1 etiqueta entre 24). Ojo:
+# gpt-oss es un modelo de razonamiento; si mete preambulo, el parser del router
+# ya extrae la etiqueta por frontera de palabra, asi que no rompe.
 CHAIN_ROUTER_TINY = [
-    _c("groq", "llama-3.1-8b-instant"),                                # [ok]
+    _c("groq", "openai/gpt-oss-20b"),                                  # nuevo: reemplaza al 8b retirado; probar --check-providers
     _c("mistral", "ministral-8b-latest"),                              # [ok]
     _c("huggingface", "Qwen/Qwen3-8B"),                                # [ok]
     _c("cloudflare", "@cf/mistralai/mistral-small-3.1-24b-instruct"),  # [ok]
