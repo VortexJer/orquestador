@@ -467,6 +467,45 @@ def _confirmar_y_despachar_externo(name: str, arguments: dict, executor: ToolExe
         executor._escritura_externa_aprobada = None
 
 
+# Marca que separa el skill/prompt del bloque de fecha, para poder re-datar el
+# mensaje de sistema en cada turno SIN acumular bloques viejos (idempotente).
+_MARCA_FECHA = "\n\n=== CONTEXTO TEMPORAL ==="
+_DIAS = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
+_MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
+          "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+
+
+def _bloque_fecha() -> str:
+    """Fecha y hora REAL del turno. El orquestador corre LOCAL en la maquina del
+    usuario (a diferencia de NovaChat, que corre en UTC en Render), asi que la
+    hora local del sistema YA es la del usuario: basta datetime.now(), sin zona
+    horaria. Nombres de dia/mes a mano para no depender del locale de Windows."""
+    from datetime import datetime
+    ahora = datetime.now()
+    stamp = (f"{_DIAS[ahora.weekday()]}, {ahora.day} de {_MESES[ahora.month - 1]} "
+             f"de {ahora.year}, {ahora.hour:02d}:{ahora.minute:02d}")
+    return (
+        f"FECHA Y HORA ACTUAL: {stamp} (hora local). Es el momento REAL de esta "
+        "peticion; usala para todo razonamiento temporal y para construir las "
+        "busquedas (p. ej. 'mundial 2026', 'precio hoy'). RAZONA ANTES DE BUSCAR O "
+        "RESPONDER cuando te pregunten por algo 'de este ano', 'de esta temporada', "
+        "'de este mes' y similares: compara la fecha del evento con la de HOY. Si el "
+        "evento AUN NO se ha celebrado a dia de hoy (p. ej. te preguntan por el ganador "
+        "del mundial de este ano pero el torneo es mas adelante en el calendario), NO "
+        "des un resultado: di con claridad que todavia no se ha celebrado y ofrece el "
+        "ganador de la edicion ANTERIOR o pregunta si quiere la PROXIMA. Nunca inventes "
+        "ni des por ganado el resultado de un evento que en la fecha actual no ha ocurrido."
+    )
+
+
+def _con_fecha(system_prompt: str) -> str:
+    """Pega (o refresca) el bloque de fecha al final del prompt de sistema. Quita
+    primero cualquier bloque anterior por la marca, para que al continuar una
+    sesion la fecha no quede congelada ni se apilen varios bloques."""
+    base = system_prompt.split(_MARCA_FECHA)[0].rstrip()
+    return f"{base}{_MARCA_FECHA}\n{_bloque_fecha()}"
+
+
 def run_agent(
     client: GroqClient,
     executor: ToolExecutor,
@@ -500,10 +539,19 @@ def run_agent(
     API, no una convencion de prompt)."""
     schemas = tool_schemas if tool_schemas is not None else TOOL_SCHEMAS
     if existing_messages:
+        # Al continuar, el system_prompt pasado se ignora (ya esta en [0]); pero SI
+        # refrescamos la fecha de ese mensaje 0, o quedaria congelada en la del
+        # primer turno de la sesion.
+        prim = existing_messages[0]
+        if isinstance(prim, dict) and prim.get("role") == "system":
+            existing_messages = [
+                {"role": "system", "content": _con_fecha(str(prim.get("content", "")))},
+                *existing_messages[1:],
+            ]
         messages: list[dict] = [*existing_messages, {"role": "user", "content": user_task}]
     else:
         messages = [
-            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": _con_fecha(system_prompt)},
             {"role": "user", "content": user_task},
         ]
     # Cada tarea arranca sin plan (ni en la barra ni en el executor), para no
