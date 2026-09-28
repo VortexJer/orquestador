@@ -59,6 +59,19 @@ def test_auto_route_web_task():
     assert tier in CHAIN_BY_TIER
 
 
+@pytest.mark.parametrize("pedido", [
+    "Hazme un HTML interactivo que enseñe un hormiguero",
+    "Crea una simulación visual del sistema solar",
+    "Genera un juego pequeño de memoria en una página",
+])
+def test_auto_route_visual_experience_uses_web_builder(pedido):
+    """Las experiencias visuales no pueden caer en el tier de texto/código."""
+    specialist, tier, domain = auto_route(pedido)
+    assert domain == "web"
+    assert specialist == "web-builder-specialist"
+    assert tier == "web-builder-large"
+
+
 def test_auto_route_office_email_usa_tier_capaz():
     """office-email ya NO va en router-tiny(8B): daba textos flojos. Ahora
     coder-main, como el resto de oficina (word/ppt usan el tier grande de
@@ -68,6 +81,12 @@ def test_auto_route_office_email_usa_tier_capaz():
     assert specialist == "office-email-specialist"
     assert tier == "coder-main"
     assert tier != "router-tiny"
+
+
+def test_generalist_no_reutiliza_el_modelo_del_router():
+    from groq_agent.auto_router import model_for_specialist
+
+    assert model_for_specialist("generalist-tiny") == "escalation-30b"
 
 
 @pytest.mark.parametrize("tier", sorted(_TIERS_CON_PRESUPUESTO))
@@ -84,8 +103,14 @@ def test_ningun_candidato_de_la_escalera_es_un_modelo_frontera(tier):
 def test_toda_escalera_termina_en_nvidia(tier):
     """NVIDIA NIM (~40 RPM, sin tope diario) es el respaldo universal: si
     una escalera no termina ahi, esa categoria puede quedarse sin servir
-    la tarea cuando los demas free tiers agoten su cuota diaria."""
-    assert CHAIN_BY_TIER[tier][-1].provider == "nvidia"
+    la tarea cuando los demas free tiers agoten su cuota diaria. Detras solo
+    puede ir el backstop SIN key (_SIN_KEY_BACKSTOP), que es a proposito."""
+    from groq_agent.providers import _SIN_KEY_BACKSTOP
+
+    escalera = CHAIN_BY_TIER[tier]
+    n = len(_SIN_KEY_BACKSTOP)
+    assert escalera[-n:] == _SIN_KEY_BACKSTOP
+    assert escalera[-n - 1].provider == "nvidia"
 
 
 # Cuantos candidatos NO-nvidia tiene que haber antes del primer nvidia.
@@ -460,3 +485,13 @@ def test_frase_con_go_incrustado_no_clasifica_como_go():
         "ordename esta lista de diccionarios por la fecha",
     )
     assert got != "go"
+
+
+def test_llm_router_no_puede_desviar_un_html_visual_a_un_modelo_pequeno():
+    """El bypass determinista protege el caso aunque el router-tiny se equivoque."""
+    from groq_agent.auto_router import auto_route_llm
+
+    routed = auto_route_llm(_ClienteFalso("python"), "Hazme un HTML interactivo de un hormiguero")
+    assert routed is not None
+    specialist, tier, domain = routed
+    assert (specialist, tier, domain) == ("web-builder-specialist", "web-builder-large", "web")

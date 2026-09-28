@@ -486,7 +486,7 @@ def _bloque_fecha() -> str:
              f"de {ahora.year}, {ahora.hour:02d}:{ahora.minute:02d}")
     return (
         f"FECHA Y HORA ACTUAL: {stamp} (hora local). Es el momento REAL de esta "
-        "peticion; usala para todo razonamiento temporal y para construir las "
+        "peticion; úsala para todo razonamiento temporal y para construir las "
         "busquedas (p. ej. 'mundial 2026', 'precio hoy').\n\n"
         "RAZONAMIENTO TEMPORAL OBLIGATORIO antes de responder sobre un evento con fecha "
         "(un mundial, unas elecciones, un estreno, una temporada, una version):\n"
@@ -502,7 +502,7 @@ def _bloque_fecha() -> str:
         "5) Si esta EN CURSO -> dilo y busca el estado actual.\n"
         "Ejemplo: si HOY es agosto de 2026 y te preguntan por el Mundial 2026 (se jugo en "
         "junio-julio de 2026), ese torneo YA TERMINO (agosto > julio) -> busca QUIEN LO "
-        "GANO y respondelo; seria un error decir que no se ha celebrado."
+        "GANO y respóndelo; seria un error decir que no se ha celebrado."
     )
 
 
