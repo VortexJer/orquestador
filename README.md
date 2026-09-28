@@ -1,5 +1,10 @@
 # Orquestador de Modelos Especializados — prototipo fase 1
 
+> **English summary** — Agentic terminal that routes each task to a specialist (skill + model) across 21 domains, with failover over free-tier OpenAI-compatible LLM providers. FastAPI gateway, Qdrant hard-case RAG, a routing eval that gates CI, and 1,097 tests.
+
+![The orquestador routing a SQL task to the sql-specialist](docs/screenshot.png)
+
+
 ## Instalación rápida
 
 **Windows (PowerShell):**
